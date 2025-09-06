@@ -17,14 +17,20 @@ export interface Car {
   owners: number
   isVerified?: boolean
   isFeatured?: boolean
+  
+  // NEW: Profile-specific attribution
+  dataSource: 'olx-carstreets-profile' | 'olx-external' | 'direct' | 'other' | 'openai-enhanced' | 'emergency-fallback' | 'database-managed-scraping' | 'fresh-database-scraping'
+  olxProfile?: 'carstreets' | 'external'
+  olxProfileId?: string
+  originalUrl: string
+  attributionNote?: string
+  carStreetsListed?: boolean
 }
 
-export interface FilterOptions {
-  priceRange: [number, number]
-  yearRange: [number, number]
-  fuelType: string[]
-  transmission: string[]
-  brand: string[]
-  location: string
-  sortBy: 'price_asc' | 'price_desc' | 'year_desc' | 'km_asc' | 'date_desc'
+export interface DataSourceAttribution {
+  source: string
+  profileId?: string
+  profileUrl?: string
+  scrapedAt: string
+  attributionRequired: boolean
 }
