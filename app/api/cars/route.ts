@@ -11,6 +11,13 @@ const replacer = (key: string, value: any) => {
   return value
 }
 
+
+import { NextRequest, NextResponse } from 'next/server'
+import { carStreetsOLXScraper } from '../../lib/scrapers/hybrid-olx-scraper'
+import { getCarsFromDatabase } from '../../lib/database/db'
+
+export const revalidate = 3600 // Cache for 1 hour
+
 export async function GET(request: NextRequest) {
   console.log('🚀 /api/cars called - using database-backed scraping...')
   
@@ -23,6 +30,8 @@ export async function GET(request: NextRequest) {
       const freshCars = await carStreetsOLXScraper.scrapeCarStreetsProfile()
       
       return new Response(JSON.stringify({
+
+      return NextResponse.json({
         success: true,
         cars: freshCars,
         count: freshCars.length,
@@ -31,6 +40,7 @@ export async function GET(request: NextRequest) {
         message: 'Fresh data generated and saved to database'
       }, replacer), {
         headers: { 'Content-Type': 'application/json' }
+
       })
     }
     
@@ -38,12 +48,15 @@ export async function GET(request: NextRequest) {
     const cars = await carStreetsOLXScraper.scrapeCarStreetsProfile()
     
     return new Response(JSON.stringify({
+
+    return NextResponse.json({
       success: true,
       cars: cars,
       count: cars.length,
       source: 'database-managed-scraping',
       timestamp: new Date().toISOString(),
       message: 'Data served from intelligent database system'
+ 
     }, replacer), {
       headers: { 'Content-Type': 'application/json' }
     })
@@ -61,5 +74,25 @@ export async function GET(request: NextRequest) {
       status: 500,
       headers: { 'Content-Type': 'application/json' }
     })
+
+    // Final fallback - try to get any existing database data
+    try {
+      const fallbackCars = await getCarsFromDatabase()
+      return NextResponse.json({
+        success: false,
+        cars: fallbackCars,
+        count: fallbackCars.length,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        source: 'database-fallback'
+      })
+    } catch (dbError) {
+      return NextResponse.json({
+        success: false,
+        cars: [],
+        count: 0,
+        error: 'Complete system failure - please try again later',
+        source: 'total-failure'
+      }, { status: 500 })
+    }
   }
 }
