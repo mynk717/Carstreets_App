@@ -1,0 +1,37 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Car {
+  id               String   @id @default(cuid())
+  title            String
+  brand            String
+  model            String
+  variant          String?
+  price            BigInt
+  year             Int
+  fuelType         String
+  transmission     String
+  kmDriven         Int
+  location         String
+  images           String   @default("[]")
+  description      String
+  sellerType       String
+  postedDate       String
+  owners           Int
+  isVerified       Boolean  @default(false)
+  isFeatured       Boolean  @default(false)
+  dataSource       String
+  olxProfile       String?
+  olxProfileId     String?
+  originalUrl      String?
+  attribution      String?
+  carStreetsListed Boolean  @default(false)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
