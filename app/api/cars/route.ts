@@ -1,22 +1,8 @@
-import { NextRequest } from 'next/server'
-import { carStreetsOLXScraper } from '../../lib/scrapers/hybrid-olx-scraper'
-
-export const revalidate = 3600 // Cache for 1 hour
-
-// BigInt serializer
-const replacer = (key: string, value: any) => {
-  if (typeof value === 'bigint') {
-    return value.toString()
-  }
-  return value
-}
-
-
 import { NextRequest, NextResponse } from 'next/server'
 import { carStreetsOLXScraper } from '../../lib/scrapers/hybrid-olx-scraper'
-import { getCarsFromDatabase } from '../../lib/database/db'
+import { fetchCars } from '../../lib/database/db' // ✅ Fixed import
 
-export const revalidate = 3600 // Cache for 1 hour
+export const revalidate = 3600
 
 export async function GET(request: NextRequest) {
   console.log('🚀 /api/cars called - using database-backed scraping...')
@@ -29,8 +15,6 @@ export async function GET(request: NextRequest) {
       console.log('🔄 Force refresh requested - running fresh scraping...')
       const freshCars = await carStreetsOLXScraper.scrapeCarStreetsProfile()
       
-      return new Response(JSON.stringify({
-
       return NextResponse.json({
         success: true,
         cars: freshCars,
@@ -38,17 +22,11 @@ export async function GET(request: NextRequest) {
         source: 'fresh-database-scraping',
         timestamp: new Date().toISOString(),
         message: 'Fresh data generated and saved to database'
-      }, replacer), {
-        headers: { 'Content-Type': 'application/json' }
-
       })
     }
     
-    // Normal flow - use database (will scrape weekly automatically)
     const cars = await carStreetsOLXScraper.scrapeCarStreetsProfile()
     
-    return new Response(JSON.stringify({
-
     return NextResponse.json({
       success: true,
       cars: cars,
@@ -56,42 +34,31 @@ export async function GET(request: NextRequest) {
       source: 'database-managed-scraping',
       timestamp: new Date().toISOString(),
       message: 'Data served from intelligent database system'
- 
-    }, replacer), {
-      headers: { 'Content-Type': 'application/json' }
     })
     
   } catch (error) {
     console.error('❌ API Error:', error)
     
-    return new Response(JSON.stringify({
-      success: false,
-      cars: [],
-      count: 0,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      source: 'total-failure'
-    }, replacer), { 
-      status: 500,
-      headers: { 'Content-Type': 'application/json' }
-    })
-
-    // Final fallback - try to get any existing database data
     try {
-      const fallbackCars = await getCarsFromDatabase()
+      const fallbackCars = await fetchCars() // ✅ Fixed function call
+      
       return NextResponse.json({
         success: false,
         cars: fallbackCars,
         count: fallbackCars.length,
         error: error instanceof Error ? error.message : 'Unknown error',
-        source: 'database-fallback'
+        source: 'database-fallback',
+        timestamp: new Date().toISOString()
       })
     } catch (dbError) {
+      console.error('❌ Database fallback failed:', dbError)
       return NextResponse.json({
         success: false,
         cars: [],
         count: 0,
         error: 'Complete system failure - please try again later',
-        source: 'total-failure'
+        source: 'total-failure',
+        timestamp: new Date().toISOString()
       }, { status: 500 })
     }
   }

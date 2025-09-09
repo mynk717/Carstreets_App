@@ -3,8 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "next dev",
+    "build": "prisma generate && next build",
+    "postinstall": "prisma generate",
     "start": "next start",
     "lint": "eslint"
   },
@@ -13,8 +14,6 @@
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",
     "@sparticuz/chromium": "^138.0.2",
-    "@radix-ui/react-dialog": "^1.1.15",
-    "@radix-ui/react-select": "^2.2.6",
     "@types/sqlite3": "^3.1.11",
     "apify-client": "^2.16.0",
     "axios": "^1.11.0",
@@ -31,7 +30,6 @@
     "puppeteer-core": "^24.19.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
-    "puppeteer-core": "^24.19.0",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "sqlite": "^5.1.1",
