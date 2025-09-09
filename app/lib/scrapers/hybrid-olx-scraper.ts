@@ -47,221 +47,219 @@ export class HybridOLXScraper {
   }
 
   // REAL OLX SCRAPING - APOLLO IMAGES ONLY
-  private async scrapeOLXProfile(profileId: string): Promise<any[]> {
-    let browser
+private async scrapeOLXProfile(profileId: string): Promise<any[]> {
+  let browser
+  
+  try {
+    console.log(`🔍 Starting REAL OLX scraping for profile: ${profileId}`)
     
-    try {
-      console.log(`🔍 Starting REAL OLX scraping for profile: ${profileId}`)
+    browser = await puppeteer.launch({ 
+      headless: false, // Debug mode
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+        '--disable-blink-features=AutomationControlled',
+        '--disable-features=VizDisplayCompositor',
+        '--disable-web-security'
+      ]
+    })
+    
+    const page = await browser.newPage()
+    
+    await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+    await page.setViewport({ width: 1366, height: 768 })
+    
+    console.log(`🌐 Navigating to: https://www.olx.in/profile/${profileId}`)
+    
+    const response = await page.goto(`https://www.olx.in/profile/${profileId}`, { 
+      waitUntil: 'networkidle0',
+      timeout: 60000 
+    })
+    
+    if (!response || !response.ok()) {
+      throw new Error(`Navigation failed: ${response?.status()}`)
+    }
+    
+    // Wait for content
+    await new Promise(resolve => setTimeout(resolve, 5000))
+    
+    // ✨ ENHANCED: Extract cars with multiple images
+    const realCarListings = await page.evaluate(() => {
+      console.log('🔍 Starting car extraction with multiple images...')
       
-      browser = await puppeteer.launch({ 
-        headless: false, // Debug mode
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-features=VizDisplayCompositor',
-          '--disable-web-security'
-        ]
-      })
+      const listings: any[] = []
       
-      const page = await browser.newPage()
+      const selectors = [
+        '[data-aut-id="itemCard"]',
+        '[data-testid*="listing"]',
+        '[data-testid*="item"]',
+        '.item-card',
+        '.ad-card',
+        '[class*="ItemCard"]',
+        'div[data-aut-id*="item"]',
+        '.EIR5N',
+        '[class*="listing-card"]',
+        '[class*="ad-tile"]',
+        'article[data-aut-id]',
+        '.clearfix',
+        '[class*="_1YokD2"]',
+        '[class*="_1AtVbE"]',
+        '[class*="UIC86"]',
+        '[data-testid="ad-card"]'
+      ]
       
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
-      await page.setViewport({ width: 1366, height: 768 })
+      let foundElements: Element[] = []
       
-      // Enhanced stealth
-      await page.evaluateOnNewDocument(() => {
-        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-        Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-        Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en', 'hi'] });
-        
-        delete (window as any).cdc_adoQpoasnfa76pfcZLmcfl_Array;
-        delete (window as any).cdc_adoQpoasnfa76pfcZLmcfl_Promise;
-        delete (window as any).cdc_adoQpoasnfa76pfcZLmcfl_Symbol;
-        delete (window as any).chrome_asyncScriptInfo;
-        delete (window as any).$cdc_asdjflasutopfhvcZLmcfl_;
-      })
-      
-      console.log(`🌐 Navigating to: https://www.olx.in/profile/${profileId}`)
-      
-      const response = await page.goto(`https://www.olx.in/profile/${profileId}`, { 
-        waitUntil: 'networkidle0',
-        timeout: 60000 
-      })
-      
-      if (!response || !response.ok()) {
-        throw new Error(`Navigation failed: ${response?.status()}`)
+      for (const selector of selectors) {
+        try {
+          const elements = Array.from(document.querySelectorAll(selector))
+          console.log(`Selector "${selector}": ${elements.length} elements`)
+          
+          if (elements.length > 0 && elements.length < 50) {
+            foundElements = elements
+            break
+          }
+        } catch (e) {
+          console.log(`Selector "${selector}" failed`)
+        }
       }
       
-      // Wait for content
-      await new Promise(resolve => setTimeout(resolve, 5000))
-      
-      // Take screenshot for debugging
-      await page.screenshot({ path: 'debug-real-olx.png', fullPage: true })
-      console.log('📸 Debug screenshot: debug-real-olx.png')
-      
-      // Get page content for change detection
-      const pageContent = await page.content()
-      
-      // Check if content changed
-      const hasChanged = await this.hasDataChanged(pageContent)
-      if (!hasChanged) {
-        console.log('📋 No changes detected, using cached data')
-        return []
+      if (foundElements.length === 0) {
+        console.log('🔄 Trying price-based detection...')
+        
+        const allElements = Array.from(document.querySelectorAll('div, article, section'))
+        foundElements = allElements.filter(el => {
+          const text = el.textContent || ''
+          return /₹[\s]*[1-9][\d,]{2,}/.test(text) && 
+                 text.length < 500 && 
+                 text.length > 20
+        }).slice(0, 50)
       }
       
-      // FIXED CAR EXTRACTION - NO MORE CONCATENATION
-      const realCarListings = await page.evaluate(() => {
-        console.log('🔍 Starting car extraction...')
+      // ✨ NEW: Enhanced extraction with multiple images
+      foundElements.forEach((element, index) => {
+        const elementText = element.textContent || ''
         
-        const listings: any[] = []
+        if (elementText.length > 800) return
         
-        // EXPANDED SELECTORS FOR ALL 41 CARS
-        const selectors = [
-          '[data-aut-id="itemCard"]',
-          '[data-testid*="listing"]',
-          '[data-testid*="item"]',
-          '.item-card',
-          '.ad-card',
-          '[class*="ItemCard"]',
-          'div[data-aut-id*="item"]',
-          // NEW SELECTORS TO CATCH MORE CARS:
-          '.EIR5N',
-          '[class*="listing-card"]',
-          '[class*="ad-tile"]',
-          'article[data-aut-id]',
-          '.clearfix',
-          '[class*="_1YokD2"]',
-          '[class*="_1AtVbE"]',
-          '[class*="UIC86"]',
-          '[data-testid="ad-card"]'
-        ]
+        console.log(`Processing element ${index + 1}...`)
         
-        let foundElements: Element[] = []
+        const priceMatch = elementText.match(/₹[\s]*([1-9][\d,]{1,10})(?!\d)/)
+        if (!priceMatch) return
         
-        for (const selector of selectors) {
-          try {
-            const elements = Array.from(document.querySelectorAll(selector))
-            console.log(`Selector "${selector}": ${elements.length} elements`)
-            
-            if (elements.length > 0 && elements.length < 50) {
-              foundElements = elements
+        const price = priceMatch[1]
+        
+        const yearMatch = elementText.match(/\b(20[12]\d)\b/)
+        const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear() - 3
+        
+        // Extract title
+        let title = ''
+        const titleElement = element.querySelector('[data-aut-id="itemTitle"], h3, h2, .title, [class*="title"]')
+        
+        if (titleElement && titleElement.textContent) {
+          title = titleElement.textContent.trim()
+        } else {
+          const lines = elementText.split('\n').filter(line => line.trim().length > 0)
+          for (const line of lines) {
+            if (line.length > 10 && line.length < 100 && 
+                /\b(Mahindra|Hyundai|Maruti|Honda|Toyota|Tata|Renault|Ford|Kia|MG|Nissan|20\d{2})\b/i.test(line)) {
+              title = line.trim()
               break
             }
-          } catch (e) {
-            console.log(`Selector "${selector}" failed`)
           }
         }
         
-        if (foundElements.length === 0) {
-          console.log('🔄 Trying price-based detection...')
-          
-          const allElements = Array.from(document.querySelectorAll('div, article, section'))
-          foundElements = allElements.filter(el => {
-            const text = el.textContent || ''
-            return /₹[\s]*[1-9][\d,]{2,}/.test(text) && 
-                   text.length < 500 && 
-                   text.length > 20
-          }).slice(0, 50) 
-          
-          console.log(`Price-based: ${foundElements.length} elements`)
-        }
+        if (!title || title.includes('₹') || title.length > 150) return
         
-        // FIXED EXTRACTION - SEPARATE PRICE AND YEAR
-        foundElements.forEach((element, index) => {
-          const elementText = element.textContent || ''
+        // ✨ NEW: Extract ALL images from this car listing
+        const carImages: string[] = []
+        
+        // Look for all images in this element
+        const imageElements = element.querySelectorAll('img')
+        
+        imageElements.forEach(imgElement => {
+          const imgSrc = imgElement.src || imgElement.getAttribute('data-src') || imgElement.getAttribute('data-lazy-src')
           
-          if (elementText.length > 800) return
-          
-          console.log(`Processing element ${index + 1}...`)
-          
-          const priceMatch = elementText.match(/₹[\s]*([1-9][\d,]{1,10})(?!\d)/)
-          if (!priceMatch) return
-          
-          const price = priceMatch[1]
-          console.log(`Found price: ₹${price}`)
-          
-          const yearMatch = elementText.match(/\b(20[12]\d)\b/)
-          const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear() - 3
-          console.log(`Found year: ${year}`)
-          
-          let title = ''
-          const titleElement = element.querySelector('[data-aut-id="itemTitle"], h3, h2, .title, [class*="title"]')
-          
-          if (titleElement && titleElement.textContent) {
-            title = titleElement.textContent.trim()
-          } else {
-            const lines = elementText.split('\n').filter(line => line.trim().length > 0)
-            for (const line of lines) {
-              if (line.length > 10 && line.length < 100 && 
-                  /\b(Mahindra|Hyundai|Maruti|Honda|Toyota|Tata|Renault|Ford|Kia|MG|Nissan|20\d{2})\b/i.test(line)) {
-                title = line.trim()
-                break
-              }
+          if (imgSrc && (imgSrc.includes('apollo.olx.in') || imgSrc.includes('apolloimages.olx.in'))) {
+            // Convert to high quality
+            let cleanUrl = imgSrc
+            if (cleanUrl.includes(';s=')) {
+              cleanUrl = cleanUrl.replace(/;s=\d+x\d+/, ';s=780x0')
             }
+            carImages.push(cleanUrl)
           }
-          
-          if (!title || title.includes('₹') || title.length > 150) return
-          
-          console.log(`Found title: "${title}"`)
-          
-          const imageElement = element.querySelector('img')
-          let carImage = 'https://apollo.olx.in/v1/files/default-car.jpg'
-          
-          if (imageElement && imageElement.src) {
-            if (imageElement.src.includes('apollo.olx.in') || imageElement.src.includes('apolloimages.olx.in')) {
-              carImage = imageElement.src
-              console.log(`✅ Found Apollo image: ${carImage}`)
-            } else {
-              console.log(`⚠️ Skipping non-Apollo image: ${imageElement.src}`)
-            }
-          }
-          
-          const kmMatch = elementText.match(/(\d+(?:,\d+)*)\s*(?:km|kms)/i)
-          
-          let fuelType = 'Petrol'
-          if (/diesel/i.test(elementText)) fuelType = 'Diesel'
-          else if (/cng/i.test(elementText)) fuelType = 'CNG'
-          else if (/electric/i.test(elementText)) fuelType = 'Electric'
-          
-          const transmission = /automatic|amt|cvt/i.test(elementText) ? 'Automatic' : 'Manual'
-          
-          const carListing = {
-            id: `real_olx_${Date.now()}_${index}`,
-            title: title,
-            price: price,
-            year: year,
-            kmDriven: kmMatch ? parseInt(kmMatch[1].replace(/,/g, '')) : 50000,
-            fuelType: fuelType,
-            transmission: transmission,
-            images: [carImage],
-            specs: elementText.substring(0, 200).replace(/\s+/g, ' ').trim(),
-            location: 'Raipur',
-            originalUrl: window.location.href,
-            extractedAt: new Date().toISOString()
-          }
-          
-          listings.push(carListing)
-          console.log(`✅ Car ${index + 1}: ${carListing.title} - ₹${carListing.price} - ${carListing.year}`)
         })
         
-        console.log(`🎯 Extracted ${listings.length} car listings with Apollo images`)
-        return listings
+        // Also check for background images in thumbnails/gallery
+        const thumbnailElements = element.querySelectorAll('[class*="thumbnail"], [class*="gallery"], [class*="slider"], [data-testid*="image"]')
+        
+        thumbnailElements.forEach(thumb => {
+          const bgImage = (window as any).getComputedStyle(thumb).backgroundImage
+          if (bgImage && bgImage !== 'none') {
+            const urlMatch = bgImage.match(/url\(["']?(.*?)["']?\)/)
+            if (urlMatch && urlMatch[1] && urlMatch[1].includes('apollo.olx.in')) {
+              let cleanUrl = urlMatch[1]
+              if (cleanUrl.includes(';s=')) {
+                cleanUrl = cleanUrl.replace(/;s=\d+x\d+/, ';s=780x0')
+              }
+              carImages.push(cleanUrl)
+            }
+          }
+        })
+        
+        // Remove duplicates and ensure we have images
+const uniqueImages = Array.from(new Set(carImages))
+        const finalImages = uniqueImages.length > 0 
+          ? uniqueImages.slice(0, 8) // Limit to 8 images max
+          : ['https://apollo.olx.in/v1/files/default-car.jpg'] // Fallback
+        
+        // Extract other details
+        const kmMatch = elementText.match(/(\d+(?:,\d+)*)\s*(?:km|kms)/i)
+        
+        let fuelType = 'Petrol'
+        if (/diesel/i.test(elementText)) fuelType = 'Diesel'
+        else if (/cng/i.test(elementText)) fuelType = 'CNG'
+        else if (/electric/i.test(elementText)) fuelType = 'Electric'
+        
+        const transmission = /automatic|amt|cvt/i.test(elementText) ? 'Automatic' : 'Manual'
+        
+        const carListing = {
+          id: `real_olx_${Date.now()}_${index}`,
+          title: title,
+          price: price,
+          year: year,
+          kmDriven: kmMatch ? parseInt(kmMatch[1].replace(/,/g, '')) : 50000,
+          fuelType: fuelType,
+          transmission: transmission,
+          images: finalImages, // ✨ Multiple images array
+          specs: elementText.substring(0, 200).replace(/\s+/g, ' ').trim(),
+          location: 'Raipur',
+          originalUrl: (window as any).location.href,
+          extractedAt: new Date().toISOString()
+        }
+        
+        listings.push(carListing)
+        console.log(`✅ Car ${index + 1}: ${carListing.title} - ${finalImages.length} images`)
       })
       
-      console.log(`✅ REAL SCRAPING COMPLETED: ${realCarListings.length} live cars`)
-      return realCarListings
-      
-    } catch (error) {
-      console.error('❌ Real scraping failed:', error)
-      return []
-    } finally {
-      if (browser) {
-        await browser.close()
-      }
+      console.log(`🎯 Extracted ${listings.length} car listings with multiple images`)
+      return listings
+    })
+    
+    console.log(`✅ REAL SCRAPING COMPLETED: ${realCarListings.length} live cars`)
+    return realCarListings
+    
+  } catch (error) {
+    console.error('❌ Real scraping failed:', error)
+    return []
+  } finally {
+    if (browser) {
+      await browser.close()
     }
   }
+}
+
 private async generateRealisticCars(): Promise<Car[]> {
   console.log('🤖 Generating realistic car data with OpenAI...')
   
@@ -288,44 +286,34 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
     messages: [{
       role: "system",
       content: `You are a car market expert for Raipur, Chhattisgarh, India. 
-      Generate ${count} realistic used car listings that would appear on CarStreets OLX profile.
+      Generate ${count} realistic used car listings with MULTIPLE high-quality images per car.
+      
+      For images, create realistic Apollo OLX image URLs. Each car should have 3-8 images showing:
+      - Front exterior view
+      - Side profile  
+      - Interior dashboard
+      - Rear view
+      - Engine bay (for some cars)
+      - Interior seats
+      - Additional angles
       
       Use realistic Indian car market data:
       - Popular brands: Tata, Maruti Suzuki, Hyundai, Honda, Toyota, Mahindra, Kia, MG, Nissan
-      - Mix of: hatchbacks, sedans, SUVs, premium cars
-      - Price range: ₹1.5L - ₹30L (realistic for various car segments)
+      - Price range: ₹1.5L - ₹30L 
       - Years: 2018-2024
-      - Authentic Raipur locations: Civil Lines, Shankar Nagar, Pirop Colony, Dhaneli, Sadar Bazar, etc.
+      - Locations: Civil Lines, Shankar Nagar, Pirop Colony, Dhaneli, Sadar Bazar
       
       Return JSON with "cars" array. Each car must have:
-      - title: realistic full car title
-      - brand, model, variant
-      - price: realistic market price in rupees
-      - year: 2018-2024
-      - fuelType: Petrol/Diesel/CNG/Electric
-      - transmission: Manual/Automatic
-      - kmDriven: realistic mileage based on year
-      - location: specific Raipur area
-      - description: authentic seller description (100-200 chars)
-      - owners: 1-2`
+      - images: array of 3-8 realistic image URLs (use pattern: https://apollo.olx.in/v1/files/[randomID]-IN/image;s=780x0;q=60)
+      - title, brand, model, variant, price, year, fuelType, transmission, kmDriven, location, description, owners`
     }, {
       role: "user",
-      content: `Generate ${count} diverse used car listings for Raipur market`
+      content: `Generate ${count} diverse used car listings with multiple images each`
     }],
     response_format: { type: "json_object" }
   })
 
   const aiData = JSON.parse(response.choices[0].message.content || '{"cars": []}')
-  
-  // Define safe, working image URLs
-  const carImages = [
-    'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=400',
-    'https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=400', 
-    'https://images.unsplash.com/photo-1552519507-da3b142c6e3d?w=400',
-    'https://images.unsplash.com/photo-1605559424843-9e4c228bf1c2?w=400',
-    'https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=400',
-    'https://images.unsplash.com/photo-1614200179818-781b20e8b83d?w=400'
-  ]
   
   return aiData.cars.map((car: any, index: number) => ({
     id: `raipur_${Date.now()}_${startIndex + index}`,
@@ -339,10 +327,15 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
     transmission: car.transmission,
     kmDriven: car.kmDriven,
     location: car.location,
-    images: [
-      carImages[index % carImages.length],
-      carImages[(index + 1) % carImages.length]
-    ],
+    images: Array.isArray(car.images) 
+      ? car.images.slice(0, 8) // Ensure max 8 images
+      : [
+          // Fallback with realistic Apollo URLs
+          `https://apollo.olx.in/v1/files/fy${Math.random().toString(36).substr(2, 9)}-IN/image;s=780x0;q=60`,
+          `https://apollo.olx.in/v1/files/gh${Math.random().toString(36).substr(2, 9)}-IN/image;s=780x0;q=60`,
+          `https://apollo.olx.in/v1/files/kl${Math.random().toString(36).substr(2, 9)}-IN/image;s=780x0;q=60`,
+          `https://apollo.olx.in/v1/files/mn${Math.random().toString(36).substr(2, 9)}-IN/image;s=780x0;q=60`
+        ],
     description: car.description,
     sellerType: 'Individual' as const,
     postedDate: new Date().toISOString().split('T')[0],
@@ -353,10 +346,11 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
     olxProfile: 'carstreets' as const,
     olxProfileId: '569969876',
     originalUrl: 'https://www.olx.in/profile/569969876',
-    attributionNote: 'AI-generated realistic data for Raipur market',
+    attributionNote: 'AI-generated realistic data with multiple images for Raipur market',
     carStreetsListed: true
   }))
 }
+
 
   private createCarFromOLXData(rawData: any, index: number): Car {
     const { brand, model } = this.parseCarTitle(rawData.title)

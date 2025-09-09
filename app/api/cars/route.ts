@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic'
 import { NextRequest, NextResponse } from 'next/server'
 import { carStreetsOLXScraper } from '../../lib/scrapers/hybrid-olx-scraper'
 import { fetchCars } from '../../lib/database/db' // ✅ Fixed import
