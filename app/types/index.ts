@@ -17,20 +17,9 @@ export interface Car {
   owners: number
   isVerified?: boolean
   isFeatured?: boolean
-  
-<<<<<<< HEAD
-  // Profile-specific attribution
-  dataSource: 'olx-carstreets-profile' | 'olx-external' | 'direct' | 'other' | 'openai-enhanced' | 'emergency-fallback' | 'database-managed-scraping' | 'fresh-database-scraping'
-  olxProfile?: 'carstreets' | 'external'
-  olxProfileId?: string
-  originalUrl?: string // Made optional since fallback data might not have this
-  attributionNote?: string
-  carStreetsListed?: boolean
-  
   // Database timestamps (added by Prisma)
   createdAt?: Date
   updatedAt?: Date
-=======
   // NEW: Profile-specific attribution
   dataSource: 'olx-carstreets-profile' | 'olx-external' | 'direct' | 'other' | 'openai-enhanced' | 'emergency-fallback' | 'database-managed-scraping' | 'fresh-database-scraping'
   olxProfile?: 'carstreets' | 'external'
@@ -38,7 +27,6 @@ export interface Car {
   originalUrl: string
   attributionNote?: string
   carStreetsListed?: boolean
->>>>>>> 1b71d0462f3415cc4320d48c0006735cc730ced5
 }
 
 export interface DataSourceAttribution {
