@@ -1,56 +1,58 @@
+/* ----------  app/lib/database/db.ts  ---------- */
 import { PrismaClient } from '@prisma/client'
-import { Car } from '../../types'
 
-// Prisma setup for Google Cloud PostgreSQL
 const prisma = new PrismaClient()
 
-// Save cars using Prisma (Google Cloud PostgreSQL)
-export async function saveCars(cars: any[]) {
-  await prisma.car.deleteMany() // Clear old data
+function normaliseCar(raw: any) {
+  /* price → BigInt */
+  const priceBig =
+    raw.price === undefined
+      ? BigInt(0)
+      : typeof raw.price === 'string'
+          ? BigInt(parseInt(raw.price.replace(/\D/g, ''), 10) || 0)
+          : BigInt(raw.price)
 
+  /* images → string[]  (handles array OR comma-joined string) */
+  let imgs: string[] = []
+
+  if (raw.images) {
+    if (Array.isArray(raw.images)) {
+      imgs = raw.images
+    } else if (typeof raw.images === 'string') {
+      imgs = raw.images
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean)
+    }
+  }
+
+  /* upgrade OLX thumb size */
+  imgs = imgs.map(u => u.replace(/;s=\d+x\d+/, ';s=780'))
+
+  return { ...raw, price: priceBig, images: imgs }
+}
+
+/* ---------- WRITE ---------- */
+export async function saveCars(cars: any[]) {
+  await prisma.car.deleteMany()
   for (const car of cars) {
-    await prisma.car.create({
-      data: {
-        title: car.title,
-        brand: car.brand,
-        model: car.model,
-        variant: car.variant || null,
-        price: car.price,
-        year: car.year,
-        fuelType: car.fuelType,
-        transmission: car.transmission,
-        kmDriven: car.kmDriven,
-        location: car.location,
-        images: JSON.stringify(car.images),
-        description: car.description,
-        sellerType: car.sellerType,
-        postedDate: car.postedDate,
-        owners: car.owners,
-        isVerified: car.isVerified,
-        isFeatured: car.isFeatured,
-        dataSource: car.dataSource,
-        olxProfile: car.olxProfile,
-        olxProfileId: car.olxProfileId,
-        originalUrl: car.originalUrl,
-        attribution: car.attribution,
-        carStreetsListed: car.carStreetsListed,
-      },
-    })
+    await prisma.car.create({ data: normaliseCar(car) })
   }
 }
 
-// Fetch cars from Google Cloud PostgreSQL
+/* ---------- READ ---------- */
 export async function fetchCars() {
-  const cars = await prisma.car.findMany({
-    orderBy: { createdAt: 'desc' },
-  })
-  return cars.map(car => ({
-    ...car,
-    images: JSON.parse(car.images),
+  const cars = await prisma.car.findMany({ orderBy: { createdAt: 'desc' } })
+  return cars.map(c => ({
+    ...c,
+    images: Array.isArray(c.images) ? c.images : JSON.parse(c.images),
+    price: Number(c.price).toLocaleString('en-IN')
   }))
 }
 
-// Clean up Prisma connection
-export async function closePrisma() {
+/* ---------- CLOSE ---------- */
+export async function close() {
   await prisma.$disconnect()
 }
+
+/* EOF */
