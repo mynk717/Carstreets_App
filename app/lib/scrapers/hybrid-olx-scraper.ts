@@ -429,8 +429,9 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
     
     if (isProduction) {
       console.log('🌐 Production detected, using AI-generated data')
-      // Use AI-generated cars in production (Vercel-compatible)
-      return await this.generateRealisticCars()
+      const aiCars = await this.generateRealisticCars()
+      await saveCars(aiCars)
+      return await fetchCars()
     }
     
     const existingCars = await fetchCars()

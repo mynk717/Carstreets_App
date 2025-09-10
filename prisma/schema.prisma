@@ -1,3 +1,4 @@
+// ------------------  prisma/schema.prisma  ------------------
 generator client {
   provider = "prisma-client-js"
 }
@@ -8,18 +9,19 @@ datasource db {
 }
 
 model Car {
-  id               String   @id @default(cuid())
+  id               String  @id @default(cuid())
   title            String
   brand            String
   model            String
   variant          String?
-  price            BigInt
+  price            BigInt            // keeps very large INR safely
   year             Int
   fuelType         String
   transmission     String
   kmDriven         Int
   location         String
-  images           String   @default("[]")
+
+  images           Json     @default("[]")  // ← was String
   description      String
   sellerType       String
   postedDate       String
