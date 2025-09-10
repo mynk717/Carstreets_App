@@ -108,7 +108,13 @@ private async scrapeOLXProfile(profileId: string): Promise<any[]> {
         '[class*="UIC86"]',
         '[data-testid="ad-card"]'
       ]
-      
+      const parseKm = km =>
+  typeof km === 'number'
+    ? km
+    : (() => {
+        const n = parseInt(String(km).replace(/[^0-9]/g, ''), 10)
+        return isNaN(n) ? 50000 : n
+      })()
       let foundElements: Element[] = []
       
       for (const selector of selectors) {
@@ -229,7 +235,7 @@ const uniqueImages = Array.from(new Set(carImages))
           title: title,
           price: price,
           year: year,
-          kmDriven: kmMatch ? parseInt(kmMatch[1].replace(/,/g, '')) : 50000,
+          kmDriven: parseKm(kmMatch ? kmMatch[1] : '50000'),
           fuelType: fuelType,
           transmission: transmission,
           images: finalImages, // ✨ Multiple images array
@@ -314,7 +320,18 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
   })
 
   const aiData = JSON.parse(response.choices[0].message.content || '{"cars": []}')
-  
+  // ------- helpers --------------------------------------------
+function parseKmDriven(km: string | number): number {
+  if (typeof km === 'number') return km                       // already good
+  const num = parseInt(km.replace(/[^0-9]/g, ''), 10)          // '25,000 km' → 25000
+  return isNaN(num) ? 0 : num                                  // fallback
+}
+
+function cleanImage(url: string): string {
+  // strip the semicolon params that Next.js dislikes
+  return url.replace(/;s=\\d+;q=\\d+/, '')
+}
+// -------------------------------------------------------------
   return aiData.cars.map((car: any, index: number) => ({
     id: `raipur_${Date.now()}_${startIndex + index}`,
     title: car.title,
@@ -325,7 +342,7 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
     year: car.year,
     fuelType: car.fuelType,
     transmission: car.transmission,
-    kmDriven: car.kmDriven,
+    kmDriven: parseKmDriven(car.kmDriven),
     location: car.location,
     images: Array.isArray(car.images) 
       ? car.images.slice(0, 8) // Ensure max 8 images
@@ -397,7 +414,7 @@ function cleanImage(url: string): string {
       year: Number(rawData.year) || 2020,
       fuelType: rawData.fuelType || 'Petrol',
       transmission: rawData.transmission || 'Manual',
-      kmDriven: Number(rawData.kmDriven) || 50000,
+      kmDriven: parseKmDriven(rawData.kmDriven ?? '0'),
       location: 'Raipur',
       images: carImages,
       description: String(rawData.specs || 'Well maintained car for sale').substring(0, 200),
