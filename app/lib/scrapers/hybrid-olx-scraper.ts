@@ -366,15 +366,27 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
       const apolloImages = rawData.images.filter((img: string) => 
         img && (img.includes('apollo.olx.in') || img.includes('apolloimages.olx.in'))
       )
+      .map(cleanImage)               // <<< NEW
       if (apolloImages.length > 0) {
         carImages = apolloImages.slice(0, 3)
       }
     } else if (rawData.images && typeof rawData.images === 'string') {
       if (rawData.images.includes('apollo.olx.in') || rawData.images.includes('apolloimages.olx.in')) {
-        carImages = [rawData.images]
+        carImages = [cleanImage(rawData.images)] 
       }
     }
+// ------- helpers --------------------------------------------
+function parseKmDriven(km: string | number): number {
+  if (typeof km === 'number') return km                       // already good
+  const num = parseInt(km.replace(/[^0-9]/g, ''), 10)          // '25,000 km' → 25000
+  return isNaN(num) ? 0 : num                                  // fallback
+}
 
+function cleanImage(url: string): string {
+  // strip the semicolon params that Next.js dislikes
+  return url.replace(/;s=\\d+;q=\\d+/, '')
+}
+// -------------------------------------------------------------
     return {
       id: `olx_real_${rawData.id || Date.now()}_${index}`,
       title: String(rawData.title || 'Used Car'),
