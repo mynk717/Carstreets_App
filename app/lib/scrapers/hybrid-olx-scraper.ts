@@ -331,6 +331,12 @@ function cleanImage(url: string): string {
   // strip the semicolon params that Next.js dislikes
   return url.replace(/;s=\\d+;q=\\d+/, '')
 }
+function parseOwners(owners: string | number): number {
+  if (typeof owners === 'number') return owners               // already good
+  const match = String(owners).match(/^(\\d+)/)               // "1st Owner" → "1"
+  return match ? parseInt(match[0], 10) : 1                   // default 1
+}
+
 // -------------------------------------------------------------
   return aiData.cars.map((car: any, index: number) => ({
     id: `raipur_${Date.now()}_${startIndex + index}`,
@@ -356,7 +362,7 @@ function cleanImage(url: string): string {
     description: car.description,
     sellerType: 'Individual' as const,
     postedDate: new Date().toISOString().split('T')[0],
-    owners: car.owners,
+    owners: parseOwners(car.owners ?? '1'),
     isVerified: true,
     isFeatured: Math.random() > 0.7,
     dataSource: 'openai-enhanced' as const,
@@ -403,6 +409,12 @@ function cleanImage(url: string): string {
   // strip the semicolon params that Next.js dislikes
   return url.replace(/;s=\\d+;q=\\d+/, '')
 }
+function parseOwners(owners: string | number): number {
+  if (typeof owners === 'number') return owners               // already good
+  const match = String(owners).match(/^(\\d+)/)               // "1st Owner" → "1"
+  return match ? parseInt(match[0], 10) : 1                   // default 1
+}
+
 // -------------------------------------------------------------
     return {
       id: `olx_real_${rawData.id || Date.now()}_${index}`,
@@ -420,7 +432,7 @@ function cleanImage(url: string): string {
       description: String(rawData.specs || 'Well maintained car for sale').substring(0, 200),
       sellerType: 'Individual',
       postedDate: new Date().toISOString().split('T')[0],
-      owners: 1,
+      owners: parseOwners(rawData.owners ?? '1'),
       isVerified: true,
       isFeatured: index < 3,
       dataSource: 'olx-carstreets-profile',
