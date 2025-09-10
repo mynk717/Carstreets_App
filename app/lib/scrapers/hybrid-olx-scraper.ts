@@ -346,7 +346,6 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
     olxProfile: 'carstreets' as const,
     olxProfileId: '569969876',
     originalUrl: 'https://www.olx.in/profile/569969876',
-    attributionNote: 'AI-generated realistic data with multiple images for Raipur market',
     carStreetsListed: true
   }))
 }
@@ -399,7 +398,6 @@ private async generateCarBatch(count: number, startIndex: number): Promise<Car[]
       olxProfile: 'carstreets',
       olxProfileId: '569969876',
       originalUrl: String(rawData.originalUrl || 'https://www.olx.in/profile/569969876'),
-      attributionNote: 'Live data from OLX CarStreets profile',
       carStreetsListed: true
     }
   }
