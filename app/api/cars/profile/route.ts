@@ -1,3 +1,4 @@
+/* ----------  app/api/cars/profile/route.ts  ---------- */
 import { NextRequest, NextResponse } from 'next/server'
 import { carStreetsOLXScraper } from '../../../lib/scrapers/olx-profile'
 
@@ -7,15 +8,20 @@ export async function GET(request: NextRequest) {
     const maxItems = parseInt(searchParams.get('maxItems') || '50')
     
     // Scrape CarStreets OLX profile
-    const profileCars = await carStreetsOLXScraper.scrapeCarStreetsProfile({
-      maxItems
-    })
-    
+    const profileCars = await carStreetsOLXScraper.scrapeCarStreetsProfile({ maxItems })
+
+    // Convert prices and ensure attribution to satisfy Car type
+    const safeCars = profileCars.map(car => ({
+      ...car,
+      price: typeof car.price === 'bigint' ? Number(car.price) : car.price,
+      attribution: car.attribution ?? undefined
+    }))
+
     const attribution = carStreetsOLXScraper.getAttribution()
-    
+
     return NextResponse.json({
-      cars: profileCars,
-      count: profileCars.length,
+      cars: safeCars,
+      count: safeCars.length,
       attribution,
       source: 'olx-carstreets-profile',
       profileId: '569969876',
@@ -29,3 +35,5 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+/* EOF */

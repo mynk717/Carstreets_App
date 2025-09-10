@@ -1,7 +1,8 @@
+/* ----------  app/types/index.ts  ---------- */
 export interface Car {
   id: string
   title: string
-  price: number
+  price: number | string
   year: number
   fuelType: 'Petrol' | 'Diesel' | 'CNG' | 'Electric' | 'Hybrid'
   transmission: 'Manual' | 'Automatic'
@@ -17,7 +18,7 @@ export interface Car {
   owners: number
   isVerified?: boolean
   isFeatured?: boolean
-  // Database timestamps (added by Prisma)
+  // Database timestamps (added by Prisma)  
   createdAt?: Date
   updatedAt?: Date
   // NEW: Profile-specific attribution
@@ -25,6 +26,7 @@ export interface Car {
   olxProfile?: 'carstreets' | 'external'
   olxProfileId?: string
   originalUrl: string
+  attribution?: string
   attributionNote?: string
   carStreetsListed?: boolean
 }
@@ -36,3 +38,5 @@ export interface DataSourceAttribution {
   scrapedAt: string
   attributionRequired: boolean
 }
+
+/* EOF */

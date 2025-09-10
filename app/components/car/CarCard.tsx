@@ -1,9 +1,19 @@
 /* ----------  app/components/car/CarCard.tsx  ---------- */
 'use client'
 
-import { Heart, MapPin, Fuel, Calendar, Users, Shield, ExternalLink, CheckCircle, Share2 } from 'lucide-react'
+import {
+  Heart,
+  MapPin,
+  Fuel,
+  Calendar,
+  Users,
+  Shield,
+  ExternalLink,
+  CheckCircle,
+  Share2
+} from 'lucide-react'
 import { Car } from '../../types'
-import { formatPrice, formatDistance } from '../../lib/utils'
+import { formatDistance } from '../../lib/utils'
 import { Button } from '../ui/Button'
 import { CarImage } from './CarImage'
 
@@ -13,19 +23,35 @@ interface CarCardProps {
   isFavorited?: boolean
 }
 
+/* ───────────────── Price helper ───────────────── */
+const formatPriceSafe = (price: string | number) => {
+  try {
+    const num = typeof price === 'string' ? Number(price) : price
+    return num.toLocaleString('en-IN', {
+      style: 'currency',
+      currency: 'INR',
+      maximumFractionDigits: 0
+    })
+  } catch {
+    return '₹ NaN'
+  }
+}
+
 export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) {
   const handleFavorite = () => onFavorite?.(car.id)
 
   return (
     <div className="bg-white rounded-lg shadow-md hover:shadow-lg transition-shadow overflow-hidden">
-      {/* image / carousel */}
+      {/* ── image / carousel ── */}
       <div className="relative h-48">
         <CarImage car={car} />
 
         {/* badges */}
         <div className="absolute top-3 left-0 flex gap-2 p-2">
           {car.isFeatured && (
-            <span className="bg-blue-600 text-white text-xs px-2 rounded font-semibold">Featured</span>
+            <span className="bg-blue-600 text-white text-xs px-2 rounded font-semibold">
+              Featured
+            </span>
           )}
           {car.isVerified && (
             <span className="bg-green-600 text-white text-xs px-2 rounded font-semibold flex items-center gap-1">
@@ -48,20 +74,32 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
         </button>
       </div>
 
-      {/* body */}
+      {/* ── body ── */}
       <div className="p-4 space-y-3">
         {/* title + price */}
         <div>
-          <h3 className="text-lg font-semibold truncate" title={car.title}>{car.title}</h3>
-          <p className="text-xl font-bold text-blue-600">{formatPrice(car.price)}</p>
+          <h3 className="text-lg font-semibold truncate" title={car.title}>
+            {car.title}
+          </h3>
+          <p className="text-xl font-bold text-blue-600">
+            {formatPriceSafe(car.price)}
+          </p>
         </div>
 
         {/* specs */}
         <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
-          <div className="flex items-center gap-2"><Calendar className="w-4" /> {car.year}</div>
-          <div className="flex items-center gap-2"><Fuel className="w-4" /> {car.fuelType}</div>
-          <div className="flex items-center gap-2"><Users className="w-4" /> {formatDistance(car.kmDriven)}</div>
-          <div className="flex items-center gap-2"><span className="text-sm">&#9881;</span> {car.transmission}</div>
+          <div className="flex items-center gap-2">
+            <Calendar className="w-4" /> {car.year}
+          </div>
+          <div className="flex items-center gap-2">
+            <Fuel className="w-4" /> {car.fuelType}
+          </div>
+          <div className="flex items-center gap-2">
+            <Users className="w-4" /> {formatDistance(car.kmDriven)}
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm">&#9881;</span> {car.transmission}
+          </div>
         </div>
 
         {/* location */}
@@ -74,14 +112,24 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
           {car.olxProfile === 'carstreets' ? (
             <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded p-2">
               <Shield className="w-4" /> CarStreets Listing
-              <a href={car.originalUrl} target="_blank" rel="noopener noreferrer" className="underline ml-1">
+              <a
+                href={car.originalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline ml-1"
+              >
                 View on OLX
               </a>
             </div>
           ) : car.dataSource === 'olx-external' ? (
             <div className="flex items-center gap-2 bg-blue-50 border border-blue-200 text-blue-700 rounded p-2">
               <ExternalLink className="w-4" /> OLX Listing
-              <a href={car.originalUrl} target="_blank" rel="noopener noreferrer" className="underline ml-1">
+              <a
+                href={car.originalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline ml-1"
+              >
                 View Original
               </a>
             </div>
@@ -101,7 +149,11 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
                 size="sm"
                 onClick={() => {
                   const url = `${window.location.origin}/cars/${car.id}`
-                  const msg = encodeURIComponent(`Check out this car on CarStreets:\n${car.title}\nPrice: ${formatPrice(car.price)}\n${url}`)
+                  const msg = encodeURIComponent(
+                    `Check out this car on CarStreets:\n${car.title}\nPrice: ${formatPriceSafe(
+                      car.price
+                    )}\n${url}`
+                  )
                   window.open(`https://wa.me/?text=${msg}`, '_blank')
                 }}
               >
@@ -110,15 +162,21 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
               <Button
                 size="sm"
                 className="flex-1"
-                onClick={() => alert(`Booking request sent for ${car.title}`)}
+                onClick={() =>
+                  alert(`Booking request sent for ${car.title}`)
+                }
               >
                 Book Now
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outline" size="sm" className="flex-1">View Details</Button>
-              <Button size="sm" className="flex-1">Contact Seller</Button>
+              <Button variant="outline" size="sm" className="flex-1">
+                View Details
+              </Button>
+              <Button size="sm" className="flex-1">
+                Contact Seller
+              </Button>
             </>
           )}
         </div>
