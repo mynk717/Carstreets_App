@@ -4,7 +4,7 @@ import { PrismaClient } from '@prisma/client'
 const prisma = new PrismaClient()
 
 function normaliseCar(raw: any) {
-  /* price → BigInt */
+  /* price -> BigInt */
   const priceBig =
     raw.price === undefined
       ? BigInt(0)
@@ -12,7 +12,7 @@ function normaliseCar(raw: any) {
           ? BigInt(parseInt(raw.price.replace(/\D/g, ''), 10) || 0)
           : BigInt(raw.price)
 
-  /* images → string[]  (handles array OR comma-joined string) */
+  /* images -> string[]  (handles array OR comma-joined string) */
   let imgs: string[] = []
 
   if (raw.images) {
@@ -32,11 +32,36 @@ function normaliseCar(raw: any) {
   return { ...raw, price: priceBig, images: imgs }
 }
 
+// toDbCar adapter - ensures all fields are properly typed for Prisma
+const toDbCar = (c: any) => ({
+  ...c,
+  year:
+    typeof c.year === 'number'
+      ? c.year
+      : parseInt(String(c.year).replace(/[^0-9]/g, ''), 10) ||
+        new Date().getFullYear() - 3,
+  kmDriven:
+    typeof c.kmDriven === 'number'
+      ? c.kmDriven
+      : parseInt(String(c.kmDriven).replace(/[^0-9]/g, ''), 10) || 0,
+  owners:
+    typeof c.owners === 'number'
+      ? c.owners
+      : parseInt(String(c.owners).replace(/[^0-9]/g, ''), 10) || 1,
+  price:
+    typeof c.price === 'bigint'
+      ? Number(c.price)
+      : typeof c.price === 'string'
+      ? parseInt(c.price.replace(/[^0-9]/g, ''), 10) || 0
+      : c.price
+})
+
 /* ---------- WRITE ---------- */
 export async function saveCars(cars: any[]) {
   await prisma.car.deleteMany()
   for (const car of cars) {
-    await prisma.car.create({ data: normaliseCar(car) })
+    // Apply both normalizations: normaliseCar + toDbCar adapter
+    await prisma.car.create({ data: toDbCar(normaliseCar(car)) })
   }
 }
 
@@ -45,7 +70,11 @@ export async function fetchCars() {
   const cars = await prisma.car.findMany({ orderBy: { createdAt: 'desc' } })
   return cars.map(c => ({
     ...c,
-    images: Array.isArray(c.images) ? c.images : JSON.parse(c.images),
+    images: Array.isArray(c.images)
+      ? c.images
+      : typeof c.images === 'string'
+        ? JSON.parse(c.images)
+        : [],
     price: Number(c.price).toLocaleString('en-IN')
   }))
 }
