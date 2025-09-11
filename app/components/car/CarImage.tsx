@@ -15,6 +15,9 @@ export function CarImage({ car }: { car: Car }) {
     setImgSrc('/placeholder-car.jpg')
   }
 
+  // Check if image is from OLX (needs unoptimized)
+  const isOLXImage = imgSrc.includes('apollo.olx.in') || imgSrc.includes('olx.in')
+
   return (
     <div className="relative h-48 w-full rounded-lg overflow-hidden bg-gray-100">
       <Image
@@ -26,6 +29,8 @@ export function CarImage({ car }: { car: Car }) {
         onError={handleError}
         priority={car.isFeatured}
         className="rounded-lg object-cover"
+        // Add unoptimized for OLX images to prevent 400 errors
+        unoptimized={isOLXImage}
       />
     </div>
   )

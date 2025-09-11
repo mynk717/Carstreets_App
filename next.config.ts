@@ -16,6 +16,12 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: 'apollo.olx.in',
+        pathname: '/v1/files/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.olx.in',
+        pathname: '/**',
       },
       {
         protocol: 'https',
