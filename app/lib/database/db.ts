@@ -53,7 +53,10 @@ const toDbCar = (c: any) => ({
       ? Number(c.price)
       : typeof c.price === 'string'
       ? parseInt(c.price.replace(/[^0-9]/g, ''), 10) || 0
-      : c.price
+      : c.price,
+  images: Array.isArray(c.images) 
+    ? c.images.filter(img => img && img.includes('apollo.olx.in'))
+    : []
 })
 
 /* ---------- WRITE ---------- */
@@ -75,7 +78,9 @@ export async function fetchCars() {
       : typeof c.images === 'string'
         ? JSON.parse(c.images)
         : [],
-    price: Number(c.price).toLocaleString('en-IN')
+    price:c.price 
+  ? (typeof c.price === 'bigint' ? Number(c.price) : c.price).toLocaleString('en-IN')
+  : '0'
   }))
 }
 
