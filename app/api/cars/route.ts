@@ -1,6 +1,7 @@
 /* ----------  app/api/cars/route.ts  ---------- */
 export const dynamic = 'force-dynamic'
 
+import { normalizeCar } from '@/lib/parsers/car-normalizer'
 import { NextRequest, NextResponse } from 'next/server'
 import { carStreetsOLXScraper } from '../../lib/scrapers/hybrid-olx-scraper'
 import { fetchCars } from '../../lib/database/db'

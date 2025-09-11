@@ -1,4 +1,5 @@
 /* ----------  app/api/cars/profile/route.ts  ---------- */
+import { normalizeCar } from '@/lib/parsers/car-normalizer'
 import { NextRequest, NextResponse } from 'next/server'
 import { carStreetsOLXScraper } from '../../../lib/scrapers/olx-profile'
 

@@ -1,3 +1,4 @@
+import { normalizeCar } from '@/lib/parsers/car-normalizer'
 import OpenAI from 'openai'
 import { Car } from '../../types'
 import { saveCars, fetchCars } from '../database/db'
