@@ -24,18 +24,19 @@ interface CarCardProps {
 }
 
 /* ───────────────── Price helper ───────────────── */
-const formatPriceSafe = (price: string | number) => {
-  try {
-    const num = typeof price === 'string' ? Number(price) : price
-    return num.toLocaleString('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    })
-  } catch {
-    return '₹ NaN'
-  }
+// Improve formatPriceSafe function:
+const formatPriceSafe = (price: any): string => {
+  if (!price || price === 0) return 'Contact for price'
+  
+  const numPrice = typeof price === 'string' 
+    ? parseInt(price.replace(/[^0-9]/g, ''), 10)
+    : Number(price)
+    
+  return isNaN(numPrice) || numPrice === 0
+    ? 'Contact for price' 
+    : `₹${numPrice.toLocaleString('en-IN')}`
 }
+
 
 export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) {
   const handleFavorite = () => onFavorite?.(car.id)

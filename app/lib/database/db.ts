@@ -57,7 +57,7 @@ const toDbCar = (c: any) => ({
   images: Array.isArray(c.images) 
     ? c.images
         .filter(img => img && img.includes('apollo.olx.in') && img.length > 10)
-        .map(img => img.replace(/;s=\d+/, ';s=780'))  // Ensure consistent size
+        // .map(img => img.replace(/;s=\d+/, ';s=780'))  // Ensure consistent size
     : []
 })
 

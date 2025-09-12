@@ -8,9 +8,8 @@ interface OLXProfileScrapingConfig {
 }
 
 export class CarStreetsOLXScraper {
-  private profileId = '569969876'
-  private profileUrl = 'https://www.olx.in/profile/569969876'
-  
+  private profileId = '401445222'
+  private profileUrl = 'https://www.olx.in/profile/401445222'
   async scrapeCarStreetsProfile(config?: Partial<OLXProfileScrapingConfig>): Promise<Car[]> {
     const finalConfig = {
       profileId: this.profileId,

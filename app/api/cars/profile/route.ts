@@ -34,8 +34,8 @@ export async function POST(request: NextRequest) {
       count: safeCars.length,
       attribution,
       source: 'olx-carstreets-profile-scrape',
-      profileId: '569969876',
-      profileUrl: 'https://www.olx.in/profile/569969876',
+      profileId: '401445222',
+      profileUrl: 'https://www.olx.in/profile/401445222',
       timestamp: new Date().toISOString()
     })
   } catch (error) {

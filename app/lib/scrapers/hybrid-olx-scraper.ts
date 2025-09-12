@@ -488,7 +488,7 @@ function parseOwners(owners: string | number): number {
     
     console.log('🚀 Starting REAL OLX scraping (weekly update)...')
     
-    const rawOLXData = await this.scrapeOLXProfile('569969876')
+    const rawOLXData = await this.scrapeOLXProfile('401445222')
     
     if (rawOLXData.length > 0) {
       console.log('✅ Real scraping successful, processing cars...')
