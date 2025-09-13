@@ -2,6 +2,7 @@ import { normalizeCar } from '@/lib/parsers/car-normalizer'
 import OpenAI from 'openai'
 import { Car } from '../../types'
 import { saveCars, fetchCars } from '../database/db'
+import chromium from '@sparticuz/chromium'
 import puppeteer from 'puppeteer'
 
 export class HybridOLXScraper {
@@ -54,17 +55,11 @@ export class HybridOLXScraper {
     try {
       console.log(`🔍 Starting REAL OLX scraping for profile: ${profileId}`)
       
-      browser = await puppeteer.launch({ 
-        headless: true, // Changed to true for production
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-blink-features=AutomationControlled',
-          '--disable-features=VizDisplayCompositor',
-          '--disable-web-security'
-        ]
-      })
+      browser = await puppeteer.launch({
+  args: chromium.args,
+  executablePath: await chromium.executablePath(),
+  headless: true
+})
       
       const page = await browser.newPage()
       
