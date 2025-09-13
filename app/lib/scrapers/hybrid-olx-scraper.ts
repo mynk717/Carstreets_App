@@ -5,6 +5,12 @@ import { saveCars, fetchCars } from '../database/db'
 import chromium from '@sparticuz/chromium'
 import puppeteer from 'puppeteer'
 
+// Type definitions for better TypeScript support
+type FuelType = 'Petrol' | 'Diesel' | 'CNG' | 'Electric' | 'Hybrid'
+type TransmissionType = 'Manual' | 'Automatic' | 'AMT' | 'CVT'
+type SellerType = 'Individual' | 'Dealer'
+type DataSource = 'olx-carstreets-profile' | 'manual' | 'api'
+
 export class HybridOLXScraper {
   private openai: OpenAI
 
@@ -48,7 +54,216 @@ export class HybridOLXScraper {
     return hash.toString()
   }
 
-  // REAL OLX SCRAPING - APOLLO IMAGES ONLY
+  // ENHANCED: Individual Car Page Scraper for detailed specs
+  private async scrapeIndividualCarPage(carUrl: string, browser: any): Promise<any> {
+    let page
+    try {
+      console.log(`🔍 Scraping individual car page: ${carUrl}`)
+      
+      page = await browser.newPage()
+      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36')
+      
+      await page.goto(carUrl, { 
+        waitUntil: 'networkidle0',
+        timeout: 30000 
+      })
+
+      await new Promise(resolve => setTimeout(resolve, 3000))
+
+      const detailedSpecs = await page.evaluate(() => {
+        const extractDetailedSpecs = () => {
+          const specs: Record<string, any> = {}
+          
+          // Extract all specification tables and lists
+          const specTables = document.querySelectorAll('[data-testid*="spec"], [class*="spec"], .specifications, [class*="detail"]')
+          
+          specTables.forEach((table: Element) => {
+            const rows = table.querySelectorAll('tr, li, div')
+            rows.forEach((row: Element) => {
+              const text = row.textContent || ''
+              
+              // Engine specifications
+              if (/engine|displacement/i.test(text)) {
+                const engineMatch = text.match(/(\d+(?:\.\d+)?)\s*(cc|litre|liter)/i)
+                if (engineMatch) specs.engineDisplacement = engineMatch[1]
+              }
+              
+              // Mileage
+              if (/mileage|kmpl/i.test(text)) {
+                const mileageMatch = text.match(/(\d+(?:\.\d+)?)\s*(kmpl|km\/l)/i)
+                if (mileageMatch) specs.mileage = mileageMatch[1]
+              }
+              
+              // Seating capacity
+              if (/seat|capacity/i.test(text)) {
+                const seatMatch = text.match(/(\d+)\s*seat/i)
+                if (seatMatch) specs.seatingCapacity = parseInt(seatMatch[1])
+              }
+              
+              // Body type
+              if (/body|type/i.test(text)) {
+                const bodyTypes = ['sedan', 'hatchback', 'suv', 'muv', 'coupe', 'convertible', 'wagon']
+                const bodyType = bodyTypes.find(type => 
+                  text.toLowerCase().includes(type)
+                )
+                if (bodyType) specs.bodyType = bodyType
+              }
+              
+              // Colors
+              if (/color|colour/i.test(text)) {
+                const colors = ['white', 'black', 'silver', 'red', 'blue', 'grey', 'gray', 'brown', 'green']
+                const color = colors.find(c => 
+                  text.toLowerCase().includes(c)
+                )
+                if (color) specs.color = color
+              }
+            })
+          })
+          
+          // Extract additional images
+          const allImages: string[] = []
+          const imageElements = document.querySelectorAll('img')
+          
+          imageElements.forEach((img: HTMLImageElement) => {
+            const src = img.src || img.getAttribute('data-src')
+            if (src && (src.includes('apollo.olx.in') || src.includes('apolloimages.olx.in'))) {
+              // Convert to high quality
+              let cleanUrl = src
+              if (cleanUrl.includes(';s=')) {
+                cleanUrl = cleanUrl.replace(/;s=\d+x\d+/, ';s=780x0')
+              }
+              allImages.push(cleanUrl)
+            }
+          })
+          
+          specs.additionalImages = Array.from(new Set(allImages)).slice(0, 10)
+          
+          // Extract seller information
+          const sellerSection = document.querySelector('[data-testid*="seller"], [class*="seller"], .seller-info')
+          if (sellerSection) {
+            const sellerText = sellerSection.textContent || ''
+            if (/dealer|showroom/i.test(sellerText)) {
+              specs.sellerType = 'Dealer'
+            } else {
+              specs.sellerType = 'Individual'
+            }
+            
+            // Extract seller location
+            const locationMatch = sellerText.match(/(Raipur|Bhilai|Durg|Chhattisgarh)/i)
+            if (locationMatch) specs.exactLocation = locationMatch[1]
+          }
+          
+          return specs
+        }
+        
+        return extractDetailedSpecs()
+      })
+
+      console.log(`✅ Individual page scraped: ${Object.keys(detailedSpecs).length} additional specs`)
+      return detailedSpecs
+
+    } catch (error) {
+      console.error(`❌ Individual page scraping failed for ${carUrl}:`, error)
+      return {}
+    } finally {
+      if (page) {
+        await page.close()
+      }
+    }
+  }
+
+  // ENHANCED: Advanced Car Specs Parser
+  private parseCarSpecs(rawSpecs: string, individualPageData?: any): Record<string, any> {
+    const specs: Record<string, any> = {
+      // Default values
+      engineDisplacement: null,
+      mileage: null,
+      seatingCapacity: 5,
+      bodyType: 'Unknown',
+      color: 'Not Specified',
+      registrationState: 'CG',
+      insuranceValid: 'Unknown',
+      ...individualPageData // Merge individual page data
+    }
+
+    try {
+      // Engine displacement parsing
+      const engineMatch = rawSpecs.match(/(\d+(?:\.\d+)?)\s*(cc|litre|liter)/i)
+      if (engineMatch) {
+        specs.engineDisplacement = `${engineMatch[1]} ${engineMatch[2].toLowerCase()}`
+      }
+
+      // Mileage parsing
+      const mileageMatch = rawSpecs.match(/(\d+(?:\.\d+)?)\s*(kmpl|km\/l|kilometres)/i)
+      if (mileageMatch) {
+        specs.mileage = `${mileageMatch[1]} kmpl`
+      }
+
+      // Insurance parsing
+      if (/insurance/i.test(rawSpecs)) {
+        const insuranceMatch = rawSpecs.match(/insurance\s*(valid|expired|comprehensive|third party)/i)
+        if (insuranceMatch) {
+          specs.insuranceValid = insuranceMatch[1]
+        }
+      }
+
+      // Registration year parsing
+      const regMatch = rawSpecs.match(/registration\s*:?\s*(20\d{2})|registered\s*(20\d{2})/i)
+      if (regMatch) {
+        specs.registrationYear = parseInt(regMatch[1] || regMatch[2])
+      }
+
+      // Advanced parsing from text
+      const lowerSpecs = rawSpecs.toLowerCase()
+
+      // Body type detection
+      const bodyTypes = {
+        'sedan': ['sedan', 'saloon'],
+        'hatchback': ['hatchback', 'hatch'],
+        'suv': ['suv', 'sport utility', 'utility vehicle'],
+        'muv': ['muv', 'multi utility', 'people mover'],
+        'coupe': ['coupe', 'coup'],
+        'convertible': ['convertible', 'cabriolet'],
+        'wagon': ['wagon', 'estate']
+      }
+
+      for (const [type, keywords] of Object.entries(bodyTypes)) {
+        if (keywords.some(keyword => lowerSpecs.includes(keyword))) {
+          specs.bodyType = type
+          break
+        }
+      }
+
+      // Color detection
+      const colors = ['white', 'black', 'silver', 'red', 'blue', 'grey', 'gray', 'brown', 'green', 'yellow', 'orange']
+      const detectedColor = colors.find(color => lowerSpecs.includes(color))
+      if (detectedColor) {
+        specs.color = detectedColor
+      }
+
+      // Seating capacity
+      const seatMatch = rawSpecs.match(/(\d+)\s*seat/i)
+      if (seatMatch) {
+        specs.seatingCapacity = parseInt(seatMatch[1])
+      }
+
+      // Power steering, AC, etc.
+      specs.features = {
+        powerSteering: /power steering/i.test(rawSpecs),
+        airConditioning: /air condition|ac|climate/i.test(rawSpecs),
+        powerWindows: /power window/i.test(rawSpecs),
+        centralLocking: /central lock/i.test(rawSpecs),
+        musicSystem: /music|stereo|audio/i.test(rawSpecs)
+      }
+
+    } catch (error) {
+      console.error('❌ Specs parsing error:', error)
+    }
+
+    return specs
+  }
+
+  // REAL OLX SCRAPING - APOLLO IMAGES ONLY with Individual Page Support
   private async scrapeOLXProfile(profileId: string): Promise<any[]> {
     let browser
     
@@ -56,10 +271,10 @@ export class HybridOLXScraper {
       console.log(`🔍 Starting REAL OLX scraping for profile: ${profileId}`)
       
       browser = await puppeteer.launch({
-  args: chromium.args,
-  executablePath: await chromium.executablePath(),
-  headless: true
-})
+        args: chromium.args,
+        executablePath: await chromium.executablePath(),
+        headless: true
+      })
       
       const page = await browser.newPage()
       
@@ -80,7 +295,7 @@ export class HybridOLXScraper {
       // Wait for content
       await new Promise(resolve => setTimeout(resolve, 5000))
       
-      // Enhanced: Extract cars with multiple images
+      // Enhanced: Extract cars with multiple images and individual page URLs
       const realCarListings = await page.evaluate(() => {
         console.log('🔍 Starting car extraction with multiple images...')
         
@@ -141,7 +356,7 @@ export class HybridOLXScraper {
           }).slice(0, 50)
         }
         
-        // Enhanced extraction with multiple images
+        // Enhanced extraction with multiple images and individual URLs
         foundElements.forEach((element, index) => {
           const elementText = element.textContent || ''
           
@@ -154,8 +369,17 @@ export class HybridOLXScraper {
           
           const price = priceMatch[1]
           
-          const yearMatch = elementText.match(/\b(20[12]\d)\b/)
+          const yearMatch = elementText.match(/\b(20[17]\d)\b/)
           const year = yearMatch ? parseInt(yearMatch[1]) : new Date().getFullYear() - 3
+          
+          // Extract individual car page URL
+          let carPageUrl = ''
+          const linkElement = element.querySelector('a[href*="/item/"]') as HTMLAnchorElement
+          if (linkElement && linkElement.href) {
+            carPageUrl = linkElement.href.startsWith('http') 
+              ? linkElement.href 
+              : `https://www.olx.in${linkElement.href}`
+          }
           
           // Extract title
           let title = ''
@@ -183,7 +407,8 @@ export class HybridOLXScraper {
           const imageElements = element.querySelectorAll('img')
           
           imageElements.forEach(imgElement => {
-            const imgSrc = imgElement.src || imgElement.getAttribute('data-src') || imgElement.getAttribute('data-lazy-src')
+            const imgElement2 = imgElement as HTMLImageElement
+            const imgSrc = imgElement2.src || imgElement2.getAttribute('data-src') || imgElement2.getAttribute('data-lazy-src')
             
             if (imgSrc && (imgSrc.includes('apollo.olx.in') || imgSrc.includes('apolloimages.olx.in'))) {
               // Convert to high quality
@@ -240,6 +465,7 @@ export class HybridOLXScraper {
             specs: elementText.substring(0, 200).replace(/\s+/g, ' ').trim(),
             location: 'Raipur',
             originalUrl: (window as any).location.href,
+            individualPageUrl: carPageUrl, // Individual car page URL for detailed scraping
             extractedAt: new Date().toISOString()
           }
           
@@ -251,8 +477,48 @@ export class HybridOLXScraper {
         return listings
       })
       
-      console.log(`✅ REAL SCRAPING COMPLETED: ${realCarListings.length} live cars`)
-      return realCarListings
+      // ENHANCED: Scrape individual car pages for detailed specs (limit to first 5 for performance)
+      const enhancedListings = []
+      for (let i = 0; i < Math.min(realCarListings.length, 5); i++) {
+        const listing = realCarListings[i]
+        
+        if (listing.individualPageUrl) {
+          console.log(`🔍 Scraping individual page ${i + 1}/${Math.min(realCarListings.length, 5)}`)
+          const individualPageData = await this.scrapeIndividualCarPage(listing.individualPageUrl, browser)
+          
+          // Parse and merge specs
+          const parsedSpecs = this.parseCarSpecs(listing.specs, individualPageData)
+          
+          enhancedListings.push({
+            ...listing,
+            detailedSpecs: parsedSpecs,
+            images: [...listing.images, ...(individualPageData.additionalImages || [])].slice(0, 10)
+          })
+          
+          // Small delay between requests
+          await new Promise(resolve => setTimeout(resolve, 2000))
+        } else {
+          // Just parse basic specs
+          const parsedSpecs = this.parseCarSpecs(listing.specs)
+          enhancedListings.push({
+            ...listing,
+            detailedSpecs: parsedSpecs
+          })
+        }
+      }
+      
+      // Add remaining listings without individual page scraping
+      for (let i = 5; i < realCarListings.length; i++) {
+        const listing = realCarListings[i]
+        const parsedSpecs = this.parseCarSpecs(listing.specs)
+        enhancedListings.push({
+          ...listing,
+          detailedSpecs: parsedSpecs
+        })
+      }
+      
+      console.log(`✅ REAL SCRAPING COMPLETED: ${enhancedListings.length} live cars with enhanced specs`)
+      return enhancedListings
       
     } catch (error) {
       console.error('❌ Real scraping failed:', error)
@@ -264,36 +530,80 @@ export class HybridOLXScraper {
     }
   }
 
-  // Real car data processor
-  private createCarFromRealOLXData(rawCar: any, index: number): Car {
-    return {
+  // Helper function to normalize fuel type
+  private normalizeFuelType(fuelType: string): FuelType {
+    const normalized = fuelType.toLowerCase()
+    if (normalized.includes('diesel')) return 'Diesel'
+    if (normalized.includes('cng')) return 'CNG'
+    if (normalized.includes('electric')) return 'Electric'
+    if (normalized.includes('hybrid')) return 'Hybrid'
+    return 'Petrol'
+  }
+
+  // Helper function to normalize transmission type
+  private normalizeTransmission(transmission: string): TransmissionType {
+    const normalized = transmission.toLowerCase()
+    if (normalized.includes('automatic')) return 'Automatic'
+    if (normalized.includes('amt')) return 'AMT'
+    if (normalized.includes('cvt')) return 'CVT'
+    return 'Manual'
+  }
+
+  // Helper function to normalize seller type
+  private normalizeSellerType(sellerType: string): SellerType {
+    const normalized = sellerType.toLowerCase()
+    if (normalized.includes('dealer') || normalized.includes('showroom')) return 'Dealer'
+    return 'Individual'
+  }
+
+  // Updated car data processor with proper type handling
+  private async createCarFromRealOLXData(rawCar: any, index: number): Promise<Car> {
+    const detailedSpecs = rawCar.detailedSpecs || {}
+    
+    const rawCarData = {
       id: rawCar.id || `real_${Date.now()}_${index}`,
       title: rawCar.title,
       brand: this.extractBrand(rawCar.title),
       model: this.extractModel(rawCar.title),
-      variant: this.extractVariant(rawCar.title) || 'Standard',
+      variant: this.extractVariant(rawCar.title) || undefined,
       price: parseInt(rawCar.price.replace(/[^\d]/g, '')) || 0,
       year: rawCar.year,
-      fuelType: rawCar.fuelType,
-      transmission: rawCar.transmission,
+      fuelType: this.normalizeFuelType(rawCar.fuelType),
+      transmission: this.normalizeTransmission(rawCar.transmission),
       kmDriven: rawCar.kmDriven,
-      location: rawCar.location,
-      images: rawCar.images || [],
-      description: `${this.extractBrand(rawCar.title)} ${this.extractModel(rawCar.title)} available in ${rawCar.location}. Contact for more details.`,
-      sellerType: 'Individual' as const,
-      postedDate: new Date().toISOString().split('T')[0],
+      location: detailedSpecs.exactLocation || rawCar.location,
+      images: Array.isArray(rawCar.images) ? rawCar.images : [],
+      description: `${this.extractBrand(rawCar.title)} ${this.extractModel(rawCar.title)} available in ${rawCar.location}. 
+        ${detailedSpecs.engineDisplacement ? `Engine: ${detailedSpecs.engineDisplacement}. ` : ''}
+        ${detailedSpecs.mileage ? `Mileage: ${detailedSpecs.mileage}. ` : ''}
+        ${detailedSpecs.color ? `Color: ${detailedSpecs.color}. ` : ''}
+        Contact for more details.`,
+      sellerType: this.normalizeSellerType(detailedSpecs.sellerType || 'Individual'),
+      postedDate: new Date().toISOString().split('T'),
       owners: this.extractOwners(rawCar.title),
       isVerified: true,
       isFeatured: false,
-      dataSource: 'olx-carstreets-profile' as const,
+      dataSource: 'olx-carstreets-profile' as DataSource,
       originalUrl: rawCar.originalUrl || 'https://www.olx.in/profile/401445222',
       carStreetsListed: true,
+      // Enhanced specs - only add if supported by Car interface
+      ...(detailedSpecs.engineDisplacement && { engineDisplacement: detailedSpecs.engineDisplacement }),
+      ...(detailedSpecs.mileage && { mileage: detailedSpecs.mileage }),
+      ...(detailedSpecs.seatingCapacity && { seatingCapacity: detailedSpecs.seatingCapacity }),
+      ...(detailedSpecs.bodyType && { bodyType: detailedSpecs.bodyType }),
+      ...(detailedSpecs.color && { color: detailedSpecs.color }),
+      ...(detailedSpecs.registrationState && { registrationState: detailedSpecs.registrationState }),
+      ...(detailedSpecs.insuranceValid && { insuranceValid: detailedSpecs.insuranceValid }),
+      ...(detailedSpecs.features && { features: detailedSpecs.features }),
       createdAt: new Date(),
       updatedAt: new Date()
     }
+
+    // Use normalizeCar function to ensure database compatibility
+    return normalizeCar(rawCarData)
   }
 
-  // Helper functions for data extraction
+  // Helper functions for data extraction (with proper type handling)
   private extractBrand(title: string): string {
     const brands = [
       'Maruti Suzuki', 'Maruti', 'Hyundai', 'Tata', 'Honda', 'Toyota', 
@@ -323,21 +633,15 @@ export class HybridOLXScraper {
 
   private extractYear(title: string): number {
     const yearMatch = title.match(/20[0-9]{2}/)
-    return yearMatch ? parseInt(yearMatch[0]) : new Date().getFullYear() - 2
+    return yearMatch ? parseInt(yearMatch[0], 10) : new Date().getFullYear() - 2
   }
 
-  private extractFuelType(title: string): string {
-    const lowerTitle = title.toLowerCase()
-    if (lowerTitle.includes('diesel')) return 'Diesel'
-    if (lowerTitle.includes('cng')) return 'CNG'
-    if (lowerTitle.includes('electric')) return 'Electric'
-    return 'Petrol'
+  private extractFuelType(title: string): FuelType {
+    return this.normalizeFuelType(title)
   }
 
-  private extractTransmission(title: string): string {
-    const lowerTitle = title.toLowerCase()
-    if (lowerTitle.includes('automatic') || lowerTitle.includes('amt')) return 'Automatic'
-    return 'Manual'
+  private extractTransmission(title: string): TransmissionType {
+    return this.normalizeTransmission(title)
   }
 
   private extractKmDriven(title: string): number {
@@ -354,8 +658,8 @@ export class HybridOLXScraper {
     return ownerMatch ? parseInt(ownerMatch[1]) : 1
   }
 
-  // Legacy method kept for compatibility
-  private createCarFromOLXData(rawData: any, index: number): Car {
+  // Updated legacy method with proper type handling
+  private async createCarFromOLXData(rawData: any, index: number): Promise<Car> {
     const { brand, model } = this.parseCarTitle(rawData.title)
 
     let price = 0
@@ -364,7 +668,7 @@ export class HybridOLXScraper {
       price = parseInt(cleanPrice) || 0
     }
 
-    let carImages = ['https://apollo.olx.in/v1/files/default-car.jpg']
+    let carImages: string[] = ['https://apollo.olx.in/v1/files/default-car.jpg']
     
     if (Array.isArray(rawData.images)) {
       const apolloImages = rawData.images.filter((img: string) => 
@@ -388,10 +692,10 @@ export class HybridOLXScraper {
     const parseOwners = (owners: string | number): number => {
       if (typeof owners === 'number') return owners
       const match = String(owners).match(/^(\d+)/)
-      return match ? parseInt(match[0], 10) : 1
+      return match ? parseInt(match [0], 10) : 1
     }
 
-    return {
+    const rawCarData = {
       id: `olx_real_${rawData.id || Date.now()}_${index}`,
       title: String(rawData.title || 'Used Car'),
       brand: brand,
@@ -399,23 +703,26 @@ export class HybridOLXScraper {
       variant: undefined,
       price: price,
       year: Number(rawData.year) || 2020,
-      fuelType: rawData.fuelType || 'Petrol',
-      transmission: rawData.transmission || 'Manual',
+      fuelType: this.normalizeFuelType(rawData.fuelType || 'Petrol'),
+      transmission: this.normalizeTransmission(rawData.transmission || 'Manual'),
       kmDriven: parseKmDriven(rawData.kmDriven ?? '0'),
       location: 'Raipur',
       images: carImages,
       description: String(rawData.specs || 'Well maintained car for sale').substring(0, 200),
-      sellerType: 'Individual',
-      postedDate: new Date().toISOString().split('T')[0],
+      sellerType: this.normalizeSellerType('Individual'),
+      postedDate: new Date().toISOString().split('T'),
       owners: parseOwners(rawData.owners ?? '1'),
       isVerified: true,
       isFeatured: index < 3,
-      dataSource: 'olx-carstreets-profile',
-      olxProfile: 'carstreets',
-      olxProfileId: '401445222', // Updated profile ID
+      dataSource: 'olx-carstreets-profile' as DataSource,
       originalUrl: String(rawData.originalUrl || 'https://www.olx.in/profile/401445222'),
-      carStreetsListed: true
+      carStreetsListed: true,
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
+
+    // Use normalizeCar function to ensure database compatibility
+    return normalizeCar(rawCarData)
   }
 
   private parseCarTitle(title: string): { brand: string; model: string } {
@@ -435,8 +742,8 @@ export class HybridOLXScraper {
     return { brand, model }
   }
 
-  // Main scraping method
-  async scrapeCarStreetsProfile() {
+  // Main scraping method with proper type handling
+  async scrapeCarStreetsProfile(): Promise<Car[]> {
     try {
       console.log('🔍 CarStreets: Starting real scraping process...')
       
@@ -449,29 +756,41 @@ export class HybridOLXScraper {
         
         if (carDate > oneWeekAgo) {
           console.log('📋 Using cached data (fresh within last week)')
-          return existingCars
+          return existingCars.map((car: any, i: number) => normalizeCar(car))
         }
       }
       
       console.log('🚀 Starting REAL OLX scraping for profile: 401445222')
       
-      // Attempt real scraping
+      // Attempt real scraping with enhanced features
       const rawOLXData = await this.scrapeOLXProfile('401445222')
       
       if (rawOLXData && rawOLXData.length > 0) {
         console.log(`✅ Real scraping successful: ${rawOLXData.length} cars found`)
         
-        // Process real scraped data
-        const processedCars = rawOLXData.map((rawCar: any, index: number) => 
-          this.createCarFromRealOLXData(rawCar, index)
-        )
+        // Process real scraped data with proper async handling
+        const processedCars: Car[] = []
+        for (let i = 0; i < rawOLXData.length; i++) {
+          try {
+            const processedCar = await this.createCarFromRealOLXData(rawOLXData[i], i)
+            processedCars.push(processedCar)
+          } catch (error) {
+            console.error(`Error processing car ${i}:`, error)
+            continue
+          }
+        }
         
-        await saveCars(processedCars)
-        console.log(`✅ Saved ${processedCars.length} REAL cars to database`)
-        return processedCars
+        if (processedCars.length > 0) {
+          await saveCars(processedCars)
+          console.log(`✅ Saved ${processedCars.length} REAL cars to database`)
+          return processedCars
+        } else {
+          console.log('⚠️ No cars could be processed')
+          return existingCars.length > 0 ? existingCars.map((car: any) => normalizeCar(car)) : []
+        }
       } else {
         console.log('⚠️ No real cars found from scraping')
-        return existingCars.length > 0 ? existingCars : []
+        return existingCars.length > 0 ? existingCars.map((car: any) => normalizeCar(car)) : []
       }
       
     } catch (error) {
@@ -480,11 +799,11 @@ export class HybridOLXScraper {
       // Fallback to existing data if scraping fails
       const existingCars = await fetchCars()
       console.log(`📋 Falling back to existing data: ${existingCars.length} cars`)
-      return existingCars
+      return existingCars.map((car: any) => normalizeCar(car))
     }
   }
 
-  async scrape() {
+  async scrape(): Promise<Car[]> {
     return this.scrapeCarStreetsProfile()
   }
 }
