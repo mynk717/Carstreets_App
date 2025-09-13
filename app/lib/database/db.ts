@@ -85,7 +85,12 @@ export async function fetchCars() {
   : 'Contact for price'
   }))
 }
-
+export async function fetchCarById(carId: string) {
+  const car = await prisma.car.findUnique({
+    where: { id: carId }
+  })
+  return car
+}
 /* ---------- CLOSE ---------- */
 export async function close() {
   await prisma.$disconnect()
