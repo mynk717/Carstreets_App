@@ -96,4 +96,5 @@ export async function close() {
   await prisma.$disconnect()
 }
 
+export { prisma }
 /* EOF */
