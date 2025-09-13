@@ -1,5 +1,5 @@
 // lib/parsers/car-normalizer.ts
-import { Car } from '../../app/types'
+import { Car } from '../../types'
 
 export const parseIntSafe = (v: string | number, fallback = 0): number => {
   const n = typeof v === 'number' ? v : parseInt(String(v).replace(/[^0-9]/g, ''), 10)
