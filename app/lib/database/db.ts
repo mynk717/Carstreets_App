@@ -13,18 +13,26 @@ function normaliseCar(raw: any) {
           : BigInt(raw.price)
 
   /* images -> string[]  (handles array OR comma-joined string) */
-  let imgs: string[] = []
-
-  if (raw.images) {
-    if (Array.isArray(raw.images)) {
-      imgs = raw.images
-    } else if (typeof raw.images === 'string') {
-      imgs = raw.images
-        .split(',')
-        .map(s => s.trim())
-        .filter(Boolean)
+  /* images -> handle Json field properly */
+let imgs: string[] = []
+if (raw.images) {
+  if (Array.isArray(raw.images)) {
+    imgs = raw.images
+  } else if (typeof raw.images === 'string') {
+    try {
+      // Handle Json field - might be stringified JSON
+      const parsed = JSON.parse(raw.images)
+      imgs = Array.isArray(parsed) ? parsed : [raw.images]
+    } catch {
+      // If not valid JSON, treat as single image or comma-separated
+      imgs = raw.images.split(',').map(s => s.trim()).filter(Boolean)
     }
+  } else if (typeof raw.images === 'object') {
+    // Already parsed Json object
+    imgs = Array.isArray(raw.images) ? raw.images : []
   }
+}
+
 
   /* upgrade OLX thumb size */
   imgs = imgs.map(u => u.replace(/;s=\d+x\d+/, ';s=780'))
@@ -55,9 +63,21 @@ const toDbCar = (c: any) => ({
       ? parseInt(c.price.replace(/[^0-9]/g, ''), 10) || 0
       : c.price,
   // RELAXED image filtering - accept any reasonable image URLs
-  images: Array.isArray(c.images) 
-    ? c.images.filter(img => img && img.length > 10 && (img.startsWith('http') || img.startsWith('/')))
-    : []
+  images: (() => {
+  let imageArray: string[] = []
+  
+  if (Array.isArray(c.images)) {
+    imageArray = c.images
+  } else if (typeof c.images === 'string') {
+    try {
+      imageArray = JSON.parse(c.images)
+    } catch {
+      imageArray = [c.images]
+    }
+  }
+  
+  return imageArray.filter(img => img && img.length > 10 && (img.startsWith('http') || img.startsWith('/')))
+})()
 })
 
 

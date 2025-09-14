@@ -152,7 +152,19 @@ export class HybridOLXScraper {
             const locationMatch = sellerText.match(/(Raipur|Bhilai|Durg|Chhattisgarh)/i)
             if (locationMatch) specs.exactLocation = locationMatch[1]
           }
-          
+          // Enhanced KM extraction from detail page
+const kmElements = document.querySelectorAll('[data-testid*="km"], [class*="km"], [class*="driven"]');
+kmElements.forEach((element: Element) => {
+  const text = element.textContent || '';
+  const kmMatch = text.match(/(\d+(?:,\d+)*)\s*(?:km|kms)/i);
+  if (kmMatch) {
+    const km = parseInt(kmMatch[1].replace(/,/g, ''), 10);
+    if (km > 100 && km < 500000) {
+      specs.actualKmDriven = km;
+    }
+  }
+});
+
           return specs
         }
         
@@ -294,7 +306,26 @@ export class HybridOLXScraper {
       
       // Wait for content
       await new Promise(resolve => setTimeout(resolve, 5000))
-      
+      // Load more button handling to get all cars
+await page.evaluate(async () => {
+  let loadMoreClicks = 0;
+  const maxClicks = 3;
+  
+  while (loadMoreClicks < maxClicks) {
+    const loadMoreButton = document.querySelector('[data-aut-id="btnLoadMore"], .loadMore, [class*="load"], [class*="more"], button[class*="load"]');
+    
+    if (loadMoreButton && loadMoreButton.textContent?.toLowerCase().includes('more')) {
+      console.log(`🔄 Clicking load more button (${loadMoreClicks + 1}/${maxClicks})`);
+      (loadMoreButton as HTMLElement).click();
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      loadMoreClicks++;
+    } else {
+      console.log('🔍 No more "Load More" button found');
+      break;
+    }
+  }
+});
+
       // Enhanced: Extract cars with multiple images and individual page URLs
       const realCarListings = await page.evaluate(() => {
         console.log('🔍 Starting car extraction with multiple images...')
@@ -479,11 +510,11 @@ export class HybridOLXScraper {
       
       // ENHANCED: Scrape individual car pages for detailed specs (limit to first 5 for performance)
       const enhancedListings = []
-      for (let i = 0; i < Math.min(realCarListings.length, 5); i++) {
+      for (let i = 0; i < Math.min(realCarListings.length, 15); i++) {
         const listing = realCarListings[i]
         
         if (listing.individualPageUrl) {
-          console.log(`🔍 Scraping individual page ${i + 1}/${Math.min(realCarListings.length, 5)}`)
+          console.log(`🔍 Scraping individual page ${i + 1}/${Math.min(realCarListings.length, 15)}`)
           const individualPageData = await this.scrapeIndividualCarPage(listing.individualPageUrl, browser)
           
           // Parse and merge specs
@@ -508,7 +539,7 @@ export class HybridOLXScraper {
       }
       
       // Add remaining listings without individual page scraping
-      for (let i = 5; i < realCarListings.length; i++) {
+      for (let i = 15; i < realCarListings.length; i++) {
         const listing = realCarListings[i]
         const parsedSpecs = this.parseCarSpecs(listing.specs)
         enhancedListings.push({
@@ -556,6 +587,26 @@ export class HybridOLXScraper {
     return 'Individual'
   }
 
+ private extractKmFromSpecs(specs: string): number {
+  const kmPatterns = [
+    /(\d+(?:,\d+)*)\s*(?:km|kms|kilometres)/i,
+    /driven[:\s]*(\d+(?:,\d+)*)/i,
+    /(\d+(?:,\d+)*)\s*kilo/i
+  ];
+  
+  for (const pattern of kmPatterns) {
+    const match = specs.match(pattern);
+    if (match) {
+      const km = parseInt(match[1].replace(/,/g, ''), 10);
+      if (!isNaN(km) && km > 100 && km < 500000) {
+        return km;
+      }
+    }
+  }
+  
+  return 50000;
+}
+
   // Updated car data processor with proper type handling
   private async createCarFromRealOLXData(rawCar: any, index: number): Promise<Car> {
     const detailedSpecs = rawCar.detailedSpecs || {}
@@ -570,7 +621,7 @@ export class HybridOLXScraper {
       year: rawCar.year,
       fuelType: this.normalizeFuelType(rawCar.fuelType),
       transmission: this.normalizeTransmission(rawCar.transmission),
-      kmDriven: rawCar.kmDriven,
+      kmDriven: detailedSpecs.actualKmDriven || rawCar.kmDriven || this.extractKmFromSpecs(rawCar.specs),
       location: detailedSpecs.exactLocation || rawCar.location,
       images: Array.isArray(rawCar.images) ? rawCar.images : [],
       description: `${this.extractBrand(rawCar.title)} ${this.extractModel(rawCar.title)} available in ${rawCar.location}. 
