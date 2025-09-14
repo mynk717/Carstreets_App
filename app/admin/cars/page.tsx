@@ -175,30 +175,37 @@ export default function AdminCarsPage() {
   }
 
   const handleSaveCar = async (carData: Car) => {
-    try {
-      const isNewCar = carData.id.includes('new_') || carData.id.includes('temp_')
-      const endpoint = isNewCar ? '/api/admin/cars' : `/api/admin/cars/${carData.id}`
-      const method = isNewCar ? 'POST' : 'PUT'
+  try {
+    const isNewCar = carData.id.includes('new_') || carData.id.includes('temp_')
+    const endpoint = isNewCar ? '/api/admin/cars' : `/api/admin/cars/${carData.id}`
+    const method = isNewCar ? 'POST' : 'PUT'
 
-      const response = await fetch(endpoint, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(carData)
-      })
+    console.log(`${method} ${endpoint}`, carData.title)
 
-      if (response.ok) {
-        await fetchCars() // Refresh the car list
-        setIsEditModalOpen(false)
-        setIsAddModalOpen(false)
-        setSelectedCar(null)
-      } else {
-        alert('Failed to save car')
-      }
-    } catch (error) {
-      console.error('Failed to save car:', error)
-      alert('Failed to save car')
+    const response = await fetch(endpoint, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(carData)
+    })
+
+    const result = await response.json()
+
+    if (response.ok && result.success) {
+      console.log('✅ Car saved successfully:', result.message)
+      await fetchCars() // Refresh the car list
+      setIsEditModalOpen(false)
+      setIsAddModalOpen(false)
+      setSelectedCar(null)
+    } else {
+      console.error('❌ Save failed:', result.error)
+      alert(`Failed to save car: ${result.error}`)
     }
+  } catch (error) {
+    console.error('❌ Save error:', error)
+    alert('Network error occurred while saving car')
   }
+}
+
 
   const handleDeleteCar = async (carId: string) => {
     if (!confirm('Are you sure you want to delete this car?')) return

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X } from 'lucide-react'
+import { X, ChevronDown } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Car } from '../../../types'
 
@@ -15,6 +15,16 @@ interface CarFormModalProps {
 
 export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormModalProps) {
   const [formData, setFormData] = useState<Partial<Car>>({})
+  const [showBrandDropdown, setShowBrandDropdown] = useState(false)
+  const [customBrand, setCustomBrand] = useState('')
+
+  // Extended brand list
+  const predefinedBrands = [
+    'Maruti Suzuki', 'Honda', 'Hyundai', 'Toyota', 'Renault', 'Tata', 'Mahindra', 
+    'Ford', 'Chevrolet', 'Nissan', 'Volkswagen', 'Skoda', 'Kia', 'MG', 'Jeep',
+    'BMW', 'Mercedes-Benz', 'Audi', 'Jaguar', 'Land Rover', 'Volvo', 'Mini',
+    'Datsun', 'Isuzu', 'Force Motors', 'Ashok Leyland', 'Eicher', 'BYD', 'Tesla'
+  ]
 
   useEffect(() => {
     if (car) {
@@ -23,20 +33,47 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
         images: Array.isArray(car.images) ? car.images.join('\n') : car.images || '',
         price: typeof car.price === 'number' ? car.price.toString() : car.price || ''
       } as any)
+      
+      // Check if brand is custom (not in predefined list)
+      if (car.brand && !predefinedBrands.includes(car.brand)) {
+        setCustomBrand(car.brand)
+      }
     }
   }, [car])
 
-  const handleSave = () => {
+  const handleBrandSelect = (brand: string) => {
+    if (brand === 'custom') {
+      setCustomBrand('')
+      setFormData({...formData, brand: ''})
+    } else {
+      setFormData({...formData, brand})
+      setCustomBrand('')
+    }
+    setShowBrandDropdown(false)
+  }
+
+  const handleCustomBrandChange = (value: string) => {
+    setCustomBrand(value)
+    setFormData({...formData, brand: value})
+  }
+
+  const handleSave = async () => {
     if (!formData.title || !formData.price) {
       alert('Please fill in required fields (Title and Price)')
       return
     }
 
+    if (!formData.brand && !customBrand) {
+      alert('Please select or enter a brand')
+      return
+    }
+
     const carToSave: Car = {
       ...formData,
+      brand: customBrand || formData.brand || '',
       images: typeof formData.images === 'string' 
         ? (formData.images as string).split('\n').filter(url => url.trim()) 
-        : (formData.images ?? []),
+        : Array.isArray(formData.images) ? formData.images : [],
       price: typeof formData.price === 'string' 
         ? (formData.price.replace(/[₹,]/g, '') || '0')
         : formData.price?.toString() || '0',
@@ -44,10 +81,17 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
       year: Number(formData.year) || new Date().getFullYear(),
       owners: Number(formData.owners) || 1,
       updatedAt: new Date(),
-      isVerified: true // Mark as verified after manual editing
+      isVerified: true
     } as Car
 
-    onSave(carToSave)
+    console.log('🚀 Saving car:', carToSave)
+    
+    try {
+      onSave(carToSave)
+    } catch (error) {
+      console.error('❌ Save error:', error)
+      alert('Failed to save car. Check console for details.')
+    }
   }
 
   if (!isOpen) return null
@@ -111,25 +155,65 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
             />
           </div>
 
-          {/* Vehicle Details */}
-          <div>
-            <label className="block text-sm font-medium mb-1">Brand</label>
-            <select
-              value={formData.brand || ''}
-              onChange={(e) => setFormData({...formData, brand: e.target.value})}
-              className="w-full px-3 py-2 border rounded"
-            >
-              <option value="">Select Brand</option>
-              <option value="Maruti Suzuki">Maruti Suzuki</option>
-              <option value="Honda">Honda</option>
-              <option value="Hyundai">Hyundai</option>
-              <option value="Toyota">Toyota</option>
-              <option value="Renault">Renault</option>
-              <option value="Tata">Tata</option>
-              <option value="Mahindra">Mahindra</option>
-              <option value="Ford">Ford</option>
-              <option value="Other">Other</option>
-            </select>
+          {/* Enhanced Brand Selection */}
+          <div className="relative">
+            <label className="block text-sm font-medium mb-1 text-red-600">Brand *</label>
+            {customBrand || !predefinedBrands.includes(formData.brand || '') ? (
+              <div className="flex gap-1">
+                <input
+                  type="text"
+                  value={customBrand || formData.brand || ''}
+                  onChange={(e) => handleCustomBrandChange(e.target.value)}
+                  className="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter brand name"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomBrand('')
+                    setFormData({...formData, brand: ''})
+                    setShowBrandDropdown(true)
+                  }}
+                  className="px-3 py-2 border rounded hover:bg-gray-50"
+                  title="Choose from list"
+                >
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setShowBrandDropdown(!showBrandDropdown)}
+                  className="w-full px-3 py-2 border rounded text-left flex justify-between items-center hover:bg-gray-50"
+                >
+                  <span>{formData.brand || 'Select Brand'}</span>
+                  <ChevronDown className="w-4 h-4" />
+                </button>
+                
+                {showBrandDropdown && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border rounded-lg shadow-lg max-h-48 overflow-y-auto">
+                    <button
+                      type="button"
+                      onClick={() => handleBrandSelect('custom')}
+                      className="w-full px-3 py-2 text-left hover:bg-blue-50 border-b font-medium text-blue-600"
+                    >
+                      + Enter Custom Brand
+                    </button>
+                    {predefinedBrands.map(brand => (
+                      <button
+                        key={brand}
+                        type="button"
+                        onClick={() => handleBrandSelect(brand)}
+                        className="w-full px-3 py-2 text-left hover:bg-gray-50"
+                      >
+                        {brand}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           <div>
@@ -154,6 +238,7 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
             />
           </div>
 
+          {/* Rest of the form remains the same... */}
           <div>
             <label className="block text-sm font-medium mb-1">Year</label>
             <input
@@ -364,4 +449,3 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
     </div>
   )
 }
-                    
