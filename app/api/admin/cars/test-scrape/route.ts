@@ -1,7 +1,44 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Environment check to prevent scraping in production
 const allowScraping = process.env.NODE_ENV !== 'production' || process.env.ALLOW_SCRAPING === 'true'
+
+// Add retry function with timeout
+async function fetchWithRetry(url: string, options: RequestInit, retries = 3, delay = 2000) {
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      })
+      
+      clearTimeout(timeoutId)
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      }
+      
+      return response
+    } catch (error) {
+      clearTimeout(timeoutId)
+      
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out after 30 seconds')
+      }
+      
+      if (attempt === retries) {
+        throw error // Final attempt failed
+      }
+      
+      console.warn(`Fetch attempt ${attempt}/${retries} failed, retrying in ${delay}ms...`)
+      await new Promise(resolve => setTimeout(resolve, delay))
+      delay *= 1.5 // Exponential backoff
+    }
+  }
+  throw new Error('Max retries reached')
+}
 
 export async function POST(request: NextRequest) {
   if (!allowScraping) {
@@ -29,28 +66,29 @@ export async function POST(request: NextRequest) {
 
     const itemId = itemIdMatch[1]
 
-    // Fetch page content
-    const response = await fetch(url, {
+    // Enhanced headers to mimic real browser
+    const response = await fetchWithRetry(url, {
       method: 'GET',
       headers: {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.9,hi;q=0.8',
         'Accept-Encoding': 'gzip, deflate, br',
-        'Cache-Control': 'no-cache',
-        'Pragma': 'no-cache'
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+        'Sec-Fetch-Dest': 'document',
+        'Sec-Fetch-Mode': 'navigate', 
+        'Sec-Fetch-Site': 'none',
+        'Sec-Fetch-User': '?1',
+        'Cache-Control': 'max-age=0',
+        'DNT': '1'
       }
     })
 
-    if (!response.ok) {
-      return NextResponse.json({ 
-        error: `Failed to fetch page: ${response.status}` 
-      }, { status: 400 })
-    }
-
     const html = await response.text()
+    console.log(`✅ Successfully fetched ${html.length} characters from OLX`)
     
-    // Parse the data using the format you specified
+    // Parse the data (NO duplicate fetch here)
     const parsedData = await parseOLXListing(html, url, itemId)
     
     return NextResponse.json({
@@ -58,23 +96,68 @@ export async function POST(request: NextRequest) {
       data: parsedData,
       message: 'Test scraping completed successfully',
       url: url,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      html_size: html.length
     })
 
   } catch (error) {
     console.error('Test scrape error:', error)
+    
+    // Return mock data for immediate development testing
+    if (process.env.NODE_ENV === 'development') {
+      // Try to get url from request body if possible
+      let url: string | undefined = undefined;
+      try {
+        const body = await request.json();
+        url = body.url;
+      } catch {
+        url = undefined;
+      }
+      return NextResponse.json({
+        success: true,
+        data: {
+          id: "1819957445",
+          url: url,
+          title: "Maruti Suzuki S-Cross 1.5 Zeta, 2019, Diesel",
+          price: "₹8,50,000",
+          currency: "INR",
+          description: "MOCK DATA - ADDITIONAL VEHICLE INFORMATION: Accidental: No, Air Conditioning: Automatic Climate Control, Alloy Wheels: Yes",
+          location: { city: "Raipur", state: "Chhattisgarh", country: "India" },
+          seller: { name: "Car Street", business: true, verified: true },
+          images: { 
+            lead: "https://apollo.olx.in:443/v1/files/tpf9v46kghxq3-IN/image",
+            srcset: ["https://apollo.olx.in:443/v1/files/tpf9v46kghxq3-IN/image;s=300x600;q=60 300w"]
+          },
+          attributes: [
+            { key: "Accidental", value: "No" },
+            { key: "Air Conditioning", value: "Automatic Climate Control" },
+            { key: "Color", value: "Blue" }
+          ],
+          validation: { 
+            title_extracted: true, 
+            mock_data: true,
+            error_reason: error instanceof Error ? error.message : String(error)
+          }
+        },
+        message: 'Mock data returned - OLX blocking detected',
+        timestamp: new Date().toISOString()
+      })
+    }
+    
     return NextResponse.json({ 
-      error: error instanceof Error ? error.message : 'Test scraping failed' 
+      error: error instanceof Error ? error.message : 'Test scraping failed',
+      details: 'OLX may be blocking server-to-server requests'
     }, { status: 500 })
   }
 }
 
+// FIXED: Remove duplicate fetch call from parseOLXListing
 async function parseOLXListing(html: string, url: string, itemId: string) {
   // Extract title from HTML
   const titleMatch = html.match(/<title[^>]*>(.*?)<\/title>/i)
   const rawTitle = titleMatch ? titleMatch[1].replace(/ - Cars - \d+.*$/, '').trim() : null
 
-  // Extract meta description
+  // Extract meta description  
   const descMatch = html.match(/<meta\s+name=["']description["']\s+content=["']([^"']*?)["']/i)
   const description = descMatch ? descMatch[1] : null
 
@@ -82,13 +165,12 @@ async function parseOLXListing(html: string, url: string, itemId: string) {
   const ogImageMatch = html.match(/<meta\s+property=["']og:image["']\s+content=["']([^"']*?)["']/i)
   const leadImage = ogImageMatch ? ogImageMatch[1] : null
 
-  // Try to extract JSON data from script tags
+  // Try to extract JSON data from script tags (FIXED: use [\s\S] instead of 's' flag)
   let jsonData = null
-  const scriptMatches = html.match(/<script[^>]*>([^]*?)<\/script>/g)
+  const scriptMatches = html.match(/<script[^>]*>([\s\S]*?)<\/script>/g)
   
   if (scriptMatches) {
     for (const script of scriptMatches) {
-      // Look for embedded JSON data
       if (script.includes('users') && script.includes('categories')) {
         try {
           const jsonStart = script.indexOf('{')
@@ -99,7 +181,6 @@ async function parseOLXListing(html: string, url: string, itemId: string) {
             break
           }
         } catch (e) {
-          // Continue looking in other scripts
           continue
         }
       }
@@ -112,7 +193,7 @@ async function parseOLXListing(html: string, url: string, itemId: string) {
     const components = jsonData.addressComponents
     location = {
       city: components.find((c: any) => c.type === 'CITY')?.name || 'Unknown',
-      state: components.find((c: any) => c.type === 'STATE')?.name || 'Unknown',
+      state: components.find((c: any) => c.type === 'STATE')?.name || 'Unknown', 
       country: components.find((c: any) => c.type === 'COUNTRY')?.name || 'India'
     }
   }
@@ -136,7 +217,7 @@ async function parseOLXListing(html: string, url: string, itemId: string) {
     const baseUrl = leadImage.replace(/;s=.*$/, '')
     images.srcset = [
       `${baseUrl};s=100x200;q=60 100w`,
-      `${baseUrl};s=200x400;q=60 200w`,
+      `${baseUrl};s=200x400;q=60 200w`, 
       `${baseUrl};s=300x600;q=60 300w`,
       `${baseUrl};s=400x800;q=60 400w`,
       `${baseUrl};s=600x1200;q=60 600w`
@@ -155,51 +236,12 @@ async function parseOLXListing(html: string, url: string, itemId: string) {
       }
     }
   }
-// Add timeout and retry logic
-const controller = new AbortController()
-const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
-
-try {
-  const response = await fetch(url, {
-    method: 'GET',
-    signal: controller.signal,
-    headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Accept-Encoding': 'gzip, deflate, br',
-      'Connection': 'keep-alive',
-      'Upgrade-Insecure-Requests': '1',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'none'
-    }
-  })
-  
-  clearTimeout(timeoutId)
-  
-  if (!response.ok) {
-    return NextResponse.json({ 
-      error: `HTTP ${response.status}: ${response.statusText}` 
-    }, { status: 400 })
-  }
-  
-  // ... rest of your parsing code
-} catch (error) {
-  clearTimeout(timeoutId)
-  if (error.name === 'AbortError') {
-    return NextResponse.json({ 
-      error: 'Request timed out after 30 seconds' 
-    }, { status: 408 })
-  }
-  // ... existing error handling
-}
 
   return {
     id: itemId,
     url: url,
     title: rawTitle,
-    price: null, // Often requires client-side rendering
+    price: null, // Usually requires client-side rendering
     currency: 'INR',
     description: description,
     attributes: attributes,
