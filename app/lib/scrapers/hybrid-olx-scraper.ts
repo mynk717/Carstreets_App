@@ -3,7 +3,7 @@ import OpenAI from 'openai'
 import { Car } from '../../types'
 import { saveCars, fetchCars } from '../database/db'
 import chromium from '@sparticuz/chromium'
-import puppeteer from 'puppeteer'
+import puppeteer from 'puppeteer-core'
 
 // Type definitions for better TypeScript support
 type FuelType = 'Petrol' | 'Diesel' | 'CNG' | 'Electric' | 'Hybrid'
@@ -761,10 +761,13 @@ export class HybridOLXScraper {
       }
       
       console.log('🚀 Starting REAL OLX scraping for profile: 401445222')
-      
+      console.log('🔧 DEBUG: Starting scrape with profile ID:', process.env.OLX_PROFILE_ID || '401445222')
+console.log('🔧 DEBUG: DATABASE_URL exists:', !!process.env.DATABASE_URL)
+
       // Attempt real scraping with enhanced features
       const rawOLXData = await this.scrapeOLXProfile('401445222')
-      
+      console.log('🔧 DEBUG: Raw scraped data length:', rawOLXData ? rawOLXData.length : 'null')
+
       if (rawOLXData && rawOLXData.length > 0) {
         console.log(`✅ Real scraping successful: ${rawOLXData.length} cars found`)
         
