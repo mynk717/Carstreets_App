@@ -21,7 +21,7 @@ export interface Car {
   // Database timestamps (added by Prisma)  
   createdAt?: Date
   updatedAt?: Date
-  // NEW: Profile-specific attribution
+  // Data source attribution
   dataSource: 'olx-carstreets-profile' | 'olx-external' | 'direct' | 'other' | 'openai-enhanced' | 'emergency-fallback' | 'database-managed-scraping' | 'fresh-database-scraping'
   olxProfile?: 'carstreets' | 'external'
   olxProfileId?: string
@@ -29,6 +29,18 @@ export interface Car {
   attribution?: string
   attributionNote?: string
   carStreetsListed?: boolean
+  
+  // NEW: Enhanced fields for complete inventory management
+  discountedPrice?: string
+  sellingPoints?: string
+  condition?: 'Excellent' | 'Very Good' | 'Good' | 'Fair'
+  availableForFinance?: boolean
+  availableForExchange?: boolean
+  serviceHistory?: 'Available' | 'Partial' | 'Not Available'
+  insurance?: 'Valid' | 'Expired' | 'Third Party'
+  rcStatus?: 'Clear' | 'Pending' | 'Issues'
+  inspectionDate?: string
+  inspectionReport?: string
 }
 
 export interface DataSourceAttribution {
