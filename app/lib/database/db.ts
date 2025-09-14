@@ -54,12 +54,12 @@ const toDbCar = (c: any) => ({
       : typeof c.price === 'string'
       ? parseInt(c.price.replace(/[^0-9]/g, ''), 10) || 0
       : c.price,
+  // RELAXED image filtering - accept any reasonable image URLs
   images: Array.isArray(c.images) 
-    ? c.images
-        .filter(img => img && img.includes('apollo.olx.in') && img.length > 10)
-        // .map(img => img.replace(/;s=\d+/, ';s=780'))  // Ensure consistent size
+    ? c.images.filter(img => img && img.length > 10 && (img.startsWith('http') || img.startsWith('/')))
     : []
 })
+
 
 /* ---------- WRITE ---------- */
 export async function saveCars(cars: any[]) {

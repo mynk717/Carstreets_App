@@ -670,16 +670,23 @@ export class HybridOLXScraper {
 
     let carImages: string[] = ['https://apollo.olx.in/v1/files/default-car.jpg']
     
+    // RELAXED image validation for debugging - accept ANY reasonable image
     if (Array.isArray(rawData.images)) {
-      const apolloImages = rawData.images.filter((img: string) => 
-        img && (img.includes('apollo.olx.in') || img.includes('apolloimages.olx.in'))
+      const validImages = rawData.images.filter((img: string) => 
+        img && img.length > 10 && (img.startsWith('http') || img.startsWith('/'))
       )
-      if (apolloImages.length > 0) {
-        carImages = apolloImages.slice(0, 3)
+      if (validImages.length > 0) {
+        carImages = validImages.slice(0, 3)
+        console.log(`🖼️ Using ${validImages.length} images for car: ${rawData.title}`)
+      } else {
+        console.log(`⚠️ No valid images found for car: ${rawData.title}`)
       }
     } else if (rawData.images && typeof rawData.images === 'string') {
-      if (rawData.images.includes('apollo.olx.in') || rawData.images.includes('apolloimages.olx.in')) {
-        carImages = [rawData.images] 
+      if (rawData.images.length > 10 && (rawData.images.startsWith('http') || rawData.images.startsWith('/'))) {
+        carImages = [rawData.images]
+        console.log(`🖼️ Using single image for car: ${rawData.title}`)
+      } else {
+        console.log(`⚠️ Invalid image format for car: ${rawData.title}`)
       }
     }
 
@@ -692,7 +699,7 @@ export class HybridOLXScraper {
     const parseOwners = (owners: string | number): number => {
       if (typeof owners === 'number') return owners
       const match = String(owners).match(/^(\d+)/)
-      return match ? parseInt(match [0], 10) : 1
+      return match ? parseInt(match[0], 10) : 1
     }
 
     const rawCarData = {
@@ -710,7 +717,7 @@ export class HybridOLXScraper {
       images: carImages,
       description: String(rawData.specs || 'Well maintained car for sale').substring(0, 200),
       sellerType: this.normalizeSellerType('Individual'),
-      postedDate: new Date().toISOString().split('T'),
+      postedDate: new Date().toISOString().split('T')[0],
       owners: parseOwners(rawData.owners ?? '1'),
       isVerified: true,
       isFeatured: index < 3,
@@ -721,9 +728,12 @@ export class HybridOLXScraper {
       updatedAt: new Date()
     }
 
+    console.log(`✅ Processing car ${index + 1}: ${rawCarData.title} - ₹${price}`)
+    
     // Use normalizeCar function to ensure database compatibility
     return normalizeCar(rawCarData)
   }
+
 
   private parseCarTitle(title: string): { brand: string; model: string } {
     const brands = ['Mahindra', 'Hyundai', 'Maruti', 'Honda', 'Toyota', 'Tata', 'Renault', 'Ford', 'Kia', 'MG', 'Nissan']
@@ -744,56 +754,93 @@ export class HybridOLXScraper {
 
   // Main scraping method with proper type handling
   async scrapeCarStreetsProfile(): Promise<Car[]> {
+    const forceFresh = process.env.FORCE_FRESH_SCRAPE === 'true'
     try {
-      console.log('🔍 CarStreets: Starting real scraping process...')
-      
-      // Check existing data freshness
-      const existingCars = await fetchCars()
-      if (existingCars.length > 0) {
-        const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-        const latestCar = existingCars[0]
-        const carDate = new Date(latestCar.createdAt || latestCar.updatedAt || Date.now())
-        
-        if (carDate > oneWeekAgo) {
-          console.log('📋 Using cached data (fresh within last week)')
-          return existingCars.map((car: any, i: number) => normalizeCar(car))
+      if (forceFresh) {
+        console.log('🔥 FORCE_FRESH_SCRAPE enabled - bypassing all cache')
+        const rawOLXData = await this.scrapeOLXProfile(process.env.OLX_PROFILE_ID || '401445222')
+        console.log('🔧 DEBUG: Raw scraped data length:', rawOLXData ? rawOLXData.length : 'null')
+
+        if (rawOLXData && rawOLXData.length > 0) {
+          console.log(`✅ Real scraping successful: ${rawOLXData.length} cars found`)
+          const processedCars: Car[] = []
+          for (let i = 0; i < rawOLXData.length; i++) {
+            try {
+              const processedCar = await this.createCarFromRealOLXData(rawOLXData[i], i)
+              processedCars.push(processedCar)
+            } catch (error) {
+              console.error(`Error processing car ${i}:`, error)
+              continue
+            }
+          }
+          if (processedCars.length > 0) {
+            await saveCars(processedCars)
+            console.log(`✅ Saved ${processedCars.length} REAL cars to database`)
+            return processedCars
+          } else {
+            console.log('⚠️ No cars could be processed')
+            return []
+          }
+        } else {
+          console.log('⚠️ No real cars found from scraping')
+          return []
         }
-      }
-      
-      console.log('🚀 Starting REAL OLX scraping for profile: 401445222')
-      console.log('🔧 DEBUG: Starting scrape with profile ID:', process.env.OLX_PROFILE_ID || '401445222')
-console.log('🔧 DEBUG: DATABASE_URL exists:', !!process.env.DATABASE_URL)
-
-      // Attempt real scraping with enhanced features
-      const rawOLXData = await this.scrapeOLXProfile('401445222')
-      console.log('🔧 DEBUG: Raw scraped data length:', rawOLXData ? rawOLXData.length : 'null')
-
-      if (rawOLXData && rawOLXData.length > 0) {
-        console.log(`✅ Real scraping successful: ${rawOLXData.length} cars found`)
+      } else {
+        // NORMAL cache logic
+        console.log('🔍 CarStreets: Starting real scraping process...')
         
-        // Process real scraped data with proper async handling
-        const processedCars: Car[] = []
-        for (let i = 0; i < rawOLXData.length; i++) {
-          try {
-            const processedCar = await this.createCarFromRealOLXData(rawOLXData[i], i)
-            processedCars.push(processedCar)
-          } catch (error) {
-            console.error(`Error processing car ${i}:`, error)
-            continue
+        // Check existing data freshness
+        const existingCars = await fetchCars()
+        if (existingCars.length > 0) {
+          const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+          const latestCar = existingCars[0]
+          const carDate = new Date(latestCar.createdAt || latestCar.updatedAt || Date.now())
+          const daysSinceUpdate = (Date.now() - carDate.getTime()) / (1000 * 60 * 60 * 24)
+          
+          console.log(`📅 Latest car date: ${carDate.toISOString()}`)
+          console.log(`📊 Days since last update: ${daysSinceUpdate.toFixed(2)}`)
+          
+          if (carDate > oneWeekAgo) {
+            console.log(`🔒 Cache BLOCKING: Using cached data (${daysSinceUpdate.toFixed(2)} days old, < 7 days)`)
+            return existingCars.map((car: any, i: number) => normalizeCar(car))
+          } else {
+            console.log(`✅ Cache ALLOWING: Data is ${daysSinceUpdate.toFixed(2)} days old (> 7 days)`)
           }
         }
         
-        if (processedCars.length > 0) {
-          await saveCars(processedCars)
-          console.log(`✅ Saved ${processedCars.length} REAL cars to database`)
-          return processedCars
+        console.log('🚀 Starting REAL OLX scraping for profile:', process.env.OLX_PROFILE_ID || '401445222')
+        
+        // Attempt real scraping with enhanced features
+        const rawOLXData = await this.scrapeOLXProfile(process.env.OLX_PROFILE_ID || '401445222')
+        console.log('🔧 DEBUG: Raw scraped data length:', rawOLXData ? rawOLXData.length : 'null')
+
+        if (rawOLXData && rawOLXData.length > 0) {
+          console.log(`✅ Real scraping successful: ${rawOLXData.length} cars found`)
+          
+          // Process real scraped data with proper async handling
+          const processedCars: Car[] = []
+          for (let i = 0; i < rawOLXData.length; i++) {
+            try {
+              const processedCar = await this.createCarFromRealOLXData(rawOLXData[i], i)
+              processedCars.push(processedCar)
+            } catch (error) {
+              console.error(`Error processing car ${i}:`, error)
+              continue
+            }
+          }
+          
+          if (processedCars.length > 0) {
+            await saveCars(processedCars)
+            console.log(`✅ Saved ${processedCars.length} REAL cars to database`)
+            return processedCars
+          } else {
+            console.log('⚠️ No cars could be processed')
+            return existingCars.length > 0 ? existingCars.map((car: any) => normalizeCar(car)) : []
+          }
         } else {
-          console.log('⚠️ No cars could be processed')
+          console.log('⚠️ No real cars found from scraping')
           return existingCars.length > 0 ? existingCars.map((car: any) => normalizeCar(car)) : []
         }
-      } else {
-        console.log('⚠️ No real cars found from scraping')
-        return existingCars.length > 0 ? existingCars.map((car: any) => normalizeCar(car)) : []
       }
       
     } catch (error) {
@@ -805,6 +852,7 @@ console.log('🔧 DEBUG: DATABASE_URL exists:', !!process.env.DATABASE_URL)
       return existingCars.map((car: any) => normalizeCar(car))
     }
   }
+
 
   async scrape(): Promise<Car[]> {
     return this.scrapeCarStreetsProfile()
