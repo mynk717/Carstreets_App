@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { CarImageCarousel } from './CarImageCarousel'
 
 export function CarDetailClient({ car }: { car: any }) {
   const [currentUrl, setCurrentUrl] = useState('')
@@ -16,9 +17,8 @@ export function CarDetailClient({ car }: { car: any }) {
     ? JSON.parse(car.images as string) as string[]
     : []
 
-  const imageUrl = imagesArray[0] || '/placeholder-car.jpg'
-  const whatsappNumber = '+919876543210'
-  const phoneNumber = '+919876543210'
+  const whatsappNumber = '+919009008756'
+  const phoneNumber = '+919009008756'
   const whatsappMessage = encodeURIComponent(`Hi! I'm interested in ${car.title}. Is it still available?`)
 
   const handleShareClick = () => {
@@ -56,27 +56,8 @@ export function CarDetailClient({ car }: { car: any }) {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Images & Details */}
             <div className="lg:col-span-2 space-y-6">
-              {/* Main Image */}
-              <div className="bg-white rounded-lg shadow-md overflow-hidden">
-                <div className="aspect-[16/9] bg-gray-100">
-                  <img
-                    src={imageUrl}
-                    alt={car.title}
-                    className="w-full h-full object-contain"
-                  />
-                </div>
-                
-                {/* Thumbnails */}
-                {imagesArray.length > 1 && (
-                  <div className="p-4 flex gap-2 overflow-x-auto">
-                    {imagesArray.map((img, index) => (
-                      <div key={index} className="flex-shrink-0 w-20 h-16 rounded border overflow-hidden">
-                        <img src={img} alt={`${car.title} ${index + 1}`} className="w-full h-full object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* FIXED: Image Carousel with Navigation */}
+              <CarImageCarousel images={imagesArray} title={car.title} />
 
               {/* Car Details */}
               <div className="bg-white rounded-lg shadow-md p-6">
@@ -105,6 +86,14 @@ export function CarDetailClient({ car }: { car: any }) {
                   <div>
                     <span className="text-gray-500 text-sm">KM Driven</span>
                     <p className="font-medium">{car.kmDriven?.toLocaleString()} km</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">Owners</span>
+                    <p className="font-medium">{car.owners} Previous</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">Seller Type</span>
+                    <p className="font-medium">{car.sellerType}</p>
                   </div>
                 </div>
 
