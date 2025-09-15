@@ -40,12 +40,10 @@ export function CarGrid({ cars, loading }: CarGridProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
       {cars.map((car) => (
-        <Link 
-          key={car.id}
-          href={`/cars/${car.id}`} // FIX: Navigate to dedicated page
-          className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200 hover:-translate-y-1 block"
-        >
-          <CarImage car={car} />
+        <div key={car.id} className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200">
+          <Link href={`/cars/${car.id}`} className="block">
+            <CarImage car={car} />
+          </Link>
           
           <div className="p-4">
             <h3 className="font-semibold text-lg mb-2 text-gray-900 line-clamp-2">
@@ -63,10 +61,9 @@ export function CarGrid({ cars, loading }: CarGridProps) {
             
             <div className="flex items-center justify-between mb-3">
               <p className="text-blue-600 font-bold text-xl">
-                {/* FIX: Remove double rupee symbol */}
                 {typeof car.price === 'string' && car.price.includes('₹') 
                   ? car.price 
-                  : `₹${car.price?.toString().replace(/₹/g, '')}`}
+                  : `₹${car.price?.toString().replace(/₹/g, '').replace(/\B(?=(\d{3})+(?!\d))/g, ',')}`}
               </p>
               {car.isFeatured && (
                 <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
@@ -75,12 +72,20 @@ export function CarGrid({ cars, loading }: CarGridProps) {
               )}
             </div>
             
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500 mb-4">
               <span>{car.year} • {car.fuelType}</span>
               <span>{car.kmDriven?.toLocaleString()} km</span>
               <span>{car.transmission}</span>
               <span>{car.owners} owner{car.owners !== 1 ? 's' : ''}</span>
             </div>
+
+            {/* FIXED: Add View Details Button */}
+            <Link 
+              href={`/cars/${car.id}`}
+              className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors text-center block"
+            >
+              View Details
+            </Link>
             
             {car.carStreetsListed && (
               <div className="mt-3 pt-2 border-t border-gray-100">
@@ -90,7 +95,7 @@ export function CarGrid({ cars, loading }: CarGridProps) {
               </div>
             )}
           </div>
-        </Link>
+        </div>
       ))}
     </div>
   )

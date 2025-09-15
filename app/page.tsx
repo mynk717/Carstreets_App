@@ -9,11 +9,8 @@ import { Button } from './components/ui/Button'
 export default function Home() {
   const [cars, setCars] = useState<Car[]>([])
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [selectedBrand, setSelectedBrand] = useState('')
   const [selectedFuelType, setSelectedFuelType] = useState('')
-  
-  // Lead capture form
   const [showLeadForm, setShowLeadForm] = useState(false)
   const [leadForm, setLeadForm] = useState({
     name: '',
@@ -23,10 +20,8 @@ export default function Home() {
     message: ''
   })
 
-  // Existing fetchCars function...
   const fetchCars = async (forceRefresh = false) => {
     setLoading(true)
-    setError(null)
     
     try {
       const url = new URL('/api/cars', window.location.origin)
@@ -40,11 +35,10 @@ export default function Home() {
       if (data.success) {
         setCars(data.cars)
       } else {
-        setError(data.error || 'Failed to fetch cars')
         setCars(data.cars || [])
       }
     } catch (err) {
-      setError('Failed to fetch cars')
+      console.error('Failed to fetch cars:', err)
     } finally {
       setLoading(false)
     }
@@ -70,7 +64,6 @@ export default function Home() {
   })
 
   const carStreetsListings = cars.filter(car => car.carStreetsListed === true).length
-  const totalCars = cars.length
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -90,7 +83,7 @@ export default function Home() {
                 onClick={() => document.getElementById('cars-section')?.scrollIntoView({ behavior: 'smooth' })}
                 className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-3 text-lg"
               >
-                Browse Cars ({totalCars})
+                Browse Cars ({cars.length})
               </Button>
               <Button 
                 onClick={() => setShowLeadForm(true)}
@@ -107,7 +100,7 @@ export default function Home() {
                 <div className="text-blue-200">CarStreets Exclusive</div>
               </div>
               <div className="text-center">
-                <div className="text-3xl font-bold">{totalCars}</div>
+                <div className="text-3xl font-bold">{cars.length}</div>
                 <div className="text-blue-200">Total Cars Available</div>
               </div>
               <div className="text-center">
@@ -152,7 +145,7 @@ export default function Home() {
               className="flex items-center gap-1"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              {loading ? 'Loading...' : 'Refresh Data'}
+              {loading ? 'Loading...' : 'Refresh'}
             </Button>
           </div>
         </div>
@@ -215,13 +208,6 @@ export default function Home() {
                 <option value="Sedans">Sedans</option>
                 <option value="Hatchbacks">Hatchbacks</option>
               </select>
-              <textarea
-                placeholder="Any specific requirements?"
-                value={leadForm.message}
-                onChange={(e) => setLeadForm({...leadForm, message: e.target.value})}
-                className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={3}
-              />
               <Button type="submit" className="w-full bg-green-500 hover:bg-green-600">
                 Get My Best Deals
               </Button>
