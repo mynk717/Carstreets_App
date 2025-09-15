@@ -1,5 +1,6 @@
 /* ----------  app/lib/database/db.ts  ---------- */
 import { PrismaClient } from '@prisma/client'
+import { smartMergeScrapedCars } from './smartMerge'
 
 const prisma = new PrismaClient()
 
@@ -13,26 +14,24 @@ function normaliseCar(raw: any) {
           : BigInt(raw.price)
 
   /* images -> string[]  (handles array OR comma-joined string) */
-  /* images -> handle Json field properly */
-let imgs: string[] = []
-if (raw.images) {
-  if (Array.isArray(raw.images)) {
-    imgs = raw.images
-  } else if (typeof raw.images === 'string') {
-    try {
-      // Handle Json field - might be stringified JSON
-      const parsed = JSON.parse(raw.images)
-      imgs = Array.isArray(parsed) ? parsed : [raw.images]
-    } catch {
-      // If not valid JSON, treat as single image or comma-separated
-      imgs = raw.images.split(',').map(s => s.trim()).filter(Boolean)
+  let imgs: string[] = []
+  if (raw.images) {
+    if (Array.isArray(raw.images)) {
+      imgs = raw.images
+    } else if (typeof raw.images === 'string') {
+      try {
+        // Handle Json field - might be stringified JSON
+        const parsed = JSON.parse(raw.images)
+        imgs = Array.isArray(parsed) ? parsed : [raw.images]
+      } catch {
+        // If not valid JSON, treat as single image or comma-separated
+        imgs = raw.images.split(',').map(s => s.trim()).filter(Boolean)
+      }
+    } else if (typeof raw.images === 'object') {
+      // Already parsed Json object
+      imgs = Array.isArray(raw.images) ? raw.images : []
     }
-  } else if (typeof raw.images === 'object') {
-    // Already parsed Json object
-    imgs = Array.isArray(raw.images) ? raw.images : []
   }
-}
-
 
   /* upgrade OLX thumb size */
   imgs = imgs.map(u => u.replace(/;s=\d+x\d+/, ';s=780'))
@@ -80,12 +79,31 @@ const toDbCar = (c: any) => ({
 })()
 })
 
+/* ---------- SMART MERGE WRITE ---------- */
+export async function saveScrapedCars(cars: any[]) {
+  console.log(`🚀 Starting smart save of ${cars.length} scraped cars...`)
+  
+  // Normalize cars before merging
+  const normalizedCars = cars.map(car => normaliseCar(car))
+  
+  // Use smart merge instead of destructive replace
+  const results = await smartMergeScrapedCars(normalizedCars)
+  
+  console.log(`✅ Smart save completed:
+    📥 ${results.added} new cars added
+    🔄 ${results.updated} cars updated  
+    🛡️ ${results.preserved} manual edits preserved
+    🗑️ ${results.removed} old cars removed
+    ❌ ${results.errors} errors`)
+    
+  return results
+}
 
-/* ---------- WRITE ---------- */
+/* ---------- LEGACY DESTRUCTIVE WRITE (for initial import) ---------- */
 export async function saveCars(cars: any[]) {
+  console.log('⚠️ DESTRUCTIVE: Bulk replacing all cars')
   await prisma.car.deleteMany()
   for (const car of cars) {
-    // Apply both normalizations: normaliseCar + toDbCar adapter
     await prisma.car.create({ data: toDbCar(normaliseCar(car)) })
   }
 }
@@ -105,12 +123,14 @@ export async function fetchCars() {
   : 'Contact for price'
   }))
 }
+
 export async function fetchCarById(carId: string) {
   const car = await prisma.car.findUnique({
     where: { id: carId }
   })
   return car
 }
+
 /* ---------- CLOSE ---------- */
 export async function close() {
   await prisma.$disconnect()

@@ -1,49 +1,103 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 
-// PUT - Update existing car
-export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+// PUT - Update existing car with async params
+export async function PUT(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // FIXED: Await params in Next.js 15
+    const { id } = await params
     const updates = await request.json()
     
-    // Convert data to match your Prisma schema
-    const dbUpdates = {
+    // Get existing car to compare changes
+    const existingCar = await prisma.car.findUnique({
+      where: { id }
+    })
+    
+    if (!existingCar) {
+      return NextResponse.json({
+        error: 'Car not found'
+      }, { status: 404 })
+    }
+
+    // Track which fields were manually edited
+    const currentEditedFields = Array.isArray(existingCar.editedFields) 
+      ? existingCar.editedFields as string[]
+      : []
+    
+    const fieldsToTrack = ['title', 'price', 'description', 'location', 'images', 'kmDriven', 'year', 'owners', 'brand', 'model', 'variant', 'fuelType', 'transmission']
+    const newlyEditedFields = [...currentEditedFields]
+    
+    // Check which fields are being changed
+    for (const field of fieldsToTrack) {
+      if (updates[field] !== undefined) {
+        let existingValue = existingCar[field as keyof typeof existingCar]
+        let newValue = updates[field]
+        
+        // Special handling for different types
+        if (field === 'price') {
+          existingValue = existingCar.price?.toString()
+          newValue = typeof updates.price === 'string' 
+            ? updates.price.replace(/[\u20B9,\s]/g, '') // Remove rupee symbol and commas
+            : updates.price?.toString()
+        } else if (field === 'images') {
+          existingValue = JSON.stringify(existingCar.images)
+          newValue = JSON.stringify(
+            Array.isArray(updates.images) ? updates.images : 
+            typeof updates.images === 'string' ? 
+            updates.images.split('\n').filter((url: string) => url.trim()) : []
+          )
+        }
+        
+        // If value changed and not already tracked, add to edited fields
+        if (existingValue !== newValue && !newlyEditedFields.includes(field)) {
+          newlyEditedFields.push(field)
+        }
+      }
+    }
+
+    // Convert data to match Prisma schema
+    const dbUpdates: any = {
       title: updates.title,
       brand: updates.brand,
       model: updates.model,
       variant: updates.variant || null,
       price: updates.price ? BigInt(typeof updates.price === 'string' ? 
-        parseInt(updates.price.replace(/[₹,\s]/g, '')) || 0 : 
+        parseInt(updates.price.replace(/[\u20B9,\s]/g, '')) || 0 : 
         updates.price) : undefined,
-      year: updates.year ? parseInt(updates.year) : undefined,
+      year: updates.year ? parseInt(updates.year.toString()) : undefined,
       fuelType: updates.fuelType,
       transmission: updates.transmission,
-      kmDriven: updates.kmDriven ? parseInt(updates.kmDriven) : undefined,
+      kmDriven: updates.kmDriven ? parseInt(updates.kmDriven.toString()) : undefined,
       location: updates.location,
       images: updates.images ? (Array.isArray(updates.images) ? updates.images : 
         typeof updates.images === 'string' ? 
-        updates.images.split('\n').filter(url => url.trim()) : []) : undefined,
+        updates.images.split('\n').filter((url: string) => url.trim()) : []) : undefined,
       description: updates.description,
       sellerType: updates.sellerType,
-      owners: updates.owners ? parseInt(updates.owners) : undefined,
+      owners: updates.owners ? parseInt(updates.owners.toString()) : undefined,
       isVerified: updates.isVerified,
       isFeatured: updates.isFeatured,
       carStreetsListed: updates.carStreetsListed,
-      updatedAt: new Date()
+      updatedAt: new Date(),
+      
+      // Track manual edits
+      manuallyEdited: true,
+      editedFields: newlyEditedFields
     }
     
     // Remove undefined values
     Object.keys(dbUpdates).forEach(key => 
       dbUpdates[key] === undefined && delete dbUpdates[key])
     
-    console.log('🔄 Updating car:', params.id, dbUpdates.title)
+    console.log('🔄 Updating car:', id, dbUpdates.title)
+    console.log('📝 Tracking edited fields:', newlyEditedFields)
     
     const updatedCar = await prisma.car.update({
-      where: { id: params.id },
+      where: { id },
       data: dbUpdates
     })
     
-    console.log('✅ Car updated successfully')
+    console.log('✅ Car updated successfully with edit tracking')
     
     return NextResponse.json({
       success: true,
@@ -55,7 +109,7 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
       }
     })
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error updating car:', error)
     
     if (error.code === 'P2025') {
@@ -71,13 +125,16 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
   }
 }
 
-// DELETE - Remove car
-export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
+// DELETE - Remove car with async params
+export async function DELETE(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    console.log('🗑️ Deleting car:', params.id)
+    // FIXED: Await params in Next.js 15
+    const { id } = await params
+    
+    console.log('🗑️ Deleting car:', id)
     
     const deletedCar = await prisma.car.delete({
-      where: { id: params.id }
+      where: { id }
     })
     
     console.log('✅ Car deleted successfully:', deletedCar.title)
@@ -87,7 +144,7 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
       message: 'Car deleted successfully'
     })
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Error deleting car:', error)
     
     if (error.code === 'P2025') {
@@ -103,11 +160,14 @@ export async function DELETE(request: NextRequest, { params }: { params: { id: s
   }
 }
 
-// GET - Fetch single car (bonus)
-export async function GET(request: NextRequest, { params }: { params: { id: string } }) {
+// GET - Fetch single car with async params
+export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    // FIXED: Await params in Next.js 15
+    const { id } = await params
+    
     const car = await prisma.car.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
     
     if (!car) {

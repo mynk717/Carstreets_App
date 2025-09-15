@@ -3,10 +3,13 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { CarDetailClient } from './CarDetailClient'
 
-type Props = { params: { id: string } }
+// FIXED: Make params async for Next.js 15
+type Props = { params: Promise<{ id: string }> }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const car = await prisma.car.findUnique({ where: { id: params.id } })
+  // FIXED: Await params in Next.js 15
+  const { id } = await params
+  const car = await prisma.car.findUnique({ where: { id } })
   
   if (!car) {
     return {
@@ -55,7 +58,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CarPage({ params }: Props) {
-  const car = await prisma.car.findUnique({ where: { id: params.id } })
+  // FIXED: Await params in Next.js 15
+  const { id } = await params
+  const car = await prisma.car.findUnique({ where: { id } })
   
   if (!car) {
     return (

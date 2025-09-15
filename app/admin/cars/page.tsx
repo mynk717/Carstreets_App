@@ -5,6 +5,7 @@ import { RefreshCw, Plus, Trash2, Edit, AlertCircle } from 'lucide-react'
 import { Button } from '../../components/ui/Button'
 import { Car } from '../../types'
 import { CarFormModal } from './components/CarFormModal'
+import { ScrapeButton } from './components/ScrapeButton'
 
 export default function AdminCarsPage() {
   const [cars, setCars] = useState<Car[]>([])
@@ -272,6 +273,7 @@ export default function AdminCarsPage() {
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Car Inventory Management</h1>
         <div className="flex gap-2">
+          <ScrapeButton />
           <Button 
             onClick={handleAddNewCar}
             className="bg-green-500 hover:bg-green-600 flex items-center gap-2"

@@ -36,4 +36,11 @@ model Car {
   carStreetsListed Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  manuallyEdited   Boolean  @default(false)    // Track if user edited this car
+  editedFields     Json     @default("[]")     // Track which fields were edited
+  lastScrapedAt    DateTime @default(now())    // When this was last scraped
+  isUserAdded      Boolean  @default(false)    // True for cars added via "Add Car" button
+  scrapedData      Json?                       // Store original scraped data for comparison
+
+  @@map("cars")
 }
