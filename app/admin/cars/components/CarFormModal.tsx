@@ -5,6 +5,61 @@ import { X, ChevronDown } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Car } from '../../../types'
 
+// Helper function to safely handle textarea value
+const getTextareaValue = (val: string | string[] | undefined | null): string => {
+  if (!val) return ''
+  if (Array.isArray(val)) return val.join('\n')
+  if (typeof val === 'string') return val
+  return ''
+}
+
+// Helper function to safely convert price to string
+const getPriceString = (price: string | number | bigint | undefined): string => {
+  if (!price) return ''
+  if (typeof price === 'string') return price
+  if (typeof price === 'number' || typeof price === 'bigint') return price.toString()
+  return ''
+}
+
+// Fixed interface - don't extend Partial<Car>
+interface ExtendedFormData {
+  id?: string
+  title?: string
+  brand?: string
+  model?: string
+  variant?: string | null
+  price?: string | number | bigint  // This is the problematic line - now fixed
+  year?: number
+  fuelType?: string
+  transmission?: string
+  kmDriven?: number
+  location?: string
+  images?: string | string[]  // Allow both types during editing
+  description?: string
+  sellerType?: string
+  postedDate?: string
+  owners?: number
+  isVerified?: boolean
+  isFeatured?: boolean
+  dataSource?: string
+  olxProfile?: string | null
+  olxProfileId?: string | null
+  originalUrl?: string | null
+  attribution?: string | null
+  carStreetsListed?: boolean
+  createdAt?: Date
+  updatedAt?: Date
+  // Extended fields for enhanced editing
+  discountedPrice?: string
+  sellingPoints?: string
+  condition?: string
+  availableForFinance?: boolean
+  availableForExchange?: boolean
+  serviceHistory?: string
+  insurance?: string
+}
+
+
 interface CarFormModalProps {
   car: Car | null
   isOpen: boolean
@@ -14,7 +69,7 @@ interface CarFormModalProps {
 }
 
 export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormModalProps) {
-  const [formData, setFormData] = useState<Partial<Car>>({})
+  const [formData, setFormData] = useState<ExtendedFormData>({})
   const [showBrandDropdown, setShowBrandDropdown] = useState(false)
   const [customBrand, setCustomBrand] = useState('')
 
@@ -28,11 +83,31 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
 
   useEffect(() => {
     if (car) {
+      // Safe image conversion
+      let imagesString = ''
+      if (Array.isArray(car.images)) {
+        imagesString = car.images.join('\n')
+      } else if (typeof car.images === 'string') {
+        try {
+          const parsed = JSON.parse(car.images)
+          imagesString = Array.isArray(parsed) ? parsed.join('\n') : car.images
+        } catch {
+          imagesString = car.images
+        }
+      }
+
       setFormData({
         ...car,
-        images: Array.isArray(car.images) ? car.images.join('\n') : car.images || '',
-        price: typeof car.price === 'number' ? car.price.toString() : car.price || ''
-      } as any)
+        images: imagesString,
+        price: getPriceString(car.price),
+        discountedPrice: (car as any).discountedPrice || '',
+        sellingPoints: (car as any).sellingPoints || '',
+        condition: (car as any).condition || 'Good',
+        availableForFinance: (car as any).availableForFinance ?? true,
+        availableForExchange: (car as any).availableForExchange ?? true,
+        serviceHistory: (car as any).serviceHistory || 'Available',
+        insurance: (car as any).insurance || 'Valid'
+      })
       
       // Check if brand is custom (not in predefined list)
       if (car.brand && !predefinedBrands.includes(car.brand)) {
@@ -68,14 +143,24 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
       return
     }
 
+    // Safe image parsing with type guards
+    let imageArray: string[] = []
+    const imagesValue = formData.images
+    if (typeof imagesValue === 'string') {
+      imageArray = imagesValue
+        .split(/[\n,]/) // Split on both newlines AND commas
+        .map(url => url.trim())
+        .filter(url => url && url.startsWith('http')) // Only valid URLs
+    } else if (Array.isArray(imagesValue)) {
+      imageArray = imagesValue.filter(Boolean)
+    }
+
     const carToSave: Car = {
       ...formData,
       brand: customBrand || formData.brand || '',
-      images: typeof formData.images === 'string' 
-        ? (formData.images as string).split('\n').filter(url => url.trim()) 
-        : Array.isArray(formData.images) ? formData.images : [],
+      images: imageArray,
       price: typeof formData.price === 'string' 
-        ? (formData.price.replace(/[₹,]/g, '') || '0')
+        ? (formData.price.replace(/[₹,\s]/g, '') || '0')
         : formData.price?.toString() || '0',
       kmDriven: Number(formData.kmDriven) || 0,
       year: Number(formData.year) || new Date().getFullYear(),
@@ -85,13 +170,7 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
     } as Car
 
     console.log('🚀 Saving car:', carToSave)
-    
-    try {
-      onSave(carToSave)
-    } catch (error) {
-      console.error('❌ Save error:', error)
-      alert('Failed to save car. Check console for details.')
-    }
+    onSave(carToSave)
   }
 
   if (!isOpen) return null
@@ -100,7 +179,7 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 max-w-4xl w-full max-h-[95vh] overflow-y-auto mx-4">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-xl font-bold">{title}</h2>
+          <h2 className="text-xl font-bold text-gray-900">{title}</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
             <X className="w-6 h-6" />
           </button>
@@ -109,12 +188,15 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Basic Info */}
           <div className="lg:col-span-3">
-            <label className="block text-sm font-medium mb-1 text-red-600">Title *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Title *</label>
             <input
               type="text"
               value={formData.title || ''}
               onChange={(e) => setFormData({...formData, title: e.target.value})}
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               placeholder="Maruti Suzuki Swift Dzire VXI, 2020, Petrol"
               required
             />
@@ -122,49 +204,61 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
 
           {/* Pricing Section */}
           <div>
-            <label className="block text-sm font-medium mb-1 text-red-600">Price *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Price *</label>
             <input
               type="text"
-              value={formData.price || ''}
+              value={getPriceString(formData.price)}
               onChange={(e) => setFormData({...formData, price: e.target.value})}
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               placeholder="₹5,50,000"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">CarStreets Special Price</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">CarStreets Special Price</label>
             <input
               type="text"
-              value={(formData as any).discountedPrice || ''}
-              onChange={(e) => setFormData({...formData, discountedPrice: e.target.value} as any)}
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-green-500"
+              value={formData.discountedPrice || ''}
+              onChange={(e) => setFormData({...formData, discountedPrice: e.target.value})}
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-green-500
+                         bg-white"
               placeholder="₹5,25,000 (Better Deal!)"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Location</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Location</label>
             <input
               type="text"
               value={formData.location || ''}
               onChange={(e) => setFormData({...formData, location: e.target.value})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               placeholder="Raipur, Chhattisgarh"
             />
           </div>
 
           {/* Enhanced Brand Selection */}
           <div className="relative">
-            <label className="block text-sm font-medium mb-1 text-red-600">Brand *</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Brand *</label>
             {customBrand || !predefinedBrands.includes(formData.brand || '') ? (
               <div className="flex gap-1">
                 <input
                   type="text"
                   value={customBrand || formData.brand || ''}
                   onChange={(e) => handleCustomBrandChange(e.target.value)}
-                  className="flex-1 px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="flex-1 px-3 py-2 border rounded 
+                             text-gray-900 placeholder-gray-500 
+                             focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                             bg-white"
                   placeholder="Enter brand name"
                 />
                 <button
@@ -174,7 +268,7 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
                     setFormData({...formData, brand: ''})
                     setShowBrandDropdown(true)
                   }}
-                  className="px-3 py-2 border rounded hover:bg-gray-50"
+                  className="px-3 py-2 border rounded hover:bg-gray-50 text-gray-700"
                   title="Choose from list"
                 >
                   <ChevronDown className="w-4 h-4" />
@@ -185,10 +279,11 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
                 <button
                   type="button"
                   onClick={() => setShowBrandDropdown(!showBrandDropdown)}
-                  className="w-full px-3 py-2 border rounded text-left flex justify-between items-center hover:bg-gray-50"
+                  className="w-full px-3 py-2 border rounded text-left flex justify-between items-center hover:bg-gray-50 
+                             text-gray-900 bg-white"
                 >
                   <span>{formData.brand || 'Select Brand'}</span>
-                  <ChevronDown className="w-4 h-4" />
+                  <ChevronDown className="w-4 h-4 text-gray-500" />
                 </button>
                 
                 {showBrandDropdown && (
@@ -205,7 +300,7 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
                         key={brand}
                         type="button"
                         onClick={() => handleBrandSelect(brand)}
-                        className="w-full px-3 py-2 text-left hover:bg-gray-50"
+                        className="w-full px-3 py-2 text-left hover:bg-gray-50 text-gray-900"
                       >
                         {brand}
                       </button>
@@ -217,57 +312,70 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Model</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Model</label>
             <input
               type="text"
               value={formData.model || ''}
               onChange={(e) => setFormData({...formData, model: e.target.value})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               placeholder="Swift Dzire"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Variant</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Variant</label>
             <input
               type="text"
               value={formData.variant || ''}
               onChange={(e) => setFormData({...formData, variant: e.target.value})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               placeholder="VXI, ZXI, etc."
             />
           </div>
 
-          {/* Rest of the form remains the same... */}
+          {/* Vehicle Details */}
           <div>
-            <label className="block text-sm font-medium mb-1">Year</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Year</label>
             <input
               type="number"
               value={formData.year || ''}
               onChange={(e) => setFormData({...formData, year: parseInt(e.target.value)})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               min="1990"
               max={new Date().getFullYear() + 1}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">KM Driven</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">KM Driven</label>
             <input
               type="number"
               value={formData.kmDriven || ''}
               onChange={(e) => setFormData({...formData, kmDriven: parseInt(e.target.value)})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               placeholder="50000"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Owners</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Owners</label>
             <select
               value={formData.owners || 1}
               onChange={(e) => setFormData({...formData, owners: parseInt(e.target.value)})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
             >
               <option value={1}>1st Owner</option>
               <option value={2}>2nd Owner</option>
@@ -277,11 +385,13 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Fuel Type</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Fuel Type</label>
             <select
               value={formData.fuelType || 'Petrol'}
               onChange={(e) => setFormData({...formData, fuelType: e.target.value as any})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
             >
               <option value="Petrol">Petrol</option>
               <option value="Diesel">Diesel</option>
@@ -292,11 +402,13 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Transmission</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Transmission</label>
             <select
               value={formData.transmission || 'Manual'}
               onChange={(e) => setFormData({...formData, transmission: e.target.value as any})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
             >
               <option value="Manual">Manual</option>
               <option value="Automatic">Automatic</option>
@@ -304,11 +416,13 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Seller Type</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Seller Type</label>
             <select
               value={formData.sellerType || 'Individual'}
               onChange={(e) => setFormData({...formData, sellerType: e.target.value as any})}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
             >
               <option value="Individual">Individual</option>
               <option value="Dealer">Dealer</option>
@@ -317,11 +431,13 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
 
           {/* Enhanced Fields */}
           <div>
-            <label className="block text-sm font-medium mb-1">Condition</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Condition</label>
             <select
-              value={(formData as any).condition || 'Good'}
-              onChange={(e) => setFormData({...formData, condition: e.target.value} as any)}
-              className="w-full px-3 py-2 border rounded"
+              value={formData.condition || 'Good'}
+              onChange={(e) => setFormData({...formData, condition: e.target.value})}
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
             >
               <option value="Excellent">Excellent</option>
               <option value="Very Good">Very Good</option>
@@ -331,11 +447,13 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Service History</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Service History</label>
             <select
-              value={(formData as any).serviceHistory || 'Available'}
-              onChange={(e) => setFormData({...formData, serviceHistory: e.target.value} as any)}
-              className="w-full px-3 py-2 border rounded"
+              value={formData.serviceHistory || 'Available'}
+              onChange={(e) => setFormData({...formData, serviceHistory: e.target.value})}
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
             >
               <option value="Available">Available</option>
               <option value="Partial">Partial</option>
@@ -344,11 +462,13 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
           </div>
 
           <div>
-            <label className="block text-sm font-medium mb-1">Insurance</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Insurance</label>
             <select
-              value={(formData as any).insurance || 'Valid'}
-              onChange={(e) => setFormData({...formData, insurance: e.target.value} as any)}
-              className="w-full px-3 py-2 border rounded"
+              value={formData.insurance || 'Valid'}
+              onChange={(e) => setFormData({...formData, insurance: e.target.value})}
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
             >
               <option value="Valid">Valid</option>
               <option value="Expired">Expired</option>
@@ -358,63 +478,77 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
 
           {/* Description */}
           <div className="lg:col-span-3">
-            <label className="block text-sm font-medium mb-1">Description</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Description</label>
             <textarea
               value={formData.description || ''}
               onChange={(e) => setFormData({...formData, description: e.target.value})}
               rows={4}
-              className="w-full px-3 py-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               placeholder="Detailed description of the vehicle condition, features, etc."
             />
           </div>
 
           {/* Selling Points */}
           <div className="lg:col-span-3">
-            <label className="block text-sm font-medium mb-1">Selling Points (for marketing)</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Selling Points (for marketing)</label>
             <textarea
-              value={(formData as any).sellingPoints || ''}
-              onChange={(e) => setFormData({...formData, sellingPoints: e.target.value} as any)}
+              value={formData.sellingPoints || ''}
+              onChange={(e) => setFormData({...formData, sellingPoints: e.target.value})}
               rows={3}
-              className="w-full px-3 py-2 border rounded"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
               placeholder="• Excellent condition, single owner&#10;• Full service history available&#10;• Recently serviced, new tires"
             />
           </div>
 
           {/* Images */}
           <div className="lg:col-span-3">
-            <label className="block text-sm font-medium mb-1">Image URLs (one per line)</label>
+            <label className="block text-sm font-medium mb-1 text-gray-800">Image URLs</label>
             <textarea
-              value={formData.images || ''}
-              onChange={(e) => setFormData({...formData, images: e.target.value} as any)}
+              value={getTextareaValue(formData.images)}
+              onChange={(e) => setFormData({...formData, images: e.target.value})}
               rows={4}
-              className="w-full px-3 py-2 border rounded"
-              placeholder="https://apollo.olx.in/v1/files/image1.jpg&#10;https://apollo.olx.in/v1/files/image2.jpg"
+              className="w-full px-3 py-2 border rounded 
+                         text-gray-900 placeholder-gray-500 
+                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                         bg-white"
+              placeholder="https://apollo.olx.in/v1/files/image1.jpg
+https://apollo.olx.in/v1/files/image2.jpg
+Or separate with commas"
             />
+            <p className="text-xs text-gray-600 mt-1">
+              📸 Paste one URL per line or separate with commas. First image appears as cover photo.
+            </p>
           </div>
 
           {/* Checkboxes */}
           <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
-            <label className="flex items-center">
+            <label className="flex items-center text-gray-800">
               <input
                 type="checkbox"
-                checked={(formData as any).availableForFinance || false}
-                onChange={(e) => setFormData({...formData, availableForFinance: e.target.checked} as any)}
+                checked={formData.availableForFinance ?? false}
+                onChange={(e) => setFormData({...formData, availableForFinance: e.target.checked})}
                 className="mr-2"
               />
               Finance Available
             </label>
             
-            <label className="flex items-center">
+            <label className="flex items-center text-gray-800">
               <input
                 type="checkbox"
-                checked={(formData as any).availableForExchange || false}
-                onChange={(e) => setFormData({...formData, availableForExchange: e.target.checked} as any)}
+                checked={formData.availableForExchange ?? false}
+                onChange={(e) => setFormData({...formData, availableForExchange: e.target.checked})}
                 className="mr-2"
               />
               Exchange Accepted
             </label>
 
-            <label className="flex items-center">
+            <label className="flex items-center text-gray-800">
               <input
                 type="checkbox"
                 checked={formData.isFeatured || false}
@@ -424,7 +558,7 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
               Featured Listing
             </label>
 
-            <label className="flex items-center">
+            <label className="flex items-center text-gray-800">
               <input
                 type="checkbox"
                 checked={formData.carStreetsListed || false}
@@ -438,10 +572,10 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
 
         {/* Save/Cancel */}
         <div className="flex justify-end gap-2 mt-6 pt-4 border-t">
-          <Button onClick={onClose} className="bg-gray-500 hover:bg-gray-600">
+          <Button onClick={onClose} className="bg-gray-500 hover:bg-gray-600 text-white">
             Cancel
           </Button>
-          <Button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600">
+          <Button onClick={handleSave} className="bg-blue-500 hover:bg-blue-600 text-white">
             Save Car
           </Button>
         </div>
