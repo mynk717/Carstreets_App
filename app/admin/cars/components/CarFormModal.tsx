@@ -1,9 +1,11 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, ChevronDown } from 'lucide-react'
+import { CldUploadWidget } from 'next-cloudinary'
+import { Upload, X, ChevronDown } from 'lucide-react'
 import { Button } from '../../../components/ui/Button'
 import { Car } from '../../../types'
+
 
 // Helper function to safely handle textarea value
 const getTextareaValue = (val: string | string[] | undefined | null): string => {
@@ -506,25 +508,125 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
             />
           </div>
 
-          {/* Images */}
-          <div className="lg:col-span-3">
-            <label className="block text-sm font-medium mb-1 text-gray-800">Image URLs</label>
-            <textarea
-              value={getTextareaValue(formData.images)}
-              onChange={(e) => setFormData({...formData, images: e.target.value})}
-              rows={4}
-              className="w-full px-3 py-2 border rounded 
-                         text-gray-900 placeholder-gray-500 
-                         focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                         bg-white"
-              placeholder="https://apollo.olx.in/v1/files/image1.jpg
+          {/* Images Section - Enhanced with Cloudinary Upload */}
+<div className="lg:col-span-3">
+  <label className="block text-sm font-medium mb-1 text-gray-800">Car Images</label>
+  
+  {/* Cloudinary Upload Widget */}
+  <div className="mb-4">
+    <CldUploadWidget
+      uploadPreset="carstreets-unsigned"
+      options={{
+        multiple: true,
+        maxFiles: 10,
+        resourceType: "image",
+        maxImageFileSize: 5000000, // 5MB
+        cropping: true,
+        croppingAspectRatio: 16/9,
+        sources: ['local', 'camera', 'url'],
+        showSkipCropButton: false,
+        croppingShowBackButton: true,
+        folder: "carstreets/cars"
+      }}
+      onUpload={(result: any) => {
+        if (result.event === 'success') {
+          const currentImages = typeof formData.images === 'string' 
+            ? formData.images.split('\n').filter(Boolean) 
+            : Array.isArray(formData.images) ? formData.images : []
+          
+          const newImageUrl = result.info.secure_url
+          const updatedImages = [...currentImages, newImageUrl].join('\n')
+          
+          setFormData({...formData, images: updatedImages})
+        }
+      }}
+    >
+      {({ open }: any) => (
+        <button
+          type="button"
+          onClick={() => open()}
+          className="w-full border-2 border-dashed border-blue-300 rounded-lg p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition-all group"
+        >
+          <div className="flex flex-col items-center">
+            <Upload className="w-12 h-12 text-blue-400 group-hover:text-blue-600 mb-3" />
+            <div className="font-medium text-gray-700 group-hover:text-blue-700 mb-1">
+              Upload Car Images
+            </div>
+            <div className="text-sm text-gray-500">
+              Drag & drop or click to upload • Max 10 images • 5MB each
+            </div>
+            <div className="text-xs text-blue-600 mt-2">
+              📸 Auto-optimized with Cloudinary
+            </div>
+          </div>
+        </button>
+      )}
+    </CldUploadWidget>
+  </div>
+  
+  {/* Manual URL Input (for OLX images) */}
+  <div className="mb-4">
+    <div className="text-sm font-medium text-gray-600 mb-2">Or paste image URLs manually:</div>
+    <textarea
+      value={getTextareaValue(formData.images)}
+      onChange={(e) => setFormData({...formData, images: e.target.value})}
+      rows={4}
+      className="w-full px-3 py-2 border rounded 
+                 text-gray-900 placeholder-gray-500 
+                 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
+                 bg-white"
+      placeholder="https://apollo.olx.in/v1/files/image1.jpg
 https://apollo.olx.in/v1/files/image2.jpg
 Or separate with commas"
-            />
-            <p className="text-xs text-gray-600 mt-1">
-              📸 Paste one URL per line or separate with commas. First image appears as cover photo.
-            </p>
-          </div>
+    />
+  </div>
+  
+  {/* Image Preview */}
+  {(() => {
+    const imageUrls = typeof formData.images === 'string' 
+      ? formData.images.split(/[\n,]/).map(url => url.trim()).filter(Boolean)
+      : Array.isArray(formData.images) ? formData.images : []
+    
+    return imageUrls.length > 0 && (
+      <div>
+        <div className="text-sm font-medium text-gray-600 mb-2">
+          Preview ({imageUrls.length} images):
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {imageUrls.slice(0, 8).map((url, index) => (
+            <div key={index} className="relative group">
+              <img 
+                src={url} 
+                alt={`Preview ${index + 1}`}
+                className="w-full h-16 object-cover rounded border"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const filtered = imageUrls.filter((_, i) => i !== index)
+                  setFormData({...formData, images: filtered.join('\n')})
+                }}
+                className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+          {imageUrls.length > 8 && (
+            <div className="w-full h-16 bg-gray-100 rounded border flex items-center justify-center text-gray-500 text-xs">
+              +{imageUrls.length - 8} more
+            </div>
+          )}
+        </div>
+      </div>
+    )
+  })()}
+  
+  <p className="text-xs text-gray-600 mt-2">
+    💡 <strong>Tip:</strong> Uploaded images are automatically optimized. Manual URLs work for existing OLX images.
+  </p>
+</div>
+
 
           {/* Checkboxes */}
           <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-4 gap-4">
