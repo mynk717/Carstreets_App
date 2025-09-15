@@ -508,11 +508,18 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
             />
           </div>
 
-          {/* Images Section - Enhanced with Cloudinary Upload */}
+          {/* WORKING: Fixed Cloudinary Upload Section */}
 <div className="lg:col-span-3">
   <label className="block text-sm font-medium mb-1 text-gray-800">Car Images</label>
   
-  {/* Cloudinary Upload Widget */}
+  {/* Debug State Display (remove after testing) */}
+  {process.env.NODE_ENV === 'development' && (
+    <div className="mb-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs">
+      <strong>Debug:</strong> Current images: {JSON.stringify(formData.images)}
+    </div>
+  )}
+  
+  {/* Fixed Upload Widget */}
   <div className="mb-4">
     <CldUploadWidget
       uploadPreset="carstreets-unsigned"
@@ -520,43 +527,67 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
         multiple: true,
         maxFiles: 10,
         resourceType: "image",
-        maxImageFileSize: 5000000, // 5MB
-        cropping: true,
-        croppingAspectRatio: 16/9,
-        sources: ['local', 'camera', 'url'],
-        showSkipCropButton: false,
-        croppingShowBackButton: true,
-        folder: "carstreets/cars"
+        maxImageFileSize: 10000000, // 10MB
+        cropping: false, // CRITICAL: No forced cropping
+        sources: ['local', 'camera'],
+        folder: "carstreets/cars",
+        clientAllowedFormats: ['jpg', 'jpeg', 'png', 'webp']
       }}
       onUpload={(result: any) => {
-        if (result.event === 'success') {
-          const currentImages = typeof formData.images === 'string' 
-            ? formData.images.split('\n').filter(Boolean) 
-            : Array.isArray(formData.images) ? formData.images : []
-          
+        // FIXED: This fires for EACH successful upload
+        console.log('✅ Single file uploaded:', result.info)
+        
+        if (result.event === 'success' && result.info?.secure_url) {
           const newImageUrl = result.info.secure_url
-          const updatedImages = [...currentImages, newImageUrl].join('\n')
+          console.log('📷 Adding image to form:', newImageUrl)
           
-          setFormData({...formData, images: updatedImages})
+          // Get current images as array
+          const currentImagesString = getTextareaValue(formData.images)
+          const currentImages = currentImagesString ? 
+            currentImagesString.split('\n').filter(Boolean) : []
+          
+          // Add new image
+          const updatedImages = [...currentImages, newImageUrl]
+          const updatedImagesString = updatedImages.join('\n')
+          
+          console.log('🔄 Updating form state with:', updatedImagesString)
+          
+          // CRITICAL: Update form state immediately
+          setFormData(prev => ({
+            ...prev,
+            images: updatedImagesString
+          }))
+          
+          console.log('✅ Form state updated successfully')
         }
+      }}
+      onQueuesEnd={(result: any, { widget }: any) => {
+        // FIXED: This fires when ALL uploads complete
+        console.log('🎉 All uploads completed!')
+        console.log('📊 Final form state:', formData.images)
+      }}
+      onError={(error: any) => {
+        console.error('❌ Upload error:', error)
+        alert(`Upload failed: ${error.message || 'Unknown error'}`)
       }}
     >
       {({ open }: any) => (
         <button
           type="button"
-          onClick={() => open()}
-          className="w-full border-2 border-dashed border-blue-300 rounded-lg p-8 text-center hover:border-blue-500 hover:bg-blue-50 transition-all group"
+          onClick={(e) => {
+            e.preventDefault() // CRITICAL: Prevent form submission
+            console.log('🚀 Opening upload widget...')
+            open()
+          }}
+          className="w-full border-2 border-dashed border-blue-300 rounded-lg p-6 text-center hover:border-blue-500 hover:bg-blue-50 transition-all group"
         >
           <div className="flex flex-col items-center">
-            <Upload className="w-12 h-12 text-blue-400 group-hover:text-blue-600 mb-3" />
-            <div className="font-medium text-gray-700 group-hover:text-blue-700 mb-1">
-              Upload Car Images
+            <Upload className="w-10 h-10 text-blue-400 group-hover:text-blue-600 mb-3" />
+            <div className="font-medium text-gray-700 mb-1">
+              📸 Upload Car Images
             </div>
             <div className="text-sm text-gray-500">
-              Drag & drop or click to upload • Max 10 images • 5MB each
-            </div>
-            <div className="text-xs text-blue-600 mt-2">
-              📸 Auto-optimized with Cloudinary
+              Multiple files • No forced cropping • Up to 10 images
             </div>
           </div>
         </button>
@@ -564,41 +595,61 @@ export function CarFormModal({ car, isOpen, onClose, onSave, title }: CarFormMod
     </CldUploadWidget>
   </div>
   
-  {/* Manual URL Input (for OLX images) */}
+  {/* Manual URL Input for OLX Images */}
   <div className="mb-4">
-    <div className="text-sm font-medium text-gray-600 mb-2">Or paste image URLs manually:</div>
+    <div className="text-sm font-medium text-gray-600 mb-2">
+      Or paste OLX image URLs manually:
+    </div>
     <textarea
       value={getTextareaValue(formData.images)}
-      onChange={(e) => setFormData({...formData, images: e.target.value})}
-      rows={4}
+      onChange={(e) => {
+        console.log('📝 Manual input changed:', e.target.value)
+        setFormData({...formData, images: e.target.value})
+      }}
+      rows={3}
       className="w-full px-3 py-2 border rounded 
                  text-gray-900 placeholder-gray-500 
                  focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
                  bg-white"
-      placeholder="https://apollo.olx.in/v1/files/image1.jpg
-https://apollo.olx.in/v1/files/image2.jpg
-Or separate with commas"
+      placeholder="https://apollo.olx.in/v1/files/image1.jpg"
     />
   </div>
   
-  {/* Image Preview */}
+  {/* WORKING: Image Preview */}
   {(() => {
-    const imageUrls = typeof formData.images === 'string' 
-      ? formData.images.split(/[\n,]/).map(url => url.trim()).filter(Boolean)
-      : Array.isArray(formData.images) ? formData.images : []
+    const imageUrls = getTextareaValue(formData.images)
+      .split('\n')
+      .map(url => url.trim())
+      .filter(Boolean)
     
     return imageUrls.length > 0 && (
-      <div>
-        <div className="text-sm font-medium text-gray-600 mb-2">
-          Preview ({imageUrls.length} images):
+      <div className="border rounded-lg p-4 bg-gray-50">
+        <div className="flex justify-between items-center mb-3">
+          <div className="text-sm font-bold text-green-600">
+            ✅ {imageUrls.length} Image{imageUrls.length !== 1 ? 's' : ''} Ready
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              console.log('🗑️ Clearing all images')
+              setFormData({...formData, images: ''})
+            }}
+            className="text-xs text-red-600 hover:text-red-800"
+          >
+            Clear All
+          </button>
         </div>
-        <div className="grid grid-cols-4 gap-2">
-          {imageUrls.slice(0, 8).map((url, index) => (
+        
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
+          {imageUrls.map((url, index) => (
             <div key={index} className="relative group">
               <img 
                 src={url} 
                 alt={`Preview ${index + 1}`}
                 className="w-full h-16 object-cover rounded border"
+                onError={(e) => {
+                  e.currentTarget.src = '/placeholder-car.jpg'
+                }}
               />
               <button
                 type="button"
@@ -610,22 +661,17 @@ Or separate with commas"
               >
                 ×
               </button>
+              <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-xs p-1 text-center">
+                {url.includes('res.cloudinary.com') ? '☁️' : '🔗'}
+              </div>
             </div>
           ))}
-          {imageUrls.length > 8 && (
-            <div className="w-full h-16 bg-gray-100 rounded border flex items-center justify-center text-gray-500 text-xs">
-              +{imageUrls.length - 8} more
-            </div>
-          )}
         </div>
       </div>
     )
   })()}
-  
-  <p className="text-xs text-gray-600 mt-2">
-    💡 <strong>Tip:</strong> Uploaded images are automatically optimized. Manual URLs work for existing OLX images.
-  </p>
 </div>
+
 
 
           {/* Checkboxes */}
