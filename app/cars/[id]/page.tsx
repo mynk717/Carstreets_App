@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 
 type Props = { params: { id: string } }
 
@@ -14,8 +15,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 
   const site = 'https://carstreets-app.vercel.app'
-  
-  // FIX: Properly handle Prisma Json field and type assertion
   const imagesArray = Array.isArray(car.images) 
     ? car.images as string[]
     : typeof car.images === 'string' 
@@ -49,7 +48,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: 'summary_large_image',
       title,
       description,
-      // FIX: Ensure string type for Twitter image
       images: [coverImage]
     }
   }
@@ -60,17 +58,19 @@ export default async function CarPage({ params }: Props) {
   
   if (!car) {
     return (
-      <div className="container mx-auto px-4 py-12 text-center">
-        <h1 className="text-2xl font-bold mb-4">Car Not Found</h1>
-        <p className="text-gray-600">This car is no longer available.</p>
-        <a href="/" className="text-blue-600 hover:underline mt-4 inline-block">
-          ← Back to Home
-        </a>
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4">🚗</div>
+          <h1 className="text-2xl font-bold mb-4">Car Not Found</h1>
+          <p className="text-gray-600 mb-6">This car is no longer available.</p>
+          <Link href="/" className="text-blue-600 hover:underline">
+            ← Back to All Cars
+          </Link>
+        </div>
       </div>
     )
   }
 
-  // FIX: Properly convert types for client
   const imagesArray = Array.isArray(car.images) 
     ? car.images as string[]
     : typeof car.images === 'string' 
@@ -78,77 +78,185 @@ export default async function CarPage({ params }: Props) {
     : []
 
   const imageUrl = imagesArray[0] || '/placeholder-car.jpg'
+  const whatsappNumber = '+919009008756' // Replace with your number
+  const phoneNumber = '+919009008756' // Replace with your number
+  const whatsappMessage = encodeURIComponent(`Hi! I'm interested in ${car.title}. Is it still available?`)
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        {/* Header */}
-        <div className="mb-6">
-          <a href="/" className="text-blue-600 hover:underline mb-4 inline-block">
+      {/* Header */}
+      <div className="bg-white shadow-sm">
+        <div className="container mx-auto px-4 py-4">
+          <Link href="/" className="text-blue-600 hover:underline inline-flex items-center">
             ← Back to All Cars
-          </a>
-          <h1 className="text-3xl font-bold text-gray-900">{car.title}</h1>
-          <p className="text-gray-600 text-lg">{car.location}</p>
+          </Link>
         </div>
+      </div>
 
-        {/* Main Content */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden">
-          {/* Image */}
-          <div className="aspect-[16/9] bg-gray-100">
-            <img
-              src={imageUrl}
-              alt={car.title}
-              className="w-full h-full object-contain"
-            />
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto">
+          {/* Car Title & Location */}
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">{car.title}</h1>
+            <p className="text-gray-600 text-lg flex items-center">
+              <span className="mr-2">📍</span>
+              {car.location}
+            </p>
           </div>
 
-          {/* Car Details */}
-          <div className="p-6">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <h2 className="text-2xl font-bold text-blue-600 mb-2">
-                  ₹{Number(car.price).toLocaleString('en-IN')}
-                </h2>
-                <div className="flex gap-4 text-sm text-gray-600">
-                  <span>{car.year}</span>
-                  <span>{car.fuelType}</span>
-                  <span>{car.kmDriven?.toLocaleString()} km</span>
-                  <span>{car.owners} owner</span>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* Images & Details */}
+            <div className="lg:col-span-2 space-y-6">
+              {/* Main Image */}
+              <div className="bg-white rounded-lg shadow-md overflow-hidden">
+                <div className="aspect-[16/9] bg-gray-100">
+                  <img
+                    src={imageUrl}
+                    alt={car.title}
+                    className="w-full h-full object-contain"
+                  />
                 </div>
-              </div>
-              
-              <div className="flex gap-2">
-                {car.isVerified && (
-                  <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm">
-                    ✓ Verified
-                  </span>
+                
+                {/* Thumbnails */}
+                {imagesArray.length > 1 && (
+                  <div className="p-4 flex gap-2 overflow-x-auto">
+                    {imagesArray.map((img, index) => (
+                      <div key={index} className="flex-shrink-0 w-20 h-16 rounded border overflow-hidden">
+                        <img src={img} alt={`${car.title} ${index + 1}`} className="w-full h-full object-cover" />
+                      </div>
+                    ))}
+                  </div>
                 )}
-                {car.isFeatured && (
-                  <span className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm">
-                    ⭐ Featured
-                  </span>
+              </div>
+
+              {/* Car Details */}
+              <div className="bg-white rounded-lg shadow-md p-6">
+                <h2 className="text-xl font-semibold mb-4">Car Details</h2>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-gray-500 text-sm">Brand</span>
+                    <p className="font-medium">{car.brand}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">Model</span>
+                    <p className="font-medium">{car.model}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">Year</span>
+                    <p className="font-medium">{car.year}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">Fuel Type</span>
+                    <p className="font-medium">{car.fuelType}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">Transmission</span>
+                    <p className="font-medium">{car.transmission}</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">KM Driven</span>
+                    <p className="font-medium">{car.kmDriven?.toLocaleString()} km</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">Owners</span>
+                    <p className="font-medium">{car.owners} Previous</p>
+                  </div>
+                  <div>
+                    <span className="text-gray-500 text-sm">Seller Type</span>
+                    <p className="font-medium">{car.sellerType}</p>
+                  </div>
+                </div>
+
+                {car.description && (
+                  <div className="mt-6 pt-6 border-t">
+                    <h3 className="font-semibold mb-2">Description</h3>
+                    <p className="text-gray-700 leading-relaxed">{car.description}</p>
+                  </div>
                 )}
               </div>
             </div>
 
-            {/* Contact */}
-            <div className="border-t pt-6">
-              <h3 className="font-semibold text-lg mb-4">Interested?</h3>
-              <div className="flex gap-4">
-                <a
-                  href="tel:+919009008756"
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium"
-                >
-                  📞 Call Now
-                </a>
-                <a
-                  href={`https://wa.me/919009008756?text=Hi, I'm interested in ${car.title}`}
-                  className="bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-medium"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  💬 WhatsApp
-                </a>
+            {/* Price & Contact Sidebar */}
+            <div className="space-y-6">
+              {/* Price Card */}
+              <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+                <div className="text-center mb-6">
+                  <div className="text-3xl font-bold text-blue-600 mb-2">
+                    ₹{Number(car.price).toLocaleString('en-IN')}
+                  </div>
+                  <div className="flex items-center justify-center gap-2">
+                    {car.isVerified && (
+                      <span className="bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
+                        ✓ Verified
+                      </span>
+                    )}
+                    {car.isFeatured && (
+                      <span className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
+                        ⭐ Featured
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* FIXED: Contact Buttons */}
+                <div className="space-y-3 mb-6">
+                  <a
+                    href={`tel:${phoneNumber}`}
+                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    📞 Call Now
+                  </a>
+                  
+                  <a
+                    href={`https://wa.me/${whatsappNumber.replace('+', '')}?text=${whatsappMessage}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full bg-green-500 text-white py-3 px-4 rounded-lg font-medium hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                  >
+                    💬 WhatsApp Chat
+                  </a>
+                </div>
+
+                {/* Share Options */}
+                <div className="border-t pt-4">
+                  <h4 className="font-medium mb-3 text-gray-700">Share this car</h4>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => {
+                        const url = window.location.href
+                        const text = `Check out this ${car.title} on CarStreets!`
+                        if (navigator.share) {
+                          navigator.share({ title: car.title, text, url })
+                        } else {
+                          navigator.clipboard.writeText(`${text} ${url}`)
+                          alert('Link copied to clipboard!')
+                        }
+                      }}
+                      className="flex-1 bg-gray-100 text-gray-700 py-2 px-3 rounded text-sm hover:bg-gray-200 transition-colors"
+                    >
+                      📋 Copy Link
+                    </button>
+                    
+                    <a
+                      href={`https://wa.me/?text=${encodeURIComponent(`Check out this ${car.title} on CarStreets! ${window.location.href}`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex-1 bg-green-100 text-green-700 py-2 px-3 rounded text-sm hover:bg-green-200 transition-colors text-center"
+                    >
+                      💬 Share
+                    </a>
+                  </div>
+                </div>
+
+                {/* Car ID */}
+                <div className="mt-4 pt-4 border-t">
+                  <div className="text-xs text-gray-500">
+                    Car ID: {car.id}
+                  </div>
+                  <div className="text-xs text-gray-500">
+                    Listed: {new Date(car.createdAt || '').toLocaleDateString()}
+                  </div>
+                </div>
               </div>
             </div>
           </div>

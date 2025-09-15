@@ -1,9 +1,8 @@
 'use client'
 
-import { useState } from 'react'
 import { Car } from '../../types'
 import { CarImage } from './CarImage'
-import { CarDetailModal } from '../CarDetailModal'
+import Link from 'next/link'
 
 interface CarGridProps {
   cars: Car[]
@@ -11,8 +10,6 @@ interface CarGridProps {
 }
 
 export function CarGrid({ cars, loading }: CarGridProps) {
-  const [selectedCar, setSelectedCar] = useState<Car | null>(null)
-
   if (loading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -41,68 +38,60 @@ export function CarGrid({ cars, loading }: CarGridProps) {
   }
 
   return (
-    <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {cars.map((car) => (
-          <div
-            key={car.id}
-            className="bg-white rounded-lg shadow-md overflow-hidden cursor-pointer hover:shadow-lg transition-all duration-200 hover:-translate-y-1"
-            onClick={() => setSelectedCar(car)}
-          >
-            <CarImage car={car} />
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {cars.map((car) => (
+        <Link 
+          key={car.id}
+          href={`/cars/${car.id}`} // FIX: Navigate to dedicated page
+          className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-all duration-200 hover:-translate-y-1 block"
+        >
+          <CarImage car={car} />
+          
+          <div className="p-4">
+            <h3 className="font-semibold text-lg mb-2 text-gray-900 line-clamp-2">
+              {car.title}
+            </h3>
             
-            <div className="p-4">
-              <h3 className="font-semibold text-lg mb-2 text-gray-900 line-clamp-2">
-                {car.title}
-              </h3>
-              
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-gray-600 text-sm">{car.location}</p>
-                {car.isVerified && (
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
-                    ✓ Verified
-                  </span>
-                )}
-              </div>
-              
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-blue-600 font-bold text-xl">
-                  {typeof car.price === 'string' ? car.price : `₹${car.price?.toLocaleString('en-IN')}`}
-                </p>
-                {car.isFeatured && (
-                  <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
-                    ⭐ Featured
-                  </span>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
-                <span>{car.year} • {car.fuelType}</span>
-                <span>{car.kmDriven?.toLocaleString()} km</span>
-                <span>{car.transmission}</span>
-                <span>{car.owners} owner{car.owners !== 1 ? 's' : ''}</span>
-              </div>
-              
-              {car.carStreetsListed && (
-                <div className="mt-3 pt-2 border-t border-gray-100">
-                  <span className="text-xs text-blue-600 font-medium">
-                    🏷️ CarStreets Exclusive
-                  </span>
-                </div>
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-gray-600 text-sm">{car.location}</p>
+              {car.isVerified && (
+                <span className="bg-green-100 text-green-800 px-2 py-1 rounded-full text-xs font-medium">
+                  ✓ Verified
+                </span>
               )}
             </div>
+            
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-blue-600 font-bold text-xl">
+                {/* FIX: Remove double rupee symbol */}
+                {typeof car.price === 'string' && car.price.includes('₹') 
+                  ? car.price 
+                  : `₹${car.price?.toString().replace(/₹/g, '')}`}
+              </p>
+              {car.isFeatured && (
+                <span className="bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full text-xs font-medium">
+                  ⭐ Featured
+                </span>
+              )}
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 text-xs text-gray-500">
+              <span>{car.year} • {car.fuelType}</span>
+              <span>{car.kmDriven?.toLocaleString()} km</span>
+              <span>{car.transmission}</span>
+              <span>{car.owners} owner{car.owners !== 1 ? 's' : ''}</span>
+            </div>
+            
+            {car.carStreetsListed && (
+              <div className="mt-3 pt-2 border-t border-gray-100">
+                <span className="text-xs text-blue-600 font-medium">
+                  🏷️ CarStreets Exclusive
+                </span>
+              </div>
+            )}
           </div>
-        ))}
-      </div>
-
-      {/* Modal for carousel */}
-      {selectedCar && (
-        <CarDetailModal
-          car={selectedCar}
-          isOpen={!!selectedCar}
-          onClose={() => setSelectedCar(null)}
-        />
-      )}
-    </>
+        </Link>
+      ))}
+    </div>
   )
 }
