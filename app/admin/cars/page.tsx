@@ -272,116 +272,25 @@ export default function AdminCarsPage() {
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Car Inventory Management</h1>
-        <div className="flex gap-2">
-          <ScrapeButton />
-          <Button 
-            onClick={handleAddNewCar}
-            className="bg-green-500 hover:bg-green-600 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            Add New Car
-          </Button>
-          <Button onClick={fetchCars} className="flex items-center gap-2">
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      {/* Single URL Test Section */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <AlertCircle className="w-5 h-5" />
-          Import from OLX URL (Test & Edit)
-        </h2>
-        
-        <div className="space-y-4">
-          <div className="flex gap-2">
-            <input
-              type="url"
-              value={testUrl}
-              onChange={(e) => setTestUrl(e.target.value)}
-              placeholder="https://www.olx.in/item/cars-c84-..."
-              className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-            <Button 
-              onClick={testSingleUrl} 
-              disabled={loading || !testUrl.trim()}
-              className="flex items-center gap-2"
-            >
-              {loading ? 'Importing...' : 'Import & Edit'}
-            </Button>
-          </div>
-
-          {testError && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-              <p className="text-red-800 text-sm flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" />
-                {testError}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Bulk URL Add Section */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <Plus className="w-5 h-5" />
-          Bulk Import from URLs
-        </h2>
-        
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Paste URLs (one per line, max 15):
-            </label>
-            <textarea
-              value={bulkUrls}
-              onChange={(e) => setBulkUrls(e.target.value)}
-              placeholder="https://www.olx.in/item/cars-c84-...
-https://www.olx.in/item/cars-c84-...
-https://www.olx.in/item/cars-c84-..."
-              className="w-full h-32 px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              disabled={loading}
-            />
-            <div className="text-sm text-gray-500 mt-1">
-              URLs detected: {bulkUrls.split('\n').filter(url => url.trim().startsWith('http')).length}
-            </div>
-          </div>
-
-          <Button 
-            onClick={processBulkUrls} 
-            disabled={loading || !bulkUrls.trim()}
-            className="flex items-center gap-2"
-          >
-            {loading ? 'Processing...' : 'Bulk Import'}
-          </Button>
-
-          {bulkResults.length > 0 && (
-            <div className="space-y-2">
-              <h3 className="font-medium">Processing Results:</h3>
-              {bulkResults.map((result, index) => (
-                <div 
-                  key={index}
-                  className={`p-3 rounded border ${
-                    result.success 
-                      ? 'bg-green-50 border-green-200' 
-                      : 'bg-red-50 border-red-200'
-                  }`}
-                >
-                  <div className="font-medium text-sm">
-                    {result.success ? '✅' : '❌'} {result.url}
-                  </div>
-                  <div className="text-xs text-gray-600">
-                    {result.success ? result.title : result.error}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        <div className="flex flex-row items-center gap-3">
+  <ScrapeButton />
+  <div className="flex gap-2">
+    <Button 
+      onClick={handleAddNewCar}
+      className="bg-green-600 hover:bg-green-700 text-white font-medium rounded px-4 h-10 min-w-[120px] flex items-center gap-2 shadow-sm transition"
+    >
+      <Plus className="w-4 h-4" />
+      Add New Car
+    </Button>
+    <Button
+      onClick={fetchCars}
+      className="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded px-4 h-10 min-w-[120px] flex items-center gap-2 shadow-sm transition"
+    >
+      <RefreshCw className="w-4 h-4" />
+      Refresh
+    </Button>
+  </div>
+</div>
       </div>
 
       {/* Car List Management */}
@@ -398,10 +307,10 @@ https://www.olx.in/item/cars-c84-..."
             >
               <div className="flex-1">
                 <div className="font-medium">{car.title}</div>
-                <div className="text-sm text-gray-600">
+                <div className="text-sm text-gray-900">
                   {car.price} • {car.location} • Source: {car.dataSource}
                 </div>
-                <div className="text-xs text-gray-500">
+                <div className="text-xs text-gray-900">
                   {car.year} • {car.fuelType} • {car.kmDriven?.toLocaleString()} km
                 </div>
               </div>
