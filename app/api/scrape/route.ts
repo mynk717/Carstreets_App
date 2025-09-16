@@ -1,7 +1,7 @@
 /* ----------  app/api/scrape/route.ts  ---------- */
 import { NextRequest, NextResponse } from 'next/server'
 import { carStreetsOLXScraper } from '../../lib/scrapers/hybrid-olx-scraper'
-import { saveCars } from '../../lib/database/db'
+import { smartMergeScrapedCars } from '../../lib/database/smartMerge'
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,11 +9,11 @@ export async function POST(request: NextRequest) {
     const freshCars = await carStreetsOLXScraper.scrapeCarStreetsProfile()
     
     // Save to database
-    await saveCars(freshCars)
-
+const mergeResults = await smartMergeScrapedCars(freshCars)
+    console.log('Merge Results:', mergeResults)
     return NextResponse.json({
       success: true,
-      message: 'Cars scraped and saved successfully',
+      message: 'Cars scraped and smart-merged successfully',
       count: freshCars.length,
       source: 'fresh-scraping',
       timestamp: new Date().toISOString()
