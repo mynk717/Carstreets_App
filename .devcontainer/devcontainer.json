@@ -1,0 +1,31 @@
+{
+  // Name your Codespace
+  "name": "Tabby Codespace",
+
+  // This feature installs Docker within the codespace so you can run containers
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "version": "latest",
+      "mobs": true
+    }
+  },
+
+  // This command runs after the Codespace is created to start the Tabby server
+  // It uses Docker-in-Docker to launch the Tabby container
+  "postCreateCommand": "docker run -d --rm --gpus all -p 8080:8080 -v $HOME/.tabby:/data tabbyml/tabby serve --model StarCoder-1B",
+
+  // This section ensures that port 8080, used by the Tabby server, is exposed
+  "portsAttributes": {
+    "8080": {
+      "label": "Tabby Server",
+      "onAutoForward": "notify"
+    }
+  },
+
+  // This automatically installs the Tabby VS Code extension
+  "customizations": {
+    "vscode": {
+      "extensions": ["TabbyML.vscode-tabby"]
+    }
+  }
+}
