@@ -309,16 +309,25 @@ kmElements.forEach((element: Element) => {
       // Load more button handling to get all cars
 await page.evaluate(async () => {
   let loadMoreClicks = 0;
-  const maxClicks = 3;
+  const maxClicks = 20;
+    const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
   
   while (loadMoreClicks < maxClicks) {
     const loadMoreButton = document.querySelector('[data-aut-id="btnLoadMore"], .loadMore, [class*="load"], [class*="more"], button[class*="load"]');
-    
+    if (!loadMoreButton) {
+      console.log('🔍 No more "Load More" button found');
+      break;
+    }
+
+    // Scroll the button into view before clicking
+    loadMoreButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    await delay(1000);
     if (loadMoreButton && loadMoreButton.textContent?.toLowerCase().includes('more')) {
       console.log(`🔄 Clicking load more button (${loadMoreClicks + 1}/${maxClicks})`);
       (loadMoreButton as HTMLElement).click();
       await new Promise(resolve => setTimeout(resolve, 3000));
       loadMoreClicks++;
+      await delay(4000);
     } else {
       console.log('🔍 No more "Load More" button found');
       break;
