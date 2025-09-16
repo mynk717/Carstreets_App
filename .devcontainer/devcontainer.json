@@ -7,7 +7,8 @@
       "mobs": true
     }
   },
-  "postCreateCommand": "sleep 10 && docker run -it --gpus all -p 8080:8080 -v $HOME/.tabby:/data tabbyml/tabby serve --model StarCoder-1B",
+    "onCreateCommand": "chmod +x ./.devcontainer/wait_for_docker.sh",
+  "postCreateCommand": "./.devcontainer/wait_for_docker.sh && docker run -d --rm --gpus all -p 8080:8080 -v $HOME/.tabby:/data tabbyml/tabby serve --model StarCoder-1B",
   "portsAttributes": {
     "8080": {
       "label": "Tabby Server",
