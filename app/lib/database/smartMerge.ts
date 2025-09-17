@@ -60,10 +60,25 @@ export async function smartMergeScrapedCars(newScrapedCars: ScrapedCar[]): Promi
     // Process each scraped car
     for (const scrapedCar of newScrapedCars) {
       try {
-        const existingCar = existingCarsMap.get(scrapedCar.originalUrl)
+        // IMPROVED: Multiple matching strategies to prevent duplicates
+        let existingCar = existingCarsMap.get(scrapedCar.originalUrl)
+
+        // FALLBACK 1: If no match by originalUrl, try matching by title
+        if (!existingCar) {
+          existingCar = existingCars.find(car => car.title === scrapedCar.title)
+        }
+
+        // FALLBACK 2: If still no match, try matching by brand + model + year
+        if (!existingCar) {
+          existingCar = existingCars.find(car => 
+            car.brand === scrapedCar.brand && 
+            car.model === scrapedCar.model && 
+            car.year === scrapedCar.year
+          )
+        }
         
         if (!existingCar) {
-          // NEW CAR: Add fresh
+          // NEW CAR: Add fresh (only if truly no match found)
           await prisma.car.create({
             data: {
               title: scrapedCar.title,
@@ -83,9 +98,9 @@ export async function smartMergeScrapedCars(newScrapedCars: ScrapedCar[]): Promi
               sellerType: scrapedCar.sellerType,
               owners: scrapedCar.owners,
               originalUrl: scrapedCar.originalUrl || null,
-              // FIXED: Add required fields
-              postedDate: scrapedCar.postedDate || new Date().toISOString().split('T')[0], // Default to today
-              dataSource: scrapedCar.dataSource || 'olx-scraping', // Default source
+              // Add required fields
+              postedDate: scrapedCar.postedDate || new Date().toISOString().split('T')[0],
+              dataSource: scrapedCar.dataSource || 'olx-scraping',
               olxProfile: scrapedCar.olxProfile || null,
               olxProfileId: scrapedCar.olxProfileId || null,
               attribution: scrapedCar.attribution || null,
@@ -159,7 +174,7 @@ export async function smartMergeScrapedCars(newScrapedCars: ScrapedCar[]): Promi
               description: scrapedCar.description || '',
               sellerType: scrapedCar.sellerType,
               owners: scrapedCar.owners,
-              // FIXED: Update required fields
+              // Update required fields
               postedDate: scrapedCar.postedDate || existingCar.postedDate,
               dataSource: scrapedCar.dataSource || existingCar.dataSource || 'olx-scraping',
               olxProfile: scrapedCar.olxProfile || existingCar.olxProfile,
@@ -221,3 +236,4 @@ export async function smartMergeScrapedCars(newScrapedCars: ScrapedCar[]): Promi
   console.log(`✅ Smart merge completed:`, results)
   return results
 }
+
