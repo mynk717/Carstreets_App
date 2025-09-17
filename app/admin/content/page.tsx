@@ -18,7 +18,31 @@ export default function ContentStudioPage() {
     const data = await response.json()
     setCars(data.cars)
   }
-
+const generateIntelligentBatchContent = async () => {
+  setLoading(true)
+  try {
+    const response = await fetch('/api/admin/content/generate', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer admin-temp-key'
+      },
+      body: JSON.stringify({
+        contentType: 'batch_content',
+        platform: 'facebook',
+        useIntelligentSelection: true
+      })
+    })
+    
+    const data = await response.json()
+    console.log('Intelligent batch content:', data)
+    setGeneratedContent(JSON.stringify(data, null, 2))
+  } catch (error) {
+    console.error('Intelligent content generation failed:', error)
+  } finally {
+    setLoading(false)
+  }
+}
   const generateContent = async (contentType: string, platform?: string) => {
     if (!selectedCar) return
     
@@ -83,12 +107,12 @@ export default function ContentStudioPage() {
               {/* Content Type Buttons */}
               <div className="space-y-2">
                 <button
-                  onClick={() => generateContent('description')}
-                  disabled={loading}
-                  className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
-                >
-                  Generate Description
-                </button>
+  onClick={() => generateIntelligentBatchContent()}
+  disabled={loading}
+  className="w-full p-3 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 font-medium"
+>
+  🧠 Generate Intelligent Content (Top 5 Cars)
+</button>
                 
                 <div className="grid grid-cols-3 gap-2">
                   <button
