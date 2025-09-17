@@ -1,7 +1,8 @@
 import { normalizeCar } from '@/lib/parsers/car-normalizer'
 import OpenAI from 'openai'
 import { Car } from '../../types'
-import { saveCars, fetchCars } from '../database/db'
+import { fetchCars } from '../database/db'
+import { smartMergeScrapedCars } from '../database/smartMerge'
 import chromium from '@sparticuz/chromium'
 import puppeteer from 'puppeteer-core'
 
@@ -834,8 +835,8 @@ await page.evaluate(async () => {
             }
           }
           if (processedCars.length > 0) {
-            await saveCars(processedCars)
-            console.log(`✅ Saved ${processedCars.length} REAL cars to database`)
+            const mergeResults = await smartMergeScrapedCars(processedCars)
+console.log(`✅ Smart merge results:`, mergeResults)
             return processedCars
           } else {
             console.log('⚠️ No cars could be processed')
@@ -890,8 +891,8 @@ await page.evaluate(async () => {
           }
           
           if (processedCars.length > 0) {
-            await saveCars(processedCars)
-            console.log(`✅ Saved ${processedCars.length} REAL cars to database`)
+            const mergeResults = await smartMergeScrapedCars(processedCars)
+console.log(`✅ Smart merge results:`, mergeResults)
             return processedCars
           } else {
             console.log('⚠️ No cars could be processed')

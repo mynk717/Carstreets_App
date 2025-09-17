@@ -13,46 +13,61 @@ interface ManualListingRequest {
   fuelType: string
   transmission: string
   owners: number
-  imageUrls: string[]  // External URLs only
+  imageUrls: string[]
   dealerId: string
   location: string
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Optional: Verify admin authorization before proceeding
-    // await verifyAdminAuth(request)
-
     const listingData: ManualListingRequest = await request.json()
-
-    // Validate image URLs
     const validatedImages = await validateImageUrls(listingData.imageUrls)
 
-    // Prepare the manual car record
-    const car = {
-      ...listingData,
-      images: validatedImages,
-      source: 'manual',
-      carStreetsListed: true,
-      createdAt: new Date(),
-      description: `Well-maintained ${listingData.year} ${listingData.brand} ${listingData.model} with ${listingData.kmDriven}km on odometer. ${listingData.fuelType} engine with ${listingData.transmission} transmission.`,
-      location: listingData.location || 'Raipur',
-      sellerType: 'Dealer' as const,
-      condition: 'Used' as const,
-      postedDate: new Date().toISOString(),
-      isFeatured: false,
-      isVerified: true,
-      // Additional fields as needed
-    }
-
-    // Use prisma create to add new car without deleting others
+    // Create car record with all required fields explicitly
     const createdCar = await prisma.car.create({
-      data: car
+      data: {
+        // Basic car information
+        title: listingData.title,
+        brand: listingData.brand,
+        model: listingData.model,
+        variant: null,
+        year: listingData.year,
+        price: BigInt(listingData.price), // Convert to BigInt for Prisma
+        kmDriven: listingData.kmDriven,
+        fuelType: listingData.fuelType,
+        transmission: listingData.transmission,
+        owners: listingData.owners,
+        location: listingData.location || 'Raipur',
+        images: validatedImages,
+        description: `Well-maintained ${listingData.year} ${listingData.brand} ${listingData.model} with ${listingData.kmDriven}km on odometer. ${listingData.fuelType} engine with ${listingData.transmission} transmission.`,
+        sellerType: 'Dealer',
+        
+        // Required schema fields (note the correct casing)
+        dataSource: 'manual', // Fixed from 'datasource'
+        postedDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+        originalUrl: null,
+        olxProfile: null,
+        olxProfileId: null,
+        attribution: null,
+        
+        // Tracking and status fields
+        manuallyEdited: true, // Mark as manually added
+        editedFields: [],
+        lastScrapedAt: new Date(),
+        isUserAdded: true, // This is a manual addition
+        scrapedData: null,
+        isVerified: true,
+        isFeatured: false,
+        carStreetsListed: true
+      }
     })
 
     return NextResponse.json({ success: true, car: createdCar })
   } catch (error) {
     console.error('Manual listing creation error:', error)
-    return NextResponse.json({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }, { status: 500 })
+    return NextResponse.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    }, { status: 500 })
   }
 }
