@@ -65,4 +65,3 @@ async function generateCarContent(car: any, contentType: string, platform?: stri
       return 'Generated content based on car specifications'
   }
 }
-// Note: Replace the simple string manipulations with actual AI API calls for better results.
