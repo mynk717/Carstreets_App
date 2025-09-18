@@ -1,49 +1,75 @@
 // app/admin/layout.tsx
 import Link from 'next/link'
 
-export const metadata = {
-  title: 'CarStreets Admin',
-  description: 'Car marketplace admin panel',
-  manifest: '/manifest.json',
-}
-
-export const viewport = {
-  width: 'device-width',
-  initialScale: 1,
-  maximumScale: 1,
-  themeColor: '#1f2937'
-}
-
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
   return (
-    <div className="admin-layout flex">
-      <nav className="w-64 bg-gray-800 text-white min-h-screen p-4">
-        <h2 className="text-xl font-bold mb-6">Admin Panel</h2>
-        <ul className="space-y-2">
-          <li>
-            <Link 
-              href="/admin/cars" 
-              className="block px-4 py-2 rounded hover:bg-gray-700"
-            >
-              Car Management
-            </Link>
-          </li>
-          <li>
-            <Link 
-              href="/admin/content" 
-              className="block px-4 py-2 rounded hover:bg-gray-700"
-            >
-              Content Studio
-            </Link>
-          </li>
-        </ul>
+    <div className="min-h-screen flex flex-col lg:flex-row bg-gray-100">
+      {/* Mobile-First Navigation */}
+      <nav className="w-full lg:w-64 bg-gray-900 text-white shadow-lg">
+        <div className="p-4 lg:p-6">
+          <div className="flex items-center justify-between lg:block">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">
+                CS
+              </div>
+              <h2 className="text-lg lg:text-xl font-bold">CarStreets Admin</h2>
+            </div>
+            
+            {/* Mobile menu indicator - you can add hamburger menu logic here later */}
+            <div className="lg:hidden">
+              <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+            </div>
+          </div>
+          
+          <div className="mt-4 lg:mt-6">
+            <ul className="flex lg:flex-col gap-2 lg:space-y-1">
+              <li className="flex-1 lg:flex-none">
+                <Link 
+                  href="/admin/cars" 
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors text-sm lg:text-base font-medium"
+                >
+                  <span className="text-lg">🚗</span>
+                  <span className="hidden sm:block">Car Management</span>
+                  <span className="sm:hidden">Cars</span>
+                </Link>
+              </li>
+              <li className="flex-1 lg:flex-none">
+                <Link 
+                  href="/admin/content" 
+                  className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-gray-800 transition-colors text-sm lg:text-base font-medium"
+                >
+                  <span className="text-lg">✨</span>
+                  <span className="hidden sm:block">Content Studio</span>
+                  <span className="sm:hidden">Content</span>
+                </Link>
+              </li>
+            </ul>
+          </div>
+          
+          {/* Admin Info Section */}
+          <div className="hidden lg:block mt-8 pt-6 border-t border-gray-700">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gray-700 rounded-full flex items-center justify-center">
+                <span className="text-xs font-semibold">A</span>
+              </div>
+              <div>
+                <p className="text-sm font-medium">Admin</p>
+                <p className="text-xs text-gray-400">CarStreets Panel</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </nav>
-      <main className="flex-1 bg-gray-50">
-        {children}
+
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-auto">
+        <div className="min-h-full">
+          {children}
+        </div>
       </main>
     </div>
   )

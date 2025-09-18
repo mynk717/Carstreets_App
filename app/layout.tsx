@@ -4,7 +4,14 @@ import '../src/app/globals.css'
 import { Header } from './components/layout/Header'
 
 const inter = Inter({ subsets: ['latin'] })
-
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  minimumScale: 1,
+  maximumScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#111827',
+}
 export const metadata: Metadata = {
   title: 'CarStreets - Buy & Sell Used Cars',
   description: 'Find the best deals on used cars in your city. Buy and sell cars with confidence.',
