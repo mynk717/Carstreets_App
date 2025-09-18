@@ -23,9 +23,9 @@ const generateIntelligentBatchContent = async () => {
   setLoading(true)
   
   try {
-    console.log("🟡 Making fetch request to /api/admin/content/generate")
+    console.log("🟡 Making fetch request to /admin/content/generate")
     
-    const response = await fetch('/api/admin/content/generate', {
+    const response = await fetch('/admin/content/generate', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
