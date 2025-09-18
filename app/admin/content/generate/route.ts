@@ -44,6 +44,7 @@ export async function POST(request: NextRequest) {
         topCars.map(async (scoredCar) => ({
           car: {
             ...scoredCar.car,
+            price: scoredCar.car.price.toString(), // Ensure price is string for display
             displayPrice: `₹${Number(scoredCar.car.price).toLocaleString('en-IN')}`,
             wasManuallyEdited: scoredCar.car.manuallyEdited,
             editedFields: scoredCar.car.editedFields
