@@ -19,8 +19,12 @@ export default function ContentStudioPage() {
     setCars(data.cars)
   }
 const generateIntelligentBatchContent = async () => {
+  console.log("🟢 Button clicked - Starting intelligent content generation")
   setLoading(true)
+  
   try {
+    console.log("🟡 Making fetch request to /api/admin/content/generate")
+    
     const response = await fetch('/api/admin/content/generate', {
       method: 'POST',
       headers: {
@@ -34,15 +38,28 @@ const generateIntelligentBatchContent = async () => {
       })
     })
     
+    console.log("🟡 Response status:", response.status)
+    console.log("🟡 Response ok:", response.ok)
+    
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("🔴 API Error Response:", errorText)
+      setGeneratedContent(`Error: ${response.status} - ${errorText}`)
+      return
+    }
+    
     const data = await response.json()
-    console.log('Intelligent batch content:', data)
+    console.log('🟢 Intelligent batch content received:', data)
     setGeneratedContent(JSON.stringify(data, null, 2))
+    
   } catch (error) {
-    console.error('Intelligent content generation failed:', error)
+    console.error('🔴 Intelligent content generation failed:', error)
+    setGeneratedContent(`Error: ${error.message}`)
   } finally {
     setLoading(false)
   }
 }
+
   const generateContent = async (contentType: string, platform?: string) => {
     if (!selectedCar) return
     
@@ -107,12 +124,12 @@ const generateIntelligentBatchContent = async () => {
               {/* Content Type Buttons */}
               <div className="space-y-2">
                 <button
-  onClick={() => generateIntelligentBatchContent()}
-  disabled={loading}
-  className="w-full p-3 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 font-medium"
->
-  🧠 Generate Intelligent Content (Top 5 Cars)
-</button>
+                  onClick={() => generateContent('description')}
+                  disabled={loading}
+                  className="w-full p-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                >
+                  Generate Description
+                </button>
                 
                 <div className="grid grid-cols-3 gap-2">
                   <button
@@ -146,6 +163,14 @@ const generateIntelligentBatchContent = async () => {
                   YouTube Title
                 </button>
               </div>
+<button
+  onClick={() => generateIntelligentBatchContent()}
+  disabled={loading}
+  className="w-full p-3 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50 font-medium"
+>
+  🧠 Generate Intelligent Content (Top 5 Cars)
+</button>
+
 
               {/* Generated Content Display */}
               {generatedContent && (
