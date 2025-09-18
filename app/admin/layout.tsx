@@ -1,6 +1,19 @@
 // app/admin/layout.tsx
 import Link from 'next/link'
 
+export const metadata = {
+  title: 'CarStreets Admin',
+  description: 'Car marketplace admin panel',
+  manifest: '/manifest.json',
+}
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  themeColor: '#1f2937'
+}
+
 export default function AdminLayout({
   children,
 }: {
