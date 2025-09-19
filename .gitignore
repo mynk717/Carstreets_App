@@ -46,3 +46,4 @@ next-env.d.ts
 >>>>>>> 1b71d0462f3415cc4320d48c0006735cc730ced5
 .continue/agents/new-agent.yaml
 .continue/
+.env*.local

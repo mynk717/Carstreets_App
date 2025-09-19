@@ -1,81 +1,92 @@
-// app/api/admin/thumbnails/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { ImageResponse } from '@vercel/og'
-import { fetchCarById } from '@/lib/database/db'
-import React from 'react'
-
-export const runtime = 'edge'
+import { NextRequest, NextResponse } from 'next/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const { carId, style = 'clean' } = await request.json()
+    const { carData, prompt, platform, style = 'photorealistic' } = await request.json();
     
-    const car = await fetchCarById(carId)
-    if (!car) {
-      return NextResponse.json({ error: 'Car not found' }, { status: 404 })
+    if (!carData || !prompt || !platform) {
+      return NextResponse.json(
+        { success: false, error: 'Missing required fields' }, 
+        { status: 400 }
+      );
     }
 
-    return new ImageResponse(
-      React.createElement(
-        'div',
-        {
-          style: {
-            height: '100%',
-            width: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            justifyContent: 'center',
-            backgroundColor: '#1f2937',
-            padding: '40px',
-          },
+    // Primary: Try Gemini first
+    try {
+      const geminiResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image-preview:generateContent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.GEMINI_API_KEY}`
         },
-        React.createElement(
-          'div',
-          {
-            style: {
-              fontSize: 48,
-              fontWeight: 'bold',
-              color: 'white',
-              textAlign: 'center',
-              marginBottom: '20px',
-            },
-          },
-          `${car.year} ${car.brand} ${car.model}`
-        ),
-        React.createElement(
-          'div',
-          {
-            style: {
-              fontSize: 32,
-              color: '#60a5fa',
-              fontWeight: '600',
-            },
-          },
-          `₹${Number(car.price).toLocaleString('en-IN')}`
-        ),
-        React.createElement(
-          'div',
-          {
-            style: {
-              position: 'absolute',
-              bottom: '20px',
-              right: '20px',
-              fontSize: 24,
-              color: '#9ca3af',
-            },
-          },
-          'CarStreets'
-        )
-      ),
-      {
-        width: 1280,
-        height: 720,
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            temperature: 0.7,
+            maxOutputTokens: 1000
+          }
+        })
+      });
+
+      if (geminiResponse.ok) {
+        const geminiData = await geminiResponse.json();
+        
+        return NextResponse.json({
+          success: true,
+          model: 'gemini-2.5-flash-image-preview',
+          data: geminiData,
+          cost: 0.039,
+          platform
+        });
       }
-    )
-    
+    } catch (geminiError) {
+      console.log('Gemini failed, falling back to DALL-E:', geminiError);
+    }
+
+    // Fallback: DALL-E 3
+    try {
+      const dalleResponse = await fetch('https://api.openai.com/v1/images/generations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'dall-e-3',
+          prompt: prompt.substring(0, 4000), // DALL-E prompt limit
+          size: platform === 'linkedin' ? '1792x1024' : '1024x1024',
+          quality: 'standard',
+          n: 1
+        })
+      });
+
+      if (dalleResponse.ok) {
+        const dalleData = await dalleResponse.json();
+        
+        return NextResponse.json({
+          success: true,
+          model: 'dall-e-3',
+          imageUrl: dalleData.data[0].url,
+          cost: 0.04,
+          platform
+        });
+      }
+    } catch (dalleError) {
+      console.error('DALL-E also failed:', dalleError);
+    }
+
+    return NextResponse.json(
+      { success: false, error: 'All image generation models failed' },
+      { status: 500 }
+    );
+
   } catch (error) {
-    console.error('Thumbnail generation error:', error)
-    return NextResponse.json({ error: 'Failed to generate thumbnail' }, { status: 500 })
+    console.error('Thumbnails API error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
