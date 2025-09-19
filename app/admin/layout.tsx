@@ -1,6 +1,5 @@
 // app/admin/layout.tsx
 import Link from 'next/link'
-import '../src/app/globals.css'
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" className="h-full">
