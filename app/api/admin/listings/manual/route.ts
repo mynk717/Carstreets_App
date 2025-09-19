@@ -33,6 +33,7 @@ export async function POST(request: NextRequest) {
         variant: null,
         year: listingData.year,
         price: BigInt(listingData.price), // Convert to BigInt for Prisma
+        price: BigInt(listingData.price),
         kmDriven: listingData.kmDriven,
         fuelType: listingData.fuelType,
         transmission: listingData.transmission,
@@ -42,19 +43,23 @@ export async function POST(request: NextRequest) {
         description: `Well-maintained ${listingData.year} ${listingData.brand} ${listingData.model} with ${listingData.kmDriven}km on odometer. ${listingData.fuelType} engine with ${listingData.transmission} transmission.`,
         sellerType: 'Dealer',
         
-        // Required schema fields (note the correct casing)
-        dataSource: 'manual', // Fixed from 'datasource'
-        postedDate: new Date().toISOString().split('T')[0], // YYYY-MM-DD format
+
+
+        // Required schema fields
+        dataSource: 'manual',
+        postedDate: new Date().toISOString().split('T')[0],
         originalUrl: null,
         olxProfile: null,
         olxProfileId: null,
         attribution: null,
         
         // Tracking and status fields
-        manuallyEdited: true, // Mark as manually added
+
+        manuallyEdited: true,
         editedFields: [],
         lastScrapedAt: new Date(),
-        isUserAdded: true, // This is a manual addition
+
+        isUserAdded: true,
         scrapedData: null,
         isVerified: true,
         isFeatured: false,

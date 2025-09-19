@@ -4,6 +4,8 @@ import { fetchCarById } from '@/lib/database/db'
 import { verifyAdminAuth } from '@/lib/auth/admin'
 import { CarMarketIntelligence } from '@/lib/intelligence/carScoring'
 import { prisma } from '@/lib/database/db'
+import { QualityControlledPipeline } from '@/lib/agents/pipeline'
+import { ContentRateLimiter } from '@/lib/rateLimit'
 
 interface ContentGenerationRequest {
   carId?: string
@@ -25,50 +27,65 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     console.log("🟡 [API] Request body:", body)
     
-    const { carId, contentType, platform, useIntelligentSelection }: ContentGenerationRequest = body
-    
-    // Intelligent car selection using RAW Prisma data
+    const { carId, contentType, platform, useIntelligentSelection } = body
+    // ✅ NEW: Agentic Pipeline for Intelligent Selection
     if (useIntelligentSelection && contentType === 'batch_content') {
-      console.log("🟡 [API] Starting intelligent batch content generation")
+      console.log("🤖 [API] Starting agentic content pipeline")
       
-      // Get raw cars with correct user-edited prices
+      const pipeline = new QualityControlledPipeline()
+      const rateLimiter = new ContentRateLimiter()
+      
       const rawCars = await prisma.car.findMany({ 
         orderBy: { createdAt: 'desc' }
       })
-      console.log(`🟡 [API] Found ${rawCars.length} cars in database`)
+      // Use top 5 cars for content generation
+      const topCarIds = rawCars.slice(0, 5).map(car => car.id)
       
-      const topCars = await CarMarketIntelligence.selectTopCarsForContent(rawCars, 5)
-      console.log(`🟡 [API] Selected ${topCars.length} top cars for content`)
-      
-      const batchContent = await Promise.all(
-        topCars.map(async (scoredCar) => ({
-          car: {
-            ...scoredCar.car,
-            price: scoredCar.car.price.toString(), // Ensure price is string for display
-            displayPrice: `₹${Number(scoredCar.car.price).toLocaleString('en-IN')}`,
-            wasManuallyEdited: scoredCar.car.manuallyEdited,
-            editedFields: scoredCar.car.editedFields
-          },
-          score: scoredCar.score,
-          reasons: scoredCar.reasons,
-          marketProbability: scoredCar.marketProbability,
-          content: await generateCarContent(scoredCar.car, 'social_post', platform)
-        }))
-      )
-      
-      console.log("🟢 [API] Batch content generated successfully")
-      
-      return NextResponse.json({
-        success: true,
-        intelligentSelection: true,
-        batchContent,
-        totalCars: rawCars.length,
-        selectedCount: topCars.length,
-        dataAccuracy: {
-          manuallyEditedCars: rawCars.filter(car => car.manuallyEdited).length,
-          verifiedCars: rawCars.filter(car => car.isVerified).length
-        }
-      })
+      try {
+        const agenticContent = await pipeline.generateWeeklyContent('admin', topCarIds)
+        
+        return NextResponse.json({
+          success: true,
+          agentic: true,
+          pipeline_type: 'multi_agent_quality_controlled',
+          content: agenticContent,
+          quality_metrics: {
+            uniqueness_threshold: '90%',
+            accuracy_threshold: '80%',
+            monitoring: 'enabled'
+          }
+        })
+        
+      } catch (pipelineError) {
+        console.error("💥 [API] Agentic pipeline failed:", pipelineError.message)
+        
+        // Fallback to basic intelligent selection
+        const topCars = await CarMarketIntelligence.selectTopCarsForContent(rawCars, 5)
+        
+        const fallbackContent = await Promise.all(
+          topCars.map(async (scoredCar) => ({
+            car: {
+              ...scoredCar.car,
+              price: scoredCar.car.price.toString(),
+              displayPrice: `₹${Number(scoredCar.car.price).toLocaleString('en-IN')}`,
+            },
+            score: scoredCar.score,
+            reasons: scoredCar.reasons,
+            marketProbability: scoredCar.marketProbability,
+            content: await generateCarContent(scoredCar.car, 'social_post', platform)
+          }))
+        )
+        
+        return NextResponse.json({
+          success: true,
+          agentic: false,
+          fallback_mode: 'basic_intelligent_selection',
+          pipeline_error: pipelineError.message,
+          batchContent: fallbackContent,
+          totalCars: rawCars.length,
+          selectedCount: topCars.length
+        })
+      }
     }
 
     // Single car content generation

@@ -10,20 +10,28 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^2.0.32",
     "@prisma/client": "^6.15.0",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-select": "^2.2.6",
     "@sparticuz/chromium": "^138.0.2",
     "@types/sqlite3": "^3.1.11",
+    "@vercel/og": "^0.8.5",
+    "ai": "^5.0.46",
     "apify-client": "^2.16.0",
     "axios": "^1.11.0",
+    "canvas": "^3.2.0",
     "cheerio": "^1.1.2",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.2",
     "framer-motion": "^12.23.12",
+    "ioredis": "^5.7.0",
     "lucide-react": "^0.542.0",
+    "mem0ai": "^2.1.38",
+    "neo4j-driver": "^5.28.2",
     "next": "15.5.2",
     "next-cloudinary": "^6.16.0",
+    "node-cron": "^4.2.1",
     "node-fetch": "^3.3.2",
     "openai": "^5.19.1",
     "playwright": "^1.55.0",
@@ -36,7 +44,8 @@
     "react-dom": "19.1.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7",
-    "tailwind-merge": "^3.3.1"
+    "tailwind-merge": "^3.3.1",
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

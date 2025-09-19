@@ -6,6 +6,8 @@ import { useState, useEffect } from 'react'
 export default function ContentStudioPage() {
   const [cars, setCars] = useState([])
   const [selectedCar, setSelectedCar] = useState(null)
+  const [batchContent, setBatchContent] = useState('') // ✅ Separate state
+  const [selectedContent, setSelectedContent] = useState('') // ✅ Separate state
   const [generatedContent, setGeneratedContent] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -51,7 +53,7 @@ export default function ContentStudioPage() {
       
       const data = await response.json()
       console.log('🟢 Intelligent batch content received:', data)
-      setGeneratedContent(JSON.stringify(data, null, 2))
+      setBatchContent(JSON.stringify(data, null, 2)) // ✅ Set batch content
       
     } catch (error) {
       console.error('🔴 Intelligent content generation failed:', error)
@@ -80,7 +82,7 @@ export default function ContentStudioPage() {
       })
       
       const data = await response.json()
-      setGeneratedContent(data.content)
+      setSelectedContent(data.content) // ✅ Set selected content
     } catch (error) {
       console.error('Content generation failed:', error)
     } finally {
@@ -96,7 +98,7 @@ export default function ContentStudioPage() {
       <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
           <div className="flex-1">
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1">🧠 Intelligent Content Generation</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1"> Intelligent Content Generation</h3>
             <p className="text-sm text-gray-600">Generate marketing content for the top 5 most marketable cars automatically</p>
           </div>
           <button
@@ -108,7 +110,18 @@ export default function ContentStudioPage() {
           </button>
         </div>
       </div>
-      
+      {/* ✅ Batch Results - Always visible when available */}
+      {batchContent && (
+        <div className="mb-6 p-4 bg-gradient-to-r from-purple-100 to-blue-100 rounded-lg border-l-4 border-purple-500">
+          <h2 className="text-lg font-semibold text-purple-700 mb-3">🧠 Intelligent Batch Results</h2>
+          <pre className="bg-white p-4 rounded text-xs overflow-auto max-h-64 font-mono">
+            {batchContent}
+          </pre>
+          <button onClick={() => navigator.clipboard.writeText(batchContent)} className="mt-2 px-3 py-1 bg-purple-600 text-white rounded text-sm">
+            Copy JSON
+          </button>
+        </div>
+      )}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
         {/* Left Column: Car Selection */}
         <div className="bg-white rounded-lg border border-gray-200 p-4 sm:p-6">
@@ -236,6 +249,18 @@ export default function ContentStudioPage() {
               <p className="text-sm text-gray-600 max-w-xs mx-auto">
                 Choose a car from the left panel to create targeted social media content, or use the smart content generator above for automatic selection.
               </p>
+            </div>
+          )}
+          {/* ✅ Selected Car Results - Only in right panel */}
+          {selectedContent && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold mb-2">📝 Generated Content:</h3>
+              <textarea
+                value={selectedContent}
+                onChange={(e) => setSelectedContent(e.target.value)}
+                className="w-full h-32 p-3 border rounded text-sm"
+              />
+              <button className="mt-2 px-4 py-2 bg-green-600 text-white rounded">Save</button>
             </div>
           )}
         </div>
