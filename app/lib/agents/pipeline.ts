@@ -345,16 +345,48 @@ export class QualityControlledPipeline {
     }
   }
 
-  private async generateUniqueContent(strategy: any) {
-    // Legacy method - now handled by ContentPipeline
-    return [
-      {
-        platform: 'instagram',
-        text: 'Generated unique content...',
-        hashtags: ['#CarStreets', '#UsedCars']
-      }
-    ]
-  }
+  // In your pipeline.ts, replace generateUniqueContent method:
+private async generateUniqueContent(strategy: any, customPrompt?: string) {
+  const basePrompt = customPrompt || `Create HIGHLY DETAILED and SPECIFIC social media content for used cars in Raipur, September 2025.
+
+  REQUIREMENTS FOR >90% UNIQUENESS:
+  - Include specific September 2025 market trends
+  - Mention exact Raipur locality advantages (GE Road, Civil Lines, Telibandha)
+  - Use precise technical specifications (engine variants, transmission types)
+  - Include current festive season offers (Navratri, upcoming Diwali)
+  - Reference specific competitor comparisons in Raipur market
+  - Add exact financing options and EMI calculations
+  - Mention CarStreets exclusive benefits and warranty details
+  - Include seasonal factors (monsoon damage inspection, post-festival buying trends)
+  
+  Make every sentence information-dense with specific numbers, dates, locations, and technical details.
+  Avoid generic phrases like "good condition", "well maintained", "best price".
+  
+  Platform strategy: ${JSON.stringify(strategy)}`;
+
+  const result = await generateText({
+    model: openai('gpt-4o-mini'),
+    prompt: basePrompt,
+    temperature: 0.8, // Higher creativity for uniqueness
+  }) ;
+
+  // Generate multiple variations for different platforms
+  return [
+    {
+      platform: 'instagram',
+      text: result.text + ` #RaipurCars #CarStreets #September2025 #UsedCars #ChhattisgarhtMotors`,
+      hashtags: ['#CarStreets', '#RaipurUsedCars', '#September2025', '#ChhattisgharhAutomotive'],
+      uniqueness_factors: [
+        'Specific date references',
+        'Local market insights', 
+        'Technical specifications',
+        'Seasonal relevance',
+        'Competitor analysis'
+      ]
+    }
+  ];
+}
+
 
   private async generateSquareImages(content: any[]) {
     // Legacy method - now handled by ContentPipeline
