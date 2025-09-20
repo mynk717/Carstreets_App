@@ -8,33 +8,42 @@ const AUTH_TOKEN = 'Bearer admin-temp-key';
 export class AutoContentPipeline {
   
   async generateUniqueText(car: any, platform: string) {
-    const profile = CAR_STREETS_PROFILE;
-    
-    const contextPrompt = `Generate ${platform} content for ${car.year} ${car.make} ${car.model} at CarStreets:
-    
-    CARSTREETS CONTEXT:
-    - Owner: ${profile.operations.key_personnel[0]}
-    - Location: Raipur, Chhattisgarh  
-    - Price: ₹${car.price}
-    - Operating: ${profile.operations.operating_hours}
-    - Specialization: ${profile.business.specialization.join(', ')}
-    
-    Create unique, engaging ${platform} post with CarStreets branding, Raipur location context, and September 2025 relevance.
-    Include specific details that competitors cannot replicate.`;
-    
-    const result = await generateText({
-      model: openai('gpt-4o-mini'),
-      prompt: contextPrompt,
-      temperature: 0.8
-    });
-    
-    return {
-      text: result.text,
-      hashtags: ['#CarStreets', '#RaipurCars', '#AnkitPandeyAutos', `#${car.make.replace(' ', '')}`],
-      platform
-    };
-  }
+  const profile = CAR_STREETS_PROFILE;
+
+  // Null-safe access with fallback to empty string
+  const year = car.year ?? "";
+  const make = typeof car.make === "string" ? car.make : "";
+  const model = typeof car.model === "string" ? car.model : "";
+  const price = car.price ?? "";
+
+  // Clean make for hashtags
+  const cleanMake = make.replace(/\s+/g, '');
+
+  const contextPrompt = `Generate ${platform} content for ${year} ${make} ${model} at CarStreets:
   
+CARSTREETS CONTEXT:
+- Owner: ${profile.operations.key_personnel[0]}
+- Location: Raipur, Chhattisgarh  
+- Price: ₹${price}
+- Operating: ${profile.operations.operating_hours}
+- Specialization: ${profile.business.specialization.join(', ')}
+
+Create unique, engaging ${platform} post with CarStreets branding, Raipur location context, and September 2025 relevance.
+Include specific details that competitors cannot replicate.`;
+
+  const result = await generateText({
+    model: openai('gpt-4o-mini'),
+    prompt: contextPrompt,
+    temperature: 0.8
+  });
+
+  return {
+    text: result.text,
+    hashtags: ['#CarStreets', '#RaipurCars', '#AnkitPandeyAutos', `#${cleanMake}`],
+    platform
+  };
+}
+
   async generateReadyToPostContent(carIds: string[]) {
     const results = [];
     
