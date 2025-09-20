@@ -1,5 +1,22 @@
-// Replace your /app/api/admin/thumbnails/route.ts with this:
 import { NextRequest, NextResponse } from 'next/server';
+import { fal } from '@fal-ai/client';
+
+// Configure fal.ai with your API key
+fal.config({
+  credentials: process.env.FAL_KEY, // Add this to your Vercel environment variables
+});
+
+function getPlatformDimensions(platform: string) {
+  switch (platform) {
+    case 'linkedin':
+      return { aspect_ratio: '16:9', width: 1920, height: 1080 };
+    case 'instagram':
+    case 'facebook':
+      return { aspect_ratio: '1:1', width: 1024, height: 1024 };
+    default:
+      return { aspect_ratio: '1:1', width: 1024, height: 1024 };
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,68 +29,79 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🔄 Generating image for ${platform} with prompt:`, prompt.substring(0, 100));
+    console.log(`🍌 Generating nano-banana image via fal.ai for ${platform}`);
 
-    // ✅ OPTION 1: Try DALL-E 3 first (more reliable for now)
-    try {
-      const openaiApiKey = process.env.OPENAI_API_KEY;
-      
-      if (!openaiApiKey) {
-        throw new Error('OPENAI_API_KEY not configured');
-      }
+    // ✅ Create CarStreets-branded, unique prompt
+    const carStreetsPrompt = `Professional automotive dealership photography for CarStreets, Raipur: 
+    
+    ${carData.year} ${carData.make} ${carData.model} (₹${carData.price}) displayed in CarStreets showroom. 
+    
+    UNIQUE BRANDING ELEMENTS:
+    - "CarStreets" dealership signage prominently visible
+    - "Ankit Pandey's CarStreets" owner branding displayed
+    - "Ring Road No. 1, Raipur" location signage
+    - "Quality Pre-Owned Cars Since Years" tagline visible
+    - Professional Indian automotive showroom interior
+    - "₹${carData.price}" price display on windshield
+    - Raipur, Chhattisgarh location context in background
+    - Operating hours "10:30 AM - 8:30 PM" displayed
+    - September 2025 festival season decorations
+    
+    Style: ${style}, professional dealership photography, ${platform === 'linkedin' ? 'corporate presentation' : 'social media optimized'}`;
 
-      const dalleResponse = await fetch('https://api.openai.com/v1/images/generations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${openaiApiKey}`
-        },
-        body: JSON.stringify({
-          model: 'dall-e-3',
-          prompt: `Professional car photography: ${prompt}`.substring(0, 4000),
-          size: platform === 'linkedin' ? '1792x1024' : '1024x1024',
-          quality: 'standard',
-          n: 1
-        })
-      });
+    const { aspect_ratio, width, height } = getPlatformDimensions(platform);
 
-      if (dalleResponse.ok) {
-        const dalleData = await dalleResponse.json();
-        console.log('✅ DALL-E success for', platform);
-        
-        return NextResponse.json({
-          success: true,
-          model: 'dall-e-3',
-          imageUrl: dalleData.data[0].url,
-          cost: 0.04,
-          platform,
-          revised_prompt: dalleData.data[0].revised_prompt
-        });
-      } else {
-        const errorText = await dalleResponse.text();
-        console.log('❌ DALL-E failed:', dalleResponse.status, errorText);
-        throw new Error(`DALL-E API error: ${dalleResponse.status} - ${errorText}`);
-      }
-    } catch (error) {
-      console.error('💥 Image generation failed:', error);
-      
-      // ✅ FALLBACK: Return a success response with placeholder for now
-      return NextResponse.json({
-        success: true,
-        model: 'placeholder-generator',
-        imageUrl: 'https://via.placeholder.com/1024x1024/007ACC/FFFFFF?text=Car+Image+Coming+Soon',
-        cost: 0,
-        platform,
-        note: 'Placeholder image - API configuration in progress'
-      });
+    // ✅ Call fal.ai nano-banana with your branded prompt
+    const result = await fal.subscribe('fal-ai/nano-banana', {
+      input: {
+        prompt: carStreetsPrompt,
+        num_images: 1,
+        output_format: 'jpeg',
+        aspect_ratio: [aspect_ratio], // fal.ai expects array format
+        width,
+        height,
+      },
+      logs: true,
+      onQueueUpdate: (update) => {
+        if (update.status === 'IN_PROGRESS') {
+          update.logs?.map((log) => log.message).forEach(console.log);
+        }
+      },
+    });
+
+    console.log('✅ Nano-banana SUCCESS via fal.ai for', platform);
+
+    // Extract image URL from fal.ai response
+    const imageUrl = result.data?.images?.[0]?.url;
+    
+    if (!imageUrl) {
+      throw new Error('No image URL returned from fal.ai');
     }
 
+    return NextResponse.json({
+      success: true,
+      model: 'nano-banana-via-fal-ai',
+      imageUrl: imageUrl,
+      cost: 0.039, // fal.ai pricing
+      platform,
+      requestId: result.requestId,
+      carStreetsBranding: [
+        'CarStreets dealership signage',
+        'Ankit Pandey owner branding', 
+        'Raipur location context',
+        'Price display integration',
+        'Professional showroom setting'
+      ],
+      note: 'Generated with Gemini 2.5 Flash Image (nano-banana) via fal.ai'
+    });
+
   } catch (error) {
-    console.error('💥 Thumbnails API error:', error);
+    console.error('💥 fal.ai nano-banana generation failed:', error);
     return NextResponse.json(
       { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Internal server error'
+        error: `Nano-banana via fal.ai failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date().toISOString()
       },
       { status: 500 }
     );
