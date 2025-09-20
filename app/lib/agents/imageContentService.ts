@@ -13,6 +13,13 @@ export class ImageContentService {
     platforms: string[] = ['instagram', 'facebook', 'linkedin']
   ) {
     try {
+      // ✅ FIXED: Use absolute URL for server-side requests
+      const baseUrl = process.env.VERCEL_URL 
+        ? `https://${process.env.VERCEL_URL}` 
+        : process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+      console.log('🔍 ImageContentService calling:', `${baseUrl}/api/admin/thumbnails`);
+
       // Generate platform-specific images
       const imagePromises = platforms.map(async (platform) => {
         const prompt = await this.imagePromptAgent.generatePrompts(
@@ -21,7 +28,9 @@ export class ImageContentService {
           platform
         );
         
-        const response = await fetch('/api/admin/thumbnails', {
+        console.log(`🍌 Generating image for ${platform} via ImageContentService`);
+        
+        const response = await fetch(`${baseUrl}/api/admin/thumbnails`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -33,12 +42,17 @@ export class ImageContentService {
         });
         
         if (!response.ok) {
-          throw new Error(`Failed to generate image for ${platform}`);
+          const errorText = await response.text();
+          console.error(`❌ ImageContentService failed for ${platform}:`, response.status, errorText);
+          throw new Error(`Failed to generate image for ${platform}: ${response.status} - ${errorText}`);
         }
+        
+        const result = await response.json();
+        console.log(`✅ ImageContentService success for ${platform}:`, result.model || 'unknown-model');
         
         return {
           platform,
-          ...(await response.json())
+          ...result
         };
       });
       
@@ -51,7 +65,7 @@ export class ImageContentService {
         success: true
       };
     } catch (error) {
-      console.error('Image generation failed:', error);
+      console.error('❌ ImageContentService failed:', error);
       return {
         carId: carData.id,
         images: [],
@@ -63,7 +77,7 @@ export class ImageContentService {
   }
   
   async generateBatchImages(cars: CarData[], platforms: string[] = ['instagram']) {
-    const batchSize = 3; // Process 3 cars at a time
+    const batchSize = 3;
     const results = [];
     
     for (let i = 0; i < cars.length; i += batchSize) {
@@ -75,7 +89,6 @@ export class ImageContentService {
       const batchResults = await Promise.all(batchPromises);
       results.push(...batchResults);
       
-      // Rate limiting: Wait 2 seconds between batches
       if (i + batchSize < cars.length) {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
