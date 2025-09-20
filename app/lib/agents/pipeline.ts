@@ -4,6 +4,8 @@ import { generateObject, generateText } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { ImagePromptAgent } from './imagePromptAgent';
 import { CarData } from '../utils/promptTemplates';
+import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
+
 
 const ContentQualitySchema = z.object({
   uniqueness_score: z.number().min(0).max(100),
@@ -327,14 +329,69 @@ export class QualityControlledPipeline {
   }
 
   private async analyzeMarketTrends(carIds: string[]) {
-    // Research Agent implementation
-    return {
-      trending_car_types: ['SUV', 'Hatchback'],
-      seasonal_factors: 'festive_season',
-      price_trends: 'stable',
-      target_audience: 'young_professionals'
-    }
-  }
+  const profile = CAR_STREETS_PROFILE;
+  
+  // Generate research based on REAL dealer data
+  return {
+    dealer_context: {
+      business_name: profile.business.name,
+      specializations: profile.business.specialization,
+      reputation_factors: profile.business.reputation_factors,
+      
+      // Location-specific insights
+      location_intelligence: Object.entries(profile.locations).map(([location, details]) => ({
+        area: location,
+        target_demographics: details.target_demographics,
+        popular_inventory: details.popular_inventory,
+        landmarks: details.landmarks,
+        unique_positioning: `${location} location near ${details.landmarks.join(', ')}`
+      })),
+      
+      // Real inventory insights
+      inventory_analysis: {
+        price_distribution: profile.inventory.price_ranges,
+        specializations: profile.inventory.specializations,
+        financing_options: profile.inventory.financing_options,
+        luxury_capabilities: profile.inventory.luxury_offerings
+      },
+      
+      // Actual service offerings
+      service_portfolio: {
+        core_services: profile.services.core_services,
+        additional_services: profile.services.additional_services,
+        unique_selling_points: profile.services.unique_selling_points
+      },
+      
+      // Real operational insights
+      operational_context: {
+        management: profile.operations.key_personnel,
+        hours: profile.operations.operating_hours,
+        peak_seasons: profile.operations.peak_seasons,
+        approach: profile.operations.customer_approach
+      },
+      
+      // Actual market positioning
+      competitive_landscape: {
+        local_competition: profile.market_context.local_competition,
+        advantages: profile.market_context.competitive_advantages,
+        seasonal_trends: profile.market_context.seasonal_trends,
+        regional_preferences: profile.market_context.regional_preferences
+      }
+    },
+    
+    // Enhanced uniqueness factors
+    uniqueness_drivers: [
+      "Multiple strategic Raipur locations",
+      "Luxury vehicle specialization starting Rs. 3.5L",
+      "Ankit Pandey's leadership and customer focus",
+      "Hospital proximity advantages (Diwan, MMI)",
+      "Ring Road connectivity benefits",
+      "Established reputation over years",
+      "Verified documentation processes",
+      "Customer-centric service approach"
+    ]
+  };
+}
 
   private async createContentStrategy(research: any) {
     // Strategy Agent implementation  
@@ -345,43 +402,49 @@ export class QualityControlledPipeline {
     }
   }
 
-  // In your pipeline.ts, replace generateUniqueContent method:
 private async generateUniqueContent(strategy: any, customPrompt?: string) {
-  const basePrompt = customPrompt || `Create HIGHLY DETAILED and SPECIFIC social media content for used cars in Raipur, September 2025.
+  const profile = CAR_STREETS_PROFILE;
+  
+  const contextPrompt = `Create HIGHLY SPECIFIC content for Car Streets dealership:
 
-  REQUIREMENTS FOR >90% UNIQUENESS:
-  - Include specific September 2025 market trends
-  - Mention exact Raipur locality advantages (GE Road, Civil Lines, Telibandha)
-  - Use precise technical specifications (engine variants, transmission types)
-  - Include current festive season offers (Navratri, upcoming Diwali)
-  - Reference specific competitor comparisons in Raipur market
-  - Add exact financing options and EMI calculations
-  - Mention CarStreets exclusive benefits and warranty details
-  - Include seasonal factors (monsoon damage inspection, post-festival buying trends)
+  BUSINESS CONTEXT:
+  - ${profile.business.name}: ${profile.business.tagline}
+  - Specializing in: ${profile.business.specialization.join(', ')}
+  - Key Principal: ${profile.operations.key_personnel.join(', ')}
+  - Operating Hours: ${profile.operations.operating_hours}
   
-  Make every sentence information-dense with specific numbers, dates, locations, and technical details.
-  Avoid generic phrases like "good condition", "well maintained", "best price".
+  LOCATION-SPECIFIC DETAILS:
+  ${Object.entries(profile.locations).map(([area, details]) => 
+    `- ${area.charAt(0).toUpperCase() + area.slice(1)}: ${details.address}, targeting ${details.target_demographics}`
+  ).join('\n')}
   
-  Platform strategy: ${JSON.stringify(strategy)}`;
+  UNIQUE MARKET POSITION:
+  - ${profile.services.unique_selling_points.join('\n- ')}
+  
+  INVENTORY EXPERTISE:
+  - Price ranges: ${Object.keys(profile.inventory.price_ranges).join(', ')}
+  - Specializations: ${profile.inventory.specializations.join(', ')}
+  
+  Create content that mentions specific locations, real services, and authentic business details.
+  Make every sentence unique to Car Streets' actual operations.`;
 
   const result = await generateText({
     model: openai('gpt-4o-mini'),
-    prompt: basePrompt,
-    temperature: 0.8, // Higher creativity for uniqueness
-  }) ;
+    prompt: contextPrompt,
+    temperature: 0.8
+  });
 
-  // Generate multiple variations for different platforms
   return [
     {
       platform: 'instagram',
-      text: result.text + ` #RaipurCars #CarStreets #September2025 #UsedCars #ChhattisgarhtMotors`,
-      hashtags: ['#CarStreets', '#RaipurUsedCars', '#September2025', '#ChhattisgharhAutomotive'],
+      text: result.text,
+      hashtags: ['#CarStreets', '#RaipurUsedCars', '#AnkitPandeyDealership', '#ChhattisgarhtAutomotive'],
       uniqueness_factors: [
-        'Specific date references',
-        'Local market insights', 
-        'Technical specifications',
-        'Seasonal relevance',
-        'Competitor analysis'
+        'Real dealership information',
+        'Specific location details',
+        'Actual management names',
+        'Genuine service offerings',
+        'Authentic market positioning'
       ]
     }
   ];

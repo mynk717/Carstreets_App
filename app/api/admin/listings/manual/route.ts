@@ -33,7 +33,6 @@ export async function POST(request: NextRequest) {
         variant: null,
         year: listingData.year,
         price: BigInt(listingData.price), // Convert to BigInt for Prisma
-        price: BigInt(listingData.price),
         kmDriven: listingData.kmDriven,
         fuelType: listingData.fuelType,
         transmission: listingData.transmission,
