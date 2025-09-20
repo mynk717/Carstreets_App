@@ -13,6 +13,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <li><Link href="/admin/cars" className="block px-4 py-2 rounded hover:bg-gray-700"> Car Management</Link></li>
                 <li><Link href="/admin/content" className="block px-4 py-2 rounded hover:bg-gray-700"> Content Studio</Link></li>
                 <li><Link href="/admin/content/image-studio" className="block px-4 py-2 hover:bg-gray-100">🎨 Image Studio</Link></li>
+                <li><Link href="/admin/content/calendar" className="block px-4 py-2 hover:bg-gray-100">🗓️ Content Calendar</Link></li>
               </ul>
               <Link href="/" className="mt-8 block text-blue-300 text-sm">← Back to Main Site</Link>
             </div>
