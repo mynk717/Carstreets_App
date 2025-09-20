@@ -1,5 +1,6 @@
 'use client';
 
+const AUTH_TOKEN = 'Bearer admin-temp-key';
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/ui/Button';
 
@@ -29,7 +30,9 @@ export default function ContentCalendarPage() {
     try {
       const response = await fetch('/api/admin/content/generate-calendar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+                     'Authorization': AUTH_TOKEN
+         },
         body: JSON.stringify({
           // Let it auto-select cars with images
         })
@@ -54,7 +57,9 @@ export default function ContentCalendarPage() {
     try {
       const response = await fetch('/api/admin/content/approve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+           'Authorization': AUTH_TOKEN
+         },
         body: JSON.stringify({
           contentId,
           scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000) // Tomorrow

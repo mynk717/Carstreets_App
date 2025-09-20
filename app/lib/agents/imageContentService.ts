@@ -1,6 +1,7 @@
 import { ImagePromptAgent } from './imagePromptAgent';
 import { CarData } from '../utils/promptTemplates';
 
+const AUTH_TOKEN = 'Bearer admin-temp-key';
 export class ImageContentService {
   private imagePromptAgent: ImagePromptAgent;
   
@@ -32,7 +33,9 @@ export class ImageContentService {
         
         const response = await fetch(`${baseUrl}/api/admin/thumbnails`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json',
+            Authorization: AUTH_TOKEN
+           },
           body: JSON.stringify({
             carData,
             prompt,

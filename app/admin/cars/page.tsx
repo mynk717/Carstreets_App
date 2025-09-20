@@ -7,6 +7,8 @@ import { Car } from '../../types'
 import { CarFormModal } from './components/CarFormModal'
 import { ScrapeButton } from './components/ScrapeButton'
 
+const AUTH_TOKEN = 'Bearer admin-temp-key';
+
 export default function AdminCarsPage() {
   const [cars, setCars] = useState<Car[]>([])
   const [loading, setLoading] = useState(false)
@@ -50,7 +52,9 @@ export default function AdminCarsPage() {
     try {
       const response = await fetch('/api/admin/cars/test-scrape', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+                      'Authorization': AUTH_TOKEN
+         },
         body: JSON.stringify({ url: testUrl.trim() })
       })
 
@@ -185,7 +189,9 @@ export default function AdminCarsPage() {
 
     const response = await fetch(endpoint, {
       method,
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json',
+                      'Authorization': AUTH_TOKEN
+       },
       body: JSON.stringify(carData)
     })
 
@@ -250,7 +256,9 @@ export default function AdminCarsPage() {
     try {
       const response = await fetch('/api/admin/cars/bulk-add', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+                      'Authorization': AUTH_TOKEN
+         },
         body: JSON.stringify({ urls })
       })
 

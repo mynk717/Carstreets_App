@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
 
+const AUTH_TOKEN = 'Bearer admin-temp-key';
 interface CarData {
   id: string;
   make: string;
@@ -64,7 +65,9 @@ export default function ImageStudioPage() {
       
       const response = await fetch('/api/admin/thumbnails', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+          Authorization: AUTH_TOKEN
+         },
         body: JSON.stringify({
           carData,
           prompt,
@@ -96,7 +99,9 @@ export default function ImageStudioPage() {
     try {
       const response = await fetch('/api/admin/test-pipeline', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json',
+          Authorization: AUTH_TOKEN
+         },
         body: JSON.stringify({
           userId: 'image-studio-user',
           carIds: [carData.id],

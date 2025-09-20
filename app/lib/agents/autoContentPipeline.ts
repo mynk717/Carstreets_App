@@ -3,6 +3,8 @@ import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
+const AUTH_TOKEN = 'Bearer admin-temp-key';
+
 export class AutoContentPipeline {
   
   async generateUniqueText(car: any, platform: string) {
@@ -63,7 +65,9 @@ export class AutoContentPipeline {
         // Generate branded image using Cloudinary + nano-banana
         const imageResponse = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/admin/thumbnails`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json',
+            Authorization: AUTH_TOKEN
+           },
           body: JSON.stringify({
             carData: {
               id: car.id,
