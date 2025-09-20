@@ -28,7 +28,7 @@
     "framer-motion": "^12.23.12",
     "ioredis": "^5.7.0",
     "lucide-react": "^0.542.0",
-    "mem0ai": "^2.1.38",
+    "mem0ai": "^1.0.39",
     "neo4j-driver": "^5.28.2",
     "next": "15.5.2",
     "next-cloudinary": "^6.16.0",
