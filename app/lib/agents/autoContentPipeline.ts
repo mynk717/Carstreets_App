@@ -3,108 +3,134 @@ import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
-const AUTH_TOKEN = 'Bearer admin-temp-key';
-
 export class AutoContentPipeline {
   
   async generateUniqueText(car: any, platform: string) {
-  const profile = CAR_STREETS_PROFILE;
-
-  // Null-safe access with fallback to empty string
-  const year = car.year ?? "";
-  const make = typeof car.make === "string" ? car.make : "";
-  const model = typeof car.model === "string" ? car.model : "";
-  const price = car.price ?? "";
-
-  // Clean make for hashtags
-  const cleanMake = make.replace(/\s+/g, '');
-
-  const contextPrompt = `Generate ${platform} content for ${year} ${make} ${model} at CarStreets:
-  
-CARSTREETS CONTEXT:
-- Owner: ${profile.operations.key_personnel[0]}
-- Location: Raipur, Chhattisgarh  
-- Price: ₹${price}
-- Operating: ${profile.operations.operating_hours}
-- Specialization: ${profile.business.specialization.join(', ')}
-
-Create unique, engaging ${platform} post with CarStreets branding, Raipur location context, and September 2025 relevance.
-Include specific details that competitors cannot replicate.`;
-
-  const result = await generateText({
-    model: openai('gpt-4o-mini'),
-    prompt: contextPrompt,
-    temperature: 0.8
-  });
-
-  return {
-    text: result.text,
-    hashtags: ['#CarStreets', '#RaipurCars', '#AnkitPandeyAutos', `#${cleanMake}`],
-    platform
-  };
-}
-
-  async generateReadyToPostContent(carIds: string[]) {
-    const results = [];
+    const profile = CAR_STREETS_PROFILE;
     
+    const contextPrompt = `Generate ${platform} content for ${car.year} ${car.make} ${car.model} at CarStreets:
+    
+    CARSTREETS CONTEXT:
+    - Owner: ${profile.operations.key_personnel[0]}
+    - Location: Raipur, Chhattisgarh  
+    - Price: ₹${car.price}
+    - Operating: ${profile.operations.operating_hours}
+    - Specialization: ${profile.business.specialization.join(', ')}
+    
+    Create unique, engaging ${platform} post with CarStreets branding, Raipur location context, and September 2025 relevance.
+    Include specific details that competitors cannot replicate.`;
+    
+    const result = await generateText({
+      model: openai('gpt-4o-mini'),
+      prompt: contextPrompt,
+      temperature: 0.8
+    });
+    
+    return {
+      text: result.text,
+      hashtags: ['#CarStreets', '#RaipurCars', '#AnkitPandeyAutos', `#${car.make.replace(' ', '')}`],
+      platform
+    };
+  }
+  
+ async generateReadyToPostContent(carIds: string[]) {
+    const results = [];
+
     for (const carId of carIds) {
-      // Get car with images
       const car = await prisma.car.findUnique({
         where: { id: carId },
-        // ✅ Adjust these field names to match YOUR database schema
         select: {
           id: true,
           brand: true,
-          model: true, 
+          model: true,
           year: true,
           price: true,
-          images: true, // or whatever your image field is called
-          // Add other fields you need
-        }
+          images: true,
+        },
       });
-      
-      if (!car) continue;
-      
+
+      if (!car) {
+        console.warn(`Car with ID ${carId} not found, skipping.`);
+        continue;
+      }
+
       const platforms = ['instagram', 'facebook', 'linkedin'];
-      
+
       for (const platform of platforms) {
-        // Generate text content  
         const textContent = await this.generateUniqueText(car, platform);
-        
-        // Generate branded image using Cloudinary + nano-banana
-        const imageResponse = await fetch(`${process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'}/api/admin/thumbnails`, {
+
+        const baseUrl = process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : 'http://localhost:3000';
+
+        console.log(`Fetching thumbnails from: ${baseUrl}/api/admin/thumbnails`);
+
+        const prompt = car.images?.[0]
+          ? `Transform this car photograph into a professional CarStreets dealership marketing image:
+- "CarStreets" dealership logo prominently displayed
+- "₹${car.price || 'Price on Request'}" price overlay in attractive design
+- "Ankit Pandey's CarStreets, Raipur" branding text
+- Professional showroom background blend
+- "Quality Pre-Owned Cars Since Years" tagline
+- Operating hours "10:30 AM - 8:30 PM" display
+Maintain the car's authentic appearance while adding professional dealership branding for ${platform} social media marketing.`
+          : `Professional CarStreets dealership showroom scene: ${car.year} ${car.brand} ${car.model} displayed in modern Indian car showroom. "CarStreets" signage, "₹${car.price || 'Price on Request'}" price display, "Ankit Pandey's CarStreets, Raipur" branding, professional automotive lighting.`;
+
+        const imageResponse = await fetch(`${baseUrl}/api/admin/thumbnails`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json',
-            Authorization: AUTH_TOKEN
-           },
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer admin-temp-key', // Add in case required
+          },
           body: JSON.stringify({
             carData: {
               id: car.id,
               make: car.brand,
               model: car.model,
               year: car.year,
-              price: Number(car.price) // Convert BigInt to Number
+              price: Number(car.price),
             },
             platform,
-            style: 'photorealistic'
-          })
+            style: 'photorealistic',
+            prompt,
+          }),
         });
-        
+
+        console.log('Thumbnail API Response Status:', imageResponse.status, imageResponse.statusText);
+        const contentType = imageResponse.headers.get('content-type');
+
+        if (!contentType?.includes('application/json')) {
+          const text = await imageResponse.text();
+          console.error('Non-JSON response:', imageResponse.status, text.slice(0, 200));
+          throw new Error(`Expected JSON, received ${contentType}: ${text.slice(0, 200)}`);
+        }
+
+        if (!imageResponse.ok) {
+          const text = await imageResponse.text();
+          console.error('Thumbnail API failed:', imageResponse.status, text.slice(0, 200));
+          throw new Error(`Thumbnail API failed: ${imageResponse.status} ${text}`);
+        }
+
         const imageResult = await imageResponse.json();
-        
+
+        if (!imageResult.success) {
+          console.error('Thumbnail API returned failure:', imageResult);
+          throw new Error(`Thumbnail generation failed: ${imageResult.error || 'Unknown error'}`);
+        }
+
         results.push({
           carId: car.id,
           platform,
           textContent: textContent.text,
           hashtags: textContent.hashtags,
           imageUrl: imageResult.imageUrl,
-          originalImage: car.images?.[0] || null, // Adjust based on your schema
+          originalImage: car.images?.[0] || null,
           success: imageResult.success,
-          cost: imageResult.cost || 0
+          cost: imageResult.cost || 0,
         });
       }
     }
-    
+
     return results;
   }
 }
