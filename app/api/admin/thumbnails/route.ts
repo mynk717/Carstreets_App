@@ -105,7 +105,7 @@ export async function POST(request: NextRequest) {
         result = await fal.subscribe('fal-ai/nano-banana/edit', {
           input: {
             prompt: brandingPrompt,
-            image_url: carImageUrl,
+            image_urls: [carImageUrl],
             num_images: 1
             // ✅ REMOVED: output_format and aspect_ratio - not supported in edit mode
           },
