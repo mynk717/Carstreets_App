@@ -4,36 +4,45 @@ import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
 export class AutoContentPipeline {
-  
   async generateUniqueText(car: any, platform: string) {
+    if (!car?.brand || !car?.model || !car?.year) {
+      console.error('Invalid car data:', car);
+      throw new Error('Missing required car fields: brand, model, or year');
+    }
+
     const profile = CAR_STREETS_PROFILE;
-    
-    const contextPrompt = `Generate ${platform} content for ${car.year} ${car.make} ${car.model} at CarStreets:
+
+    const contextPrompt = `Generate ${platform} content for ${car.year} ${car.brand} ${car.model} at CarStreets:
     
     CARSTREETS CONTEXT:
     - Owner: ${profile.operations.key_personnel[0]}
     - Location: Raipur, Chhattisgarh  
-    - Price: ₹${car.price}
+    - Price: ₹${car.price || 'Price on Request'}
     - Operating: ${profile.operations.operating_hours}
     - Specialization: ${profile.business.specialization.join(', ')}
     
     Create unique, engaging ${platform} post with CarStreets branding, Raipur location context, and September 2025 relevance.
     Include specific details that competitors cannot replicate.`;
-    
+
     const result = await generateText({
       model: openai('gpt-4o-mini'),
       prompt: contextPrompt,
-      temperature: 0.8
+      temperature: 0.8,
     });
-    
+
     return {
       text: result.text,
-      hashtags: ['#CarStreets', '#RaipurCars', '#AnkitPandeyAutos', `#${car.make.replace(' ', '')}`],
-      platform
+      hashtags: [
+        '#CarStreets',
+        '#RaipurCars',
+        '#AnkitPandeyAutos',
+        `#${car.brand.replace(/\s+/g, '')}`, // Use car.brand instead of car.make
+      ],
+      platform,
     };
   }
-  
- async generateReadyToPostContent(carIds: string[]) {
+
+  async generateReadyToPostContent(carIds: string[]) {
     const results = [];
 
     for (const carId of carIds) {
@@ -85,7 +94,7 @@ Maintain the car's authentic appearance while adding professional dealership bra
           body: JSON.stringify({
             carData: {
               id: car.id,
-              make: car.brand,
+              brand: car.brand, // Use brand instead of make
               model: car.model,
               year: car.year,
               price: Number(car.price),
