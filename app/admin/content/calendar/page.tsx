@@ -1,3 +1,4 @@
+// app/admin/content/calendar/page.tsx - FIXED VERSION
 'use client';
 
 const AUTH_TOKEN = 'Bearer admin-temp-key';
@@ -16,23 +17,48 @@ export default function ContentCalendarPage() {
   
   const loadContentCalendar = async () => {
     try {
-      // You'll need to create this API endpoint
-      const response = await fetch('/api/admin/content/calendar');
+      // ✅ FIXED: Add proper headers for calendar loading
+      const headers: Record<string, string> = {};
+      
+      // Add Vercel bypass token if available
+      if (process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET) {
+        headers['x-vercel-protection-bypass'] = process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET;
+      }
+      
+      const response = await fetch('/api/admin/content/calendar', {
+        method: 'GET',
+        headers: Object.keys(headers).length > 0 ? headers : undefined
+      });
+      
+      if (!response.ok) {
+        throw new Error(`Calendar loading failed: ${response.status}`);
+      }
+      
       const data = await response.json();
       setContentItems(data.content || []);
     } catch (error) {
       console.error('Failed to load calendar:', error);
+      setContentItems([]); // Set empty array as fallback
     }
   };
   
   const generateAutomatedContent = async () => {
     setGenerating(true);
     try {
+      // ✅ FIXED: Add Vercel bypass headers for production
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': AUTH_TOKEN
+      };
+      
+      // Add Vercel bypass token if available
+      if (process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET) {
+        headers['x-vercel-protection-bypass'] = process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET;
+      }
+      
       const response = await fetch('/api/admin/content/generate-calendar', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json',
-                     'Authorization': AUTH_TOKEN
-         },
+        headers,
         body: JSON.stringify({
           // Let it auto-select cars with images
         })
@@ -55,11 +81,20 @@ export default function ContentCalendarPage() {
   
   const approveContent = async (contentId: string) => {
     try {
+      // ✅ FIXED: Add Vercel bypass headers for approval
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Authorization': AUTH_TOKEN
+      };
+      
+      // Add Vercel bypass token if available
+      if (process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET) {
+        headers['x-vercel-protection-bypass'] = process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET;
+      }
+      
       const response = await fetch('/api/admin/content/approve', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json',
-           'Authorization': AUTH_TOKEN
-         },
+        headers,
         body: JSON.stringify({
           contentId,
           scheduledDate: new Date(Date.now() + 24 * 60 * 60 * 1000) // Tomorrow

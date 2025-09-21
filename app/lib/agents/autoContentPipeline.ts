@@ -91,13 +91,20 @@ Maintain the car's authentic appearance while adding professional dealership bra
           : `Professional CarStreets dealership showroom scene: ${car.year} ${car.brand} ${car.model} displayed in modern Indian car showroom. "CarStreets" signage, "₹${car.price || 'Price on Request'}" price display, "Ankit Pandey's CarStreets, Raipur" branding, professional automotive lighting.`;
 
         try {
-          // ✅ FIXED: Add proper error handling and auth headers
+          // ✅ FIXED: Add proper error handling and auth headers + Vercel bypass
+          const headers: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'Authorization': AUTH_TOKEN, // ✅ Ensure auth header is present
+          };
+          
+          // ✅ Add Vercel bypass token for production
+          if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+            headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+          }
+          
           const imageResponse = await fetch(`${baseUrl}/api/admin/thumbnails`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': AUTH_TOKEN, // ✅ Ensure auth header is present
-            },
+            headers,
             body: JSON.stringify({
               carData: {
                 id: car.id,
