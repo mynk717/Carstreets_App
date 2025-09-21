@@ -92,22 +92,22 @@ export async function POST(request: NextRequest) {
       if (carImageUrl && carImageUrl.startsWith('https://res.cloudinary.com/')) {
         console.log('🖼️ Using real Cloudinary car image for branding');
 
-        const brandingPrompt = `Transform this car photograph into a professional CarStreets dealership marketing image:
-- "CarStreets" dealership logo prominently displayed
-- "₹${carData.price || 'Price on Request'}" price overlay in attractive design
-- "Ankit Pandey's CarStreets, Raipur" branding text
-- Professional showroom background blend
-- "Quality Pre-Owned Cars Since Years" tagline
-- Operating hours "10:30 AM - 8:30 PM" display
-Maintain the car's authentic appearance while adding professional dealership branding for ${platform} social media marketing.`;
+        // ✅ FIXED: Simplified prompt for Nano Banana edit
+        const brandingPrompt = `Add CarStreets dealership branding to this car photo. Include "CarStreets" logo, price "${carData.price || 'Price on Request'}", and "Raipur" location text overlay for ${platform} social media.`;
 
+        console.log('🔧 Calling nano-banana/edit with params:', {
+          prompt: brandingPrompt.slice(0, 100) + '...',
+          image_url: carImageUrl.slice(0, 50) + '...',
+          platform
+        });
+
+        // ✅ FIXED: Use only supported parameters for nano-banana/edit
         result = await fal.subscribe('fal-ai/nano-banana/edit', {
           input: {
             prompt: brandingPrompt,
             image_url: carImageUrl,
-            num_images: 1,
-            output_format: 'jpeg',
-            aspect_ratio: platform === 'linkedin' ? '16:9' : '1:1',
+            num_images: 1
+            // ✅ REMOVED: output_format and aspect_ratio - not supported in edit mode
           },
         });
 
@@ -115,14 +115,20 @@ Maintain the car's authentic appearance while adding professional dealership bra
       } else {
         console.log('🏢 No Cloudinary image found, generating showroom scene');
 
-        const showroomPrompt = prompt;
+        // ✅ FIXED: Simplified prompt for text-to-image generation
+        const showroomPrompt = `CarStreets car dealership showroom in Raipur. ${carData.year || 2020} ${carData.brand || 'car'} ${carData.model || 'model'} displayed professionally with "CarStreets" signage and "₹${carData.price || 'Price on Request'}" price display.`;
 
+        console.log('🔧 Calling nano-banana with params:', {
+          prompt: showroomPrompt.slice(0, 100) + '...',
+          platform
+        });
+
+        // ✅ FIXED: Use only supported parameters for nano-banana text-to-image
         result = await fal.subscribe('fal-ai/nano-banana', {
           input: {
             prompt: showroomPrompt,
-            num_images: 1,
-            output_format: 'jpeg',
-            aspect_ratio: platform === 'linkedin' ? '16:9' : '1:1',
+            num_images: 1
+            // ✅ REMOVED: output_format and aspect_ratio - not supported
           },
         });
 
@@ -150,8 +156,22 @@ Maintain the car's authentic appearance while adding professional dealership bra
       
     } catch (falError) {
       console.error('❌ FAL.AI API error:', falError);
+      
+      // ✅ ADDED: Log the full error details for debugging
+      if (falError.status === 422) {
+        console.error('❌ FAL.AI 422 Error Details:', {
+          status: falError.status,
+          body: falError.body,
+          message: falError.message
+        });
+      }
+      
       return NextResponse.json(
-        { success: false, error: `fal.ai API failed: ${falError instanceof Error ? falError.message : String(falError)}` },
+        { 
+          success: false, 
+          error: `fal.ai API failed: ${falError instanceof Error ? falError.message : String(falError)}`,
+          details: falError.body || null
+        },
         { status: 500 }
       );
     }
