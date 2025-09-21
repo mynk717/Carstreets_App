@@ -4,14 +4,22 @@ import { verifyAdminAuth } from '@/lib/auth/admin';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('📅 Loading content calendar...');
+    console.log('🗓️ Loading content calendar...');
     
-    // // Verify admin authorization
-    // const authResult = await verifyAdminAuth(request);
-    // if (!authResult.success) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    // ✅ FIXED: Add Vercel bypass headers like other routes
+    const headers: Record<string, string> = {};
     
+    // Add Vercel bypass token if available (same pattern as other files)
+    if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+      headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+    }
+    
+    // Verify admin authorization
+    const authResult = await verifyAdminAuth(request);
+    if (!authResult.success) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     // Fetch all content calendar items
     const contentItems = await prisma.contentCalendar.findMany({
       orderBy: { createdAt: 'desc' },
@@ -26,10 +34,23 @@ export async function GET(request: NextRequest) {
         }
       }
     });
-    
+
+    // ✅ FIXED: Convert BigInt to string before JSON serialization
+    const serializedContent = contentItems.map(item => ({
+      ...item,
+      // Convert any BigInt fields to strings
+      generationCost: typeof item.generationCost === 'bigint' ? item.generationCost.toString() : item.generationCost,
+      uniquenessScore: typeof item.uniquenessScore === 'bigint' ? item.uniquenessScore.toString() : item.uniquenessScore,
+      car: item.car ? {
+        ...item.car,
+        price: typeof item.car.price === 'bigint' ? item.car.price.toString() : item.car.price,
+        year: typeof item.car.year === 'bigint' ? item.car.year.toString() : item.car.year
+      } : item.car
+    }));
+
     return NextResponse.json({
       success: true,
-      content: contentItems
+      content: serializedContent
     });
     
   } catch (error) {
