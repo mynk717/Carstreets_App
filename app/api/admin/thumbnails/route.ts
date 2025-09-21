@@ -1,20 +1,32 @@
+// app/api/admin/thumbnails/route.ts - FIXED VERSION
 import { NextRequest, NextResponse } from 'next/server';
 import { fal } from '@fal-ai/client';
 import { prisma } from '@/lib/prisma';
+import { verifyAdminAuth } from '@/lib/auth/admin';
 
 fal.config({
   credentials: process.env.FAL_KEY,
 });
 
 export async function POST(request: NextRequest) {
-  console.log('🍌 FAL.AI with Cloudinary integration');
+  console.log('🍌 FAL.AI with Cloudinary integration - Starting request');
 
   try {
-    // Re-enable in production if needed
-    // const authResult = await verifyAdminAuth(request);
-    // if (!authResult.success) {
-    //   return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    // }
+    // ✅ FIXED: Re-enable auth verification and provide better error handling
+    console.log('🔐 Checking admin authentication...');
+    const authResult = await verifyAdminAuth(request);
+    if (!authResult.success) {
+      console.log('❌ Authentication failed:', authResult.error);
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Unauthorized access - admin authentication required',
+          details: authResult.error 
+        }, 
+        { status: 401 }
+      );
+    }
+    console.log('✅ Authentication successful');
 
     let requestBody;
     try {
@@ -30,6 +42,7 @@ export async function POST(request: NextRequest) {
     const { carData, prompt, platform, style = 'photorealistic' } = requestBody;
 
     if (!carData?.id || !platform || !prompt) {
+      console.error('❌ Missing required fields:', { carData: !!carData?.id, platform: !!platform, prompt: !!prompt });
       return NextResponse.json(
         { success: false, error: 'Missing required fields: carData.id, platform, prompt' },
         { status: 400 }
@@ -98,7 +111,7 @@ Maintain the car's authentic appearance while adding professional dealership bra
           },
         });
 
-        console.log('Fal.ai edit Response:', JSON.stringify(result, null, 2));
+        console.log('✅ Fal.ai edit completed successfully');
       } else {
         console.log('🏢 No Cloudinary image found, generating showroom scene');
 
@@ -113,14 +126,18 @@ Maintain the car's authentic appearance while adding professional dealership bra
           },
         });
 
-        console.log('Fal.ai generate Response:', JSON.stringify(result, null, 2));
+        console.log('✅ Fal.ai generate completed successfully');
       }
 
       if (!result?.data?.images?.[0]?.url) {
-        console.error('No image URL in Fal.ai response:', result);
-        throw new Error('No image URL returned by Fal.ai API');
+        console.error('❌ No image URL in Fal.ai response:', result);
+        return NextResponse.json(
+          { success: false, error: 'No image URL returned by Fal.ai API' },
+          { status: 500 }
+        );
       }
 
+      console.log('🎉 Thumbnail generation successful');
       return NextResponse.json({
         success: true,
         model: carImageUrl ? 'fal-ai/nano-banana/edit' : 'fal-ai/nano-banana',
@@ -130,6 +147,7 @@ Maintain the car's authentic appearance while adding professional dealership bra
         platform,
         mode: carImageUrl ? 'cloudinary-branded-real-car' : 'generated-showroom',
       });
+      
     } catch (falError) {
       console.error('❌ FAL.AI API error:', falError);
       return NextResponse.json(

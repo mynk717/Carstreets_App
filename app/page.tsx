@@ -1,4 +1,5 @@
 'use client'
+require('dotenv').config();
 
 import { useState, useEffect } from 'react'
 import { RefreshCw } from 'lucide-react'

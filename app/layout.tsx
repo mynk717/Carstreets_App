@@ -1,8 +1,11 @@
+require('dotenv').config();
+
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import '../src/app/globals.css'
 import { Header } from './components/layout/Header'
-
+const codeGptApiKey = process.env.CodeGPT_apiKey;
+console.log('My CodeGPT API Key:', codeGptApiKey);
 const inter = Inter({ subsets: ['latin'] })
 export const viewport = {
   width: 'device-width',

@@ -1,9 +1,12 @@
+// app/lib/agents/autoContentPipeline.ts - FIXED VERSION
 import { prisma } from '@/lib/prisma';
 import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
+// ✅ FIXED: Use consistent auth token
 const AUTH_TOKEN = 'Bearer admin-temp-key';
+
 export class AutoContentPipeline {
   async generateUniqueText(car: any, platform: string) {
     if (!car?.brand || !car?.model || !car?.year) {
@@ -37,7 +40,7 @@ export class AutoContentPipeline {
         '#CarStreets',
         '#RaipurCars',
         '#AnkitPandeyAutos',
-        `#${car.brand.replace(/\s+/g, '')}`, // Use car.brand instead of car.make
+        `#${car.brand.replace(/\s+/g, '')}`,
       ],
       platform,
     };
@@ -69,10 +72,11 @@ export class AutoContentPipeline {
       for (const platform of platforms) {
         const textContent = await this.generateUniqueText(car, platform);
 
+        // ✅ FIXED: Determine base URL more reliably
         const baseUrl = process.env.VERCEL_URL
           ? `https://${process.env.VERCEL_URL}`
-          : 'http://localhost:3000';
-const bypassToken = process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '';
+          : process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
         console.log(`Fetching thumbnails from: ${baseUrl}/api/admin/thumbnails`);
 
         const prompt = car.images?.[0]
@@ -86,58 +90,127 @@ const bypassToken = process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '';
 Maintain the car's authentic appearance while adding professional dealership branding for ${platform} social media marketing.`
           : `Professional CarStreets dealership showroom scene: ${car.year} ${car.brand} ${car.model} displayed in modern Indian car showroom. "CarStreets" signage, "₹${car.price || 'Price on Request'}" price display, "Ankit Pandey's CarStreets, Raipur" branding, professional automotive lighting.`;
 
-        const imageResponse = await fetch(`${baseUrl}/api/admin/thumbnails`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: AUTH_TOKEN
-          },
-          body: JSON.stringify({
-            carData: {
-              id: car.id,
-              brand: car.brand, // Use brand instead of make
-              model: car.model,
-              year: car.year,
-              price: Number(car.price),
+        try {
+          // ✅ FIXED: Add proper error handling and auth headers
+          const imageResponse = await fetch(`${baseUrl}/api/admin/thumbnails`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': AUTH_TOKEN, // ✅ Ensure auth header is present
             },
+            body: JSON.stringify({
+              carData: {
+                id: car.id,
+                brand: car.brand,
+                model: car.model,
+                year: car.year,
+                price: Number(car.price),
+              },
+              platform,
+              style: 'photorealistic',
+              prompt,
+            }),
+          });
+
+          console.log('Thumbnail API Response Status:', imageResponse.status, imageResponse.statusText);
+
+          // ✅ FIXED: Better error handling for non-JSON responses
+          const contentType = imageResponse.headers.get('content-type');
+          
+          if (!imageResponse.ok) {
+            const errorText = await imageResponse.text();
+            console.error(`❌ Thumbnail API failed:`, {
+              status: imageResponse.status,
+              statusText: imageResponse.statusText,
+              contentType,
+              response: errorText.slice(0, 500),
+              url: `${baseUrl}/api/admin/thumbnails`,
+              authHeader: AUTH_TOKEN ? 'Present' : 'Missing'
+            });
+            
+            // ✅ Skip this platform but continue with others
+            console.warn(`⚠️ Skipping image generation for ${platform}, continuing with text-only content`);
+            results.push({
+              carId: car.id,
+              platform,
+              textContent: textContent.text,
+              hashtags: textContent.hashtags,
+              imageUrl: null,
+              originalImage: car.images?.[0] || null,
+              success: false,
+              error: `Image generation failed: ${imageResponse.status} - ${errorText.slice(0, 100)}`,
+              cost: 0,
+            });
+            continue;
+          }
+
+          if (!contentType?.includes('application/json')) {
+            const text = await imageResponse.text();
+            console.error('❌ Non-JSON response:', {
+              status: imageResponse.status,
+              contentType,
+              response: text.slice(0, 200)
+            });
+            
+            // ✅ Skip this platform but continue
+            results.push({
+              carId: car.id,
+              platform,
+              textContent: textContent.text,
+              hashtags: textContent.hashtags,
+              imageUrl: null,
+              originalImage: car.images?.[0] || null,
+              success: false,
+              error: `Expected JSON, received ${contentType}`,
+              cost: 0,
+            });
+            continue;
+          }
+
+          const imageResult = await imageResponse.json();
+
+          if (!imageResult.success) {
+            console.error('❌ Thumbnail API returned failure:', imageResult);
+            results.push({
+              carId: car.id,
+              platform,
+              textContent: textContent.text,
+              hashtags: textContent.hashtags,
+              imageUrl: null,
+              originalImage: car.images?.[0] || null,
+              success: false,
+              error: `Thumbnail generation failed: ${imageResult.error || 'Unknown error'}`,
+              cost: 0,
+            });
+            continue;
+          }
+
+          // ✅ Success case
+          results.push({
+            carId: car.id,
             platform,
-            style: 'photorealistic',
-            prompt,
-          }),
-        });
+            textContent: textContent.text,
+            hashtags: textContent.hashtags,
+            imageUrl: imageResult.imageUrl,
+            originalImage: car.images?.[0] || null,
+            success: imageResult.success,
+            cost: imageResult.cost || 0,
+          });
 
-        console.log('Thumbnail API Response Status:', imageResponse.status, imageResponse.statusText);
-        const contentType = imageResponse.headers.get('content-type');
-
-        if (!contentType?.includes('application/json')) {
-          const text = await imageResponse.text();
-          console.error('Non-JSON response:', imageResponse.status, text.slice(0, 200));
-          throw new Error(`Expected JSON, received ${contentType}: ${text.slice(0, 200)}`);
+        } catch (fetchError) {
+          console.error(`❌ Network error calling thumbnails API:`, fetchError);
+          results.push({
+            carId: car.id,
+            platform,
+            textContent: textContent.text,
+            hashtags: textContent.hashtags,
+            imageUrl: null,
+            originalImage: car.images?.[0] || null,
+            success: false,
+            error: `Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`,
+            cost: 0,
+          });
         }
-
-        if (!imageResponse.ok) {
-          const text = await imageResponse.text();
-          console.error('Thumbnail API failed:', imageResponse.status, text.slice(0, 200));
-          throw new Error(`Thumbnail API failed: ${imageResponse.status} ${text}`);
-        }
-
-        const imageResult = await imageResponse.json();
-
-        if (!imageResult.success) {
-          console.error('Thumbnail API returned failure:', imageResult);
-          throw new Error(`Thumbnail generation failed: ${imageResult.error || 'Unknown error'}`);
-        }
-
-        results.push({
-          carId: car.id,
-          platform,
-          textContent: textContent.text,
-          hashtags: textContent.hashtags,
-          imageUrl: imageResult.imageUrl,
-          originalImage: car.images?.[0] || null,
-          success: imageResult.success,
-          cost: imageResult.cost || 0,
-        });
       }
     }
 
