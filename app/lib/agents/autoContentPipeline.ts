@@ -3,6 +3,7 @@ import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
 
+const AUTH_TOKEN = 'Bearer admin-temp-key';
 export class AutoContentPipeline {
   async generateUniqueText(car: any, platform: string) {
     if (!car?.brand || !car?.model || !car?.year) {
@@ -71,7 +72,7 @@ export class AutoContentPipeline {
         const baseUrl = process.env.VERCEL_URL
           ? `https://${process.env.VERCEL_URL}`
           : 'http://localhost:3000';
-
+const bypassToken = process.env.VERCEL_AUTOMATION_BYPASS_SECRET || '';
         console.log(`Fetching thumbnails from: ${baseUrl}/api/admin/thumbnails`);
 
         const prompt = car.images?.[0]
@@ -89,7 +90,7 @@ Maintain the car's authentic appearance while adding professional dealership bra
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'Authorization': 'Bearer admin-temp-key', // Add in case required
+            Authorization: AUTH_TOKEN
           },
           body: JSON.stringify({
             carData: {
