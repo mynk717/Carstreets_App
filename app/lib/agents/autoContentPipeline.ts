@@ -1,4 +1,4 @@
-// app/lib/agents/autoContentPipeline.ts - FIXED VERSION
+// app/lib/agents/autoContentPipeline.ts - MINIMAL TIMEOUT FIX
 import { prisma } from '@/lib/prisma';
 import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
 import { generateText } from 'ai';
@@ -49,175 +49,149 @@ export class AutoContentPipeline {
   async generateReadyToPostContent(carIds: string[]) {
     const results = [];
 
-    for (const carId of carIds) {
-      const car = await prisma.car.findUnique({
-        where: { id: carId },
-        select: {
-          id: true,
-          brand: true,
-          model: true,
-          year: true,
-          price: true,
-          images: true,
-        },
+    // ✅ MINIMAL FIX: Process in batches to avoid timeout
+    const batchSize = 2; // Process 2 cars at a time (6 API calls per batch)
+    
+    for (let i = 0; i < carIds.length; i += batchSize) {
+      const carBatch = carIds.slice(i, i + batchSize);
+      console.log(`🚀 Processing batch ${Math.floor(i/batchSize) + 1}/${Math.ceil(carIds.length/batchSize)}: ${carBatch.length} cars`);
+
+      // ✅ Process cars in current batch in parallel
+      const batchPromises = carBatch.map(async (carId) => {
+        const car = await prisma.car.findUnique({
+          where: { id: carId },
+          select: {
+            id: true,
+            brand: true,
+            model: true,
+            year: true,
+            price: true,
+            images: true,
+          },
+        });
+
+        if (!car) {
+          console.warn(`Car with ID ${carId} not found, skipping.`);
+          return [];
+        }
+
+        const carResults = [];
+        const platforms = ['instagram', 'facebook', 'linkedin'];
+
+        // ✅ Keep your existing logic but process platforms for this car in parallel
+        const platformPromises = platforms.map(async (platform) => {
+          const textContent = await this.generateUniqueText(car, platform);
+
+          // ✅ FIXED: Use simplified prompt to avoid FAL.AI errors
+          const prompt = car.images?.[0]
+            ? `Add CarStreets dealership branding to this car photo. Include "CarStreets" logo, price "₹${car.price || 'Price on Request'}", and "Raipur" location text overlay for ${platform} social media.`
+            : `CarStreets car dealership showroom in Raipur. ${car.year} ${car.brand} ${car.model} displayed professionally with "CarStreets" signage and "₹${car.price || 'Price on Request'}" price display.`;
+
+          // ✅ Keep your existing API call logic exactly the same
+          const baseUrl = process.env.VERCEL_URL
+            ? `https://${process.env.VERCEL_URL}`
+            : process.env.NEXTAUTH_URL || 'http://localhost:3000';
+
+          try {
+            const headers: Record<string, string> = {
+              'Content-Type': 'application/json',
+              'Authorization': AUTH_TOKEN,
+            };
+            
+            if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
+              headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
+            }
+            
+            const imageResponse = await fetch(`${baseUrl}/api/admin/thumbnails`, {
+              method: 'POST',
+              headers,
+              body: JSON.stringify({
+                carData: {
+                  id: car.id,
+                  brand: car.brand,
+                  model: car.model,
+                  year: car.year,
+                  price: Number(car.price),
+                },
+                platform,
+                style: 'photorealistic',
+                prompt,
+              }),
+            });
+
+            const contentType = imageResponse.headers.get('content-type');
+            
+            if (!imageResponse.ok) {
+              const errorText = await imageResponse.text();
+              return {
+                carId: car.id,
+                platform,
+                textContent: textContent.text,
+                hashtags: textContent.hashtags,
+                imageUrl: null,
+                originalImage: car.images?.[0] || null,
+                success: false,
+                error: `Image generation failed: ${imageResponse.status}`,
+                cost: 0,
+              };
+            }
+
+            if (!contentType?.includes('application/json')) {
+              return {
+                carId: car.id,
+                platform,
+                textContent: textContent.text,
+                hashtags: textContent.hashtags,
+                imageUrl: null,
+                originalImage: car.images?.[0] || null,
+                success: false,
+                error: `Expected JSON, received ${contentType}`,
+                cost: 0,
+              };
+            }
+
+            const imageResult = await imageResponse.json();
+
+            return {
+              carId: car.id,
+              platform,
+              textContent: textContent.text,
+              hashtags: textContent.hashtags,
+              imageUrl: imageResult.success ? imageResult.imageUrl : null,
+              originalImage: car.images?.[0] || null,
+              success: imageResult.success || false,
+              cost: imageResult.cost || 0,
+            };
+
+          } catch (fetchError) {
+            return {
+              carId: car.id,
+              platform,
+              textContent: textContent.text,
+              hashtags: textContent.hashtags,
+              imageUrl: null,
+              originalImage: car.images?.[0] || null,
+              success: false,
+              error: `Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`,
+              cost: 0,
+            };
+          }
+        });
+
+        // Wait for all platforms for this car
+        const platformResults = await Promise.all(platformPromises);
+        carResults.push(...platformResults);
+        return carResults;
       });
 
-      if (!car) {
-        console.warn(`Car with ID ${carId} not found, skipping.`);
-        continue;
-      }
+      // Wait for current batch to complete
+      const batchResults = await Promise.all(batchPromises);
+      results.push(...batchResults.flat());
 
-      const platforms = ['instagram', 'facebook', 'linkedin'];
-
-      for (const platform of platforms) {
-        const textContent = await this.generateUniqueText(car, platform);
-
-        // ✅ FIXED: Determine base URL more reliably
-        const baseUrl = process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : process.env.NEXTAUTH_URL || 'http://localhost:3000';
-
-        console.log(`Fetching thumbnails from: ${baseUrl}/api/admin/thumbnails`);
-
-        const prompt = car.images?.[0]
-          ? `Transform this car photograph into a professional CarStreets dealership marketing image:
-- "CarStreets" dealership logo prominently displayed
-- "₹${car.price || 'Price on Request'}" price overlay in attractive design
-- "Ankit Pandey's CarStreets, Raipur" branding text
-- Professional showroom background blend
-- "Quality Pre-Owned Cars Since Years" tagline
-- Operating hours "10:30 AM - 8:30 PM" display
-Maintain the car's authentic appearance while adding professional dealership branding for ${platform} social media marketing.`
-          : `Professional CarStreets dealership showroom scene: ${car.year} ${car.brand} ${car.model} displayed in modern Indian car showroom. "CarStreets" signage, "₹${car.price || 'Price on Request'}" price display, "Ankit Pandey's CarStreets, Raipur" branding, professional automotive lighting.`;
-
-        try {
-          // ✅ FIXED: Add proper error handling and auth headers + Vercel bypass
-          const headers: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'Authorization': AUTH_TOKEN, // ✅ Ensure auth header is present
-          };
-          
-          // ✅ Add Vercel bypass token for production
-          if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
-            headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-          }
-          
-          const imageResponse = await fetch(`${baseUrl}/api/admin/thumbnails`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({
-              carData: {
-                id: car.id,
-                brand: car.brand,
-                model: car.model,
-                year: car.year,
-                price: Number(car.price),
-              },
-              platform,
-              style: 'photorealistic',
-              prompt,
-            }),
-          });
-
-          console.log('Thumbnail API Response Status:', imageResponse.status, imageResponse.statusText);
-
-          // ✅ FIXED: Better error handling for non-JSON responses
-          const contentType = imageResponse.headers.get('content-type');
-          
-          if (!imageResponse.ok) {
-            const errorText = await imageResponse.text();
-            console.error(`❌ Thumbnail API failed:`, {
-              status: imageResponse.status,
-              statusText: imageResponse.statusText,
-              contentType,
-              response: errorText.slice(0, 500),
-              url: `${baseUrl}/api/admin/thumbnails`,
-              authHeader: AUTH_TOKEN ? 'Present' : 'Missing'
-            });
-            
-            // ✅ Skip this platform but continue with others
-            console.warn(`⚠️ Skipping image generation for ${platform}, continuing with text-only content`);
-            results.push({
-              carId: car.id,
-              platform,
-              textContent: textContent.text,
-              hashtags: textContent.hashtags,
-              imageUrl: null,
-              originalImage: car.images?.[0] || null,
-              success: false,
-              error: `Image generation failed: ${imageResponse.status} - ${errorText.slice(0, 100)}`,
-              cost: 0,
-            });
-            continue;
-          }
-
-          if (!contentType?.includes('application/json')) {
-            const text = await imageResponse.text();
-            console.error('❌ Non-JSON response:', {
-              status: imageResponse.status,
-              contentType,
-              response: text.slice(0, 200)
-            });
-            
-            // ✅ Skip this platform but continue
-            results.push({
-              carId: car.id,
-              platform,
-              textContent: textContent.text,
-              hashtags: textContent.hashtags,
-              imageUrl: null,
-              originalImage: car.images?.[0] || null,
-              success: false,
-              error: `Expected JSON, received ${contentType}`,
-              cost: 0,
-            });
-            continue;
-          }
-
-          const imageResult = await imageResponse.json();
-
-          if (!imageResult.success) {
-            console.error('❌ Thumbnail API returned failure:', imageResult);
-            results.push({
-              carId: car.id,
-              platform,
-              textContent: textContent.text,
-              hashtags: textContent.hashtags,
-              imageUrl: null,
-              originalImage: car.images?.[0] || null,
-              success: false,
-              error: `Thumbnail generation failed: ${imageResult.error || 'Unknown error'}`,
-              cost: 0,
-            });
-            continue;
-          }
-
-          // ✅ Success case
-          results.push({
-            carId: car.id,
-            platform,
-            textContent: textContent.text,
-            hashtags: textContent.hashtags,
-            imageUrl: imageResult.imageUrl,
-            originalImage: car.images?.[0] || null,
-            success: imageResult.success,
-            cost: imageResult.cost || 0,
-          });
-
-        } catch (fetchError) {
-          console.error(`❌ Network error calling thumbnails API:`, fetchError);
-          results.push({
-            carId: car.id,
-            platform,
-            textContent: textContent.text,
-            hashtags: textContent.hashtags,
-            imageUrl: null,
-            originalImage: car.images?.[0] || null,
-            success: false,
-            error: `Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`,
-            cost: 0,
-          });
-        }
+      // ✅ Small delay between batches to avoid rate limits
+      if (i + batchSize < carIds.length) {
+        console.log('⏳ Waiting 1 second before next batch...');
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
 

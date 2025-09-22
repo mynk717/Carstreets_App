@@ -17,8 +17,10 @@ export default function ContentCalendarPage() {
   
   const loadContentCalendar = async () => {
     try {
-      // ✅ FIXED: Add proper headers for calendar loading
-      const headers: Record<string, string> = {};
+      // ✅ FIXED: Add proper headers including authorization
+      const headers: Record<string, string> = {
+        'Authorization': AUTH_TOKEN  // ✅ Add missing auth header
+      };
       
       // Add Vercel bypass token if available
       if (process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET) {
@@ -27,7 +29,7 @@ export default function ContentCalendarPage() {
       
       const response = await fetch('/api/admin/content/calendar', {
         method: 'GET',
-        headers: Object.keys(headers).length > 0 ? headers : undefined
+        headers
       });
       
       if (!response.ok) {
