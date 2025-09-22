@@ -1,76 +1,12 @@
-// app/lib/agents/autoContentPipeline.ts - PROFESSIONAL AUTOMOTIVE ENHANCEMENT
+// app/lib/agents/autoContentPipeline.ts - ENHANCED WITH CENTRAL PROMPT SYSTEM
 import { prisma } from '@/lib/prisma';
 import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
+import { getCarEnhancementPrompt, getPromptMetrics } from '../prompts/carImagePrompts';
 
-// ✅ FIXED: Use consistent auth token
+// ✅ KEEP: Use consistent auth token
 const AUTH_TOKEN = 'Bearer admin-temp-key';
-
-// ✅ NEW: Professional automotive photography enhancement prompts
-const getCarEnhancementPrompt = (car: any, platform: string, carImageUrl?: string) => {
-  const baseCarInfo = `${car.year} ${car.brand} ${car.model}`;
-  const price = `₹${car.price || 'Price on Request'}`;
-  
-  if (carImageUrl) {
-    switch (platform) {
-      case 'instagram':
-        return `Enhance this car photograph for Instagram marketing: 
-        - Improve lighting and contrast naturally
-        - Remove background distractions while keeping realistic setting
-        - Add subtle CarStreets watermark in bottom corner
-        - Clean, modern price display "${price}" integrated naturally
-        - Maintain authentic car condition and details
-        - Apply professional automotive photography color grading
-        - Square 1:1 crop with rule of thirds composition`;
-        
-      case 'facebook':
-        return `Professional Facebook car listing enhancement:
-        - Natural lighting correction and shadow balance  
-        - Clean background removal of litter/distractions only
-        - Trust-building "Verified by CarStreets" certification badge
-        - Clear, readable "${price}" in professional font
-        - "Ankit Pandey's CarStreets, Raipur" subtle branding
-        - Maintain realistic representation for trust-building
-        - Family-friendly, trustworthy visual presentation`;
-        
-      case 'linkedin':
-        return `Corporate LinkedIn automotive post:
-        - Professional business photography enhancement
-        - Clean, uncluttered background suitable for professionals  
-        - Executive-level presentation with "${price}" as investment info
-        - "CarStreets - Premium Pre-Owned Vehicles" branding
-        - 16:9 aspect ratio optimized for LinkedIn feed
-        - Emphasize quality and reliability visual cues
-        - Corporate color scheme integration`;
-    }
-  } else {
-    // Complete scene generation with professional standards
-    switch (platform) {
-      case 'instagram':
-        return `Professional Instagram car photography scene: ${baseCarInfo} in clean, modern Raipur showroom setting. Natural lighting, minimal distractions, "${price}" clearly visible, CarStreets branding, mobile-optimized square format, authentic automotive presentation`;
-        
-      case 'facebook':
-        return `Trustworthy Facebook car listing: ${baseCarInfo} in CarStreets Kushalapur location. Family-friendly environment, transparent pricing "${price}", "Certified Pre-Owned" badge, honest representation building customer trust`;
-        
-      case 'linkedin':
-        return `Professional automotive business content: ${baseCarInfo} at CarStreets corporate facility. Executive handshake scene, professional documentation, investment-grade vehicle presentation "${price}", Raipur business context, 16:9 corporate format`;
-    }
-  }
-  
-  return `Professional CarStreets automotive photography for ${baseCarInfo}`;
-};
-
-// ✅ NEW: Trust-building certification elements
-const addAutomotiveCertification = (platform: string) => {
-  const certifications = {
-    instagram: 'CarStreets Verified ✓',
-    facebook: 'Certified Pre-Owned • Inspection Report Available',
-    linkedin: 'Premium Vehicle Certification • CarStreets Quality Assured'
-  };
-  
-  return certifications[platform] || 'CarStreets Certified';
-};
 
 export class AutoContentPipeline {
   async generateUniqueText(car: any, platform: string) {
@@ -114,8 +50,8 @@ export class AutoContentPipeline {
   async generateReadyToPostContent(carIds: string[]) {
     const results = [];
 
-    // ✅ MINIMAL FIX: Process in batches to avoid timeout
-    const batchSize = 1; // Process 2 cars at a time (6 API calls per batch)
+    // ✅ ENHANCED: Process in smaller batches with central prompt system
+    const batchSize = 1; // Process 1 car at a time (3 API calls per batch) for quality focus
     
     for (let i = 0; i < carIds.length; i += batchSize) {
       const carBatch = carIds.slice(i, i + batchSize);
@@ -143,16 +79,52 @@ export class AutoContentPipeline {
         const carResults = [];
         const platforms = ['instagram', 'facebook', 'linkedin'];
 
-        // ✅ Keep your existing logic but process platforms for this car in parallel
+        // ✅ ENHANCED: Use central prompt system for each platform
         const platformPromises = platforms.map(async (platform) => {
+          console.log(`🎯 Generating platform-optimized content for ${car.year} ${car.brand} ${car.model} on ${platform}`);
+          
           const textContent = await this.generateUniqueText(car, platform);
 
-          // ✅ UPDATED: Use professional automotive enhancement prompts instead of basic ones
-          const prompt = getCarEnhancementPrompt(car, platform, car.images?.[0]);
+          // ✅ NEW: Use Central Prompt System instead of hardcoded prompts
+          let enhancedPrompt: string;
           
-          console.log(`🚗 Enhancing automotive photography for ${car.year} ${car.brand} ${car.model} on ${platform}`);
+          try {
+            const promptParams = {
+              car: {
+                id: car.id,
+                brand: car.brand,
+                model: car.model,
+                year: car.year,
+                price: Number(car.price)
+              },
+              platform: platform as 'instagram' | 'facebook' | 'linkedin',
+              imageUrl: car.images?.[0] || null,
+              contentType: 'standard' as const, // Can be made dynamic for festivals
+            };
 
-          // ✅ Keep your existing API call logic exactly the same
+            // ✅ ENHANCED: Generate professional automotive prompt
+            enhancedPrompt = getCarEnhancementPrompt(promptParams);
+            
+            // ✅ QUALITY CONTROL: Validate prompt before API call
+            const promptMetrics = getPromptMetrics(enhancedPrompt);
+            console.log(`📊 ${platform} Prompt Quality:`, promptMetrics);
+            
+            if (promptMetrics.length < 50) {
+              console.warn(`⚠️ ${platform} prompt too short, using fallback`);
+              enhancedPrompt = `Professional CarStreets automotive photography: ${car.year} ${car.brand} ${car.model} enhanced for ${platform} marketing with price ₹${car.price}, Raipur dealership branding`;
+            }
+
+            console.log(`🤖 Generated ${platform} prompt:`, enhancedPrompt.substring(0, 100) + '...');
+
+          } catch (promptError) {
+            console.error(`❌ Prompt generation failed for ${platform}:`, promptError);
+            // Fallback to enhanced basic prompt
+            enhancedPrompt = car.images?.[0]
+              ? `Professional ${platform} automotive photography enhancement: Transform this ${car.year} ${car.brand} ${car.model} photograph with CarStreets dealership branding, price ₹${car.price} display, and Raipur location context for maximum marketing impact`
+              : `Professional CarStreets showroom scene: ${car.year} ${car.brand} ${car.model} displayed with modern dealership environment, price ₹${car.price} prominently featured, optimized for ${platform} engagement`;
+          }
+
+          // ✅ KEEP: Existing API call logic with enhanced prompt
           const baseUrl = process.env.VERCEL_URL
             ? `https://${process.env.VERCEL_URL}`
             : process.env.NEXTAUTH_URL || 'http://localhost:3000';
@@ -179,8 +151,9 @@ export class AutoContentPipeline {
                   price: Number(car.price),
                 },
                 platform,
-                style: 'professional_automotive', // ✅ UPDATED: Changed from 'photorealistic' to 'professional_automotive'
-                prompt,
+                style: 'professional_automotive',
+                prompt: enhancedPrompt, // ✅ NEW: Use AI-generated enhanced prompt
+                contentType: 'standard', // Future: Can be 'festival' for seasonal content
               }),
             });
 
@@ -188,6 +161,7 @@ export class AutoContentPipeline {
             
             if (!imageResponse.ok) {
               const errorText = await imageResponse.text();
+              console.error(`❌ ${platform} image generation failed:`, imageResponse.status, errorText);
               return {
                 carId: car.id,
                 platform,
@@ -198,10 +172,12 @@ export class AutoContentPipeline {
                 success: false,
                 error: `Image generation failed: ${imageResponse.status}`,
                 cost: 0,
+                promptUsed: enhancedPrompt.substring(0, 100) + '...'
               };
             }
 
             if (!contentType?.includes('application/json')) {
+              console.error(`❌ ${platform} unexpected content type:`, contentType);
               return {
                 carId: car.id,
                 platform,
@@ -212,10 +188,18 @@ export class AutoContentPipeline {
                 success: false,
                 error: `Expected JSON, received ${contentType}`,
                 cost: 0,
+                promptUsed: enhancedPrompt.substring(0, 100) + '...'
               };
             }
 
             const imageResult = await imageResponse.json();
+
+            // ✅ ENHANCED: Log generation results with quality metrics
+            console.log(`✅ ${platform} generation completed:`, {
+              success: imageResult.success,
+              mode: imageResult.mode,
+              visionAnalysis: imageResult.visionAnalysis?.detectedAngle || 'no-analysis'
+            });
 
             return {
               carId: car.id,
@@ -226,9 +210,14 @@ export class AutoContentPipeline {
               originalImage: car.images?.[0] || null,
               success: imageResult.success || false,
               cost: imageResult.cost || 0,
+              promptUsed: enhancedPrompt.substring(0, 100) + '...',
+              mode: imageResult.mode || 'unknown',
+              visionAnalysis: imageResult.visionAnalysis || null,
+              certification: imageResult.certification || null
             };
 
           } catch (fetchError) {
+            console.error(`❌ ${platform} network error:`, fetchError);
             return {
               carId: car.id,
               platform,
@@ -239,6 +228,7 @@ export class AutoContentPipeline {
               success: false,
               error: `Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`,
               cost: 0,
+              promptUsed: enhancedPrompt?.substring(0, 100) + '...' || 'generation-failed'
             };
           }
         });
@@ -255,10 +245,22 @@ export class AutoContentPipeline {
 
       // ✅ Small delay between batches to avoid rate limits
       if (i + batchSize < carIds.length) {
-        console.log('⏳ Waiting 1 second before next batch...');
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('⏳ Waiting 2 seconds before next batch...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
+
+    // ✅ ENHANCED: Log generation summary
+    const successCount = results.filter(r => r.success).length;
+    const totalCount = results.length;
+    const uniquePrompts = new Set(results.map(r => r.promptUsed)).size;
+    
+    console.log(`🎉 Content generation completed:`, {
+      successful: successCount,
+      total: totalCount,
+      uniquePrompts,
+      successRate: `${Math.round((successCount/totalCount) * 100)}%`
+    });
 
     return results;
   }

@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
+import { getCarEnhancementPrompt } from '@/lib/prompts/carImagePrompts';
+
 
 const AUTH_TOKEN = 'Bearer admin-temp-key';
 interface CarData {
@@ -60,8 +62,21 @@ export default function ImageStudioPage() {
         imageUrl = await uploadImageToUrl(realImageFile);
       }
 
-      const prompt = `Professional CarStreets dealership ${contentType} photograph: 
-      ${carData.year} ${carData.make} ${carData.model} priced at ₹${carData.price}`;
+      const promptParams = {
+  car: {
+    id: carData.id || 'image-studio-test',
+    brand: carData.make,
+    model: carData.model,
+    year: carData.year,
+    price: carData.price
+  },
+  platform: platform as 'instagram' | 'facebook' | 'linkedin',
+  imageUrl: useRealImage ? (realImageUrl || null) : null,
+  contentType: (contentType === 'promotional' ? 'festival' : 'standard') as 'standard' | 'festival',
+  festival: contentType === 'promotional' ? ('diwali' as const) : undefined
+};
+
+const prompt = getCarEnhancementPrompt(promptParams);
       
       const response = await fetch('/api/admin/thumbnails', {
         method: 'POST',
