@@ -1,4 +1,4 @@
-// app/lib/agents/autoContentPipeline.ts - MINIMAL TIMEOUT FIX
+// app/lib/agents/autoContentPipeline.ts - PROFESSIONAL AUTOMOTIVE ENHANCEMENT
 import { prisma } from '@/lib/prisma';
 import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
 import { generateText } from 'ai';
@@ -6,6 +6,71 @@ import { openai } from '@ai-sdk/openai';
 
 // ✅ FIXED: Use consistent auth token
 const AUTH_TOKEN = 'Bearer admin-temp-key';
+
+// ✅ NEW: Professional automotive photography enhancement prompts
+const getCarEnhancementPrompt = (car: any, platform: string, carImageUrl?: string) => {
+  const baseCarInfo = `${car.year} ${car.brand} ${car.model}`;
+  const price = `₹${car.price || 'Price on Request'}`;
+  
+  if (carImageUrl) {
+    switch (platform) {
+      case 'instagram':
+        return `Enhance this car photograph for Instagram marketing: 
+        - Improve lighting and contrast naturally
+        - Remove background distractions while keeping realistic setting
+        - Add subtle CarStreets watermark in bottom corner
+        - Clean, modern price display "${price}" integrated naturally
+        - Maintain authentic car condition and details
+        - Apply professional automotive photography color grading
+        - Square 1:1 crop with rule of thirds composition`;
+        
+      case 'facebook':
+        return `Professional Facebook car listing enhancement:
+        - Natural lighting correction and shadow balance  
+        - Clean background removal of litter/distractions only
+        - Trust-building "Verified by CarStreets" certification badge
+        - Clear, readable "${price}" in professional font
+        - "Ankit Pandey's CarStreets, Raipur" subtle branding
+        - Maintain realistic representation for trust-building
+        - Family-friendly, trustworthy visual presentation`;
+        
+      case 'linkedin':
+        return `Corporate LinkedIn automotive post:
+        - Professional business photography enhancement
+        - Clean, uncluttered background suitable for professionals  
+        - Executive-level presentation with "${price}" as investment info
+        - "CarStreets - Premium Pre-Owned Vehicles" branding
+        - 16:9 aspect ratio optimized for LinkedIn feed
+        - Emphasize quality and reliability visual cues
+        - Corporate color scheme integration`;
+    }
+  } else {
+    // Complete scene generation with professional standards
+    switch (platform) {
+      case 'instagram':
+        return `Professional Instagram car photography scene: ${baseCarInfo} in clean, modern Raipur showroom setting. Natural lighting, minimal distractions, "${price}" clearly visible, CarStreets branding, mobile-optimized square format, authentic automotive presentation`;
+        
+      case 'facebook':
+        return `Trustworthy Facebook car listing: ${baseCarInfo} in CarStreets Kushalapur location. Family-friendly environment, transparent pricing "${price}", "Certified Pre-Owned" badge, honest representation building customer trust`;
+        
+      case 'linkedin':
+        return `Professional automotive business content: ${baseCarInfo} at CarStreets corporate facility. Executive handshake scene, professional documentation, investment-grade vehicle presentation "${price}", Raipur business context, 16:9 corporate format`;
+    }
+  }
+  
+  return `Professional CarStreets automotive photography for ${baseCarInfo}`;
+};
+
+// ✅ NEW: Trust-building certification elements
+const addAutomotiveCertification = (platform: string) => {
+  const certifications = {
+    instagram: 'CarStreets Verified ✓',
+    facebook: 'Certified Pre-Owned • Inspection Report Available',
+    linkedin: 'Premium Vehicle Certification • CarStreets Quality Assured'
+  };
+  
+  return certifications[platform] || 'CarStreets Certified';
+};
 
 export class AutoContentPipeline {
   async generateUniqueText(car: any, platform: string) {
@@ -50,7 +115,7 @@ export class AutoContentPipeline {
     const results = [];
 
     // ✅ MINIMAL FIX: Process in batches to avoid timeout
-    const batchSize = 2; // Process 2 cars at a time (6 API calls per batch)
+    const batchSize = 1; // Process 2 cars at a time (6 API calls per batch)
     
     for (let i = 0; i < carIds.length; i += batchSize) {
       const carBatch = carIds.slice(i, i + batchSize);
@@ -82,10 +147,10 @@ export class AutoContentPipeline {
         const platformPromises = platforms.map(async (platform) => {
           const textContent = await this.generateUniqueText(car, platform);
 
-          // ✅ FIXED: Use simplified prompt to avoid FAL.AI errors
-          const prompt = car.images?.[0]
-            ? `Add CarStreets dealership branding to this car photo. Include "CarStreets" logo, price "₹${car.price || 'Price on Request'}", and "Raipur" location text overlay for ${platform} social media.`
-            : `CarStreets car dealership showroom in Raipur. ${car.year} ${car.brand} ${car.model} displayed professionally with "CarStreets" signage and "₹${car.price || 'Price on Request'}" price display.`;
+          // ✅ UPDATED: Use professional automotive enhancement prompts instead of basic ones
+          const prompt = getCarEnhancementPrompt(car, platform, car.images?.[0]);
+          
+          console.log(`🚗 Enhancing automotive photography for ${car.year} ${car.brand} ${car.model} on ${platform}`);
 
           // ✅ Keep your existing API call logic exactly the same
           const baseUrl = process.env.VERCEL_URL
@@ -114,7 +179,7 @@ export class AutoContentPipeline {
                   price: Number(car.price),
                 },
                 platform,
-                style: 'photorealistic',
+                style: 'professional_automotive', // ✅ UPDATED: Changed from 'photorealistic' to 'professional_automotive'
                 prompt,
               }),
             });

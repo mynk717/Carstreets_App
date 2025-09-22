@@ -40,7 +40,7 @@ export async function POST(request: NextRequest) {
           }
         },
         select: { id: true, images: true, brand: true, model: true },
-        take: 20,
+        take: 2,
         orderBy: { createdAt: 'desc' },
       });
 

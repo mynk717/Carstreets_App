@@ -80,7 +80,43 @@ export default function ContentCalendarPage() {
       setGenerating(false);
     }
   };
-  
+  // ✅ NEW: Content cleanup functions
+const cleanupContent = async (autoCleanup = false) => {
+  setLoading(true);
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': AUTH_TOKEN,
+    };
+    
+    if (process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET) {
+      headers['x-vercel-protection-bypass'] = process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET;
+    }
+
+    const response = await fetch('/api/admin/content/cleanup', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        maxItems: 20,
+        autoCleanup
+      })
+    });
+
+    const result = await response.json();
+    
+    if (result.success) {
+      await loadContentCalendar(); // Refresh the calendar
+      alert(`Cleanup completed: ${result.message}`);
+    } else {
+      alert(`Cleanup failed: ${result.error}`);
+    }
+  } catch (error) {
+    alert(`Error: ${error.message}`);
+  } finally {
+    setLoading(false);
+  }
+};
+
   const approveContent = async (contentId: string) => {
     try {
       // ✅ FIXED: Add Vercel bypass headers for approval
@@ -131,6 +167,22 @@ export default function ContentCalendarPage() {
         >
           {generating ? '🔄 Generating Automated Content...' : '🚀 Generate Weekly Content'}
         </Button>
+        {/* ✅ NEW: Cleanup buttons */}
+  <Button
+    onClick={() => cleanupContent(false)}
+    disabled={loading}
+    className="bg-orange-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-orange-700 disabled:opacity-50"
+  >
+    Check Cleanup Status
+  </Button>
+  
+  <Button
+    onClick={() => cleanupContent(true)}
+    disabled={loading}
+    className="bg-red-600 text-white px-4 py-3 rounded-lg font-semibold hover:bg-red-700 disabled:opacity-50"
+  >
+    Auto-Clean (Keep 20 Recent)
+  </Button>
       </div>
       
       {/* Content Grid */}
