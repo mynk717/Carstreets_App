@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import '../src/app/globals.css'
 import { Header } from './components/layout/Header'
+import { AuthSessionProvider } from "./components/SessionProvider";
 
 const inter = Inter({ subsets: ['latin'] })
 export const viewport = {
@@ -27,7 +28,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <Header />
         <main className="min-h-screen bg-gray-50">
+          <AuthSessionProvider>
           {children}
+        </AuthSessionProvider>
         </main>
       </body>
     </html>

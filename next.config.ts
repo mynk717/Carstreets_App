@@ -31,10 +31,34 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.olx.in',
       },
+      {
+        protocol: 'https',
+        hostname: 'graph.facebook.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'platform.linkedin.com',
+      },
     ],
+  },
+  async redirects() {
+    return [
+      {
+        source: '/auth/facebook/callback',
+        destination: '/api/auth/facebook/callback',
+        permanent: false,
+      },
+      {
+        source: '/auth/linkedin/callback', 
+        destination: '/api/auth/linkedin/callback',
+        permanent: false,
+      },
+    ];
   },
   // Fixed: Updated from experimental.serverComponentsExternalPackages
   serverExternalPackages: ['puppeteer-core'],
+
+  
 }
 
 export default nextConfig
