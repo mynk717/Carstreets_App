@@ -1,0 +1,31 @@
+-- CreateTable
+CREATE TABLE "public"."Car" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "brand" TEXT NOT NULL,
+    "model" TEXT NOT NULL,
+    "variant" TEXT,
+    "price" INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
+    "fuelType" TEXT NOT NULL,
+    "transmission" TEXT NOT NULL,
+    "kmDriven" INTEGER NOT NULL,
+    "location" TEXT NOT NULL,
+    "images" TEXT NOT NULL DEFAULT '[]',
+    "description" TEXT NOT NULL,
+    "sellerType" TEXT NOT NULL,
+    "postedDate" TEXT NOT NULL,
+    "owners" INTEGER NOT NULL,
+    "isVerified" BOOLEAN NOT NULL DEFAULT false,
+    "isFeatured" BOOLEAN NOT NULL DEFAULT false,
+    "dataSource" TEXT NOT NULL,
+    "olxProfile" TEXT,
+    "olxProfileId" TEXT,
+    "originalUrl" TEXT,
+    "attribution" TEXT,
+    "carStreetsListed" BOOLEAN NOT NULL DEFAULT false,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "Car_pkey" PRIMARY KEY ("id")
+);
