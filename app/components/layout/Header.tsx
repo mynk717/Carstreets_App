@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Search, Menu, X, MapPin, Heart, User } from 'lucide-react'
 import { Button } from '../ui/Button'
 import { Input } from '../ui/Input'
+import Link from 'next/link'
 
 export function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
@@ -55,10 +56,13 @@ export function Header() {
               <Heart className="h-4 w-4" />
               <span>Wishlist</span>
             </Button>
+            <Link href="/auth/signin">
             <Button variant="outline" className="flex items-center space-x-1">
-              <User className="h-4 w-4" />
-              <span>Sign In</span>
+            <User className="h-4 w-4" />
+            <span>Sign In</span>
             </Button>
+            </Link>
+
             <Button>Sell Car</Button>
           </nav>
 
