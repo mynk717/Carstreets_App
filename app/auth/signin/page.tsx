@@ -36,24 +36,25 @@ export default function SignInPage() {
         <label className="block mb-2">
           Email
           <input
-            type="email"
-            className="w-full border border-gray-300 p-2 rounded mt-1"
-              placeholder="shukla.mayank247@gmail.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
+  type="email"
+  className="w-full border border-gray-300 p-2 rounded mt-1 text-gray-900 placeholder-gray-400"
+  placeholder="shukla.mayank247@gmail.com"
+  value={email}
+  onChange={(e) => setEmail(e.target.value)}
+  required
+/>
+
         </label>
 
         <label className="block mb-4">
           Password
           <input
-            type="password"
-            className="w-full border border-gray-300 p-2 rounded mt-1"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+  type="password"
+  className="w-full border border-gray-300 p-2 rounded mt-1 text-gray-900 placeholder-gray-400"
+  value={password}
+  onChange={(e) => setPassword(e.target.value)}
+  required
+/>
         </label>
 
         {error && (
