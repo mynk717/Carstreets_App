@@ -4,17 +4,60 @@
 const AUTH_TOKEN = 'Bearer admin-temp-key';
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/ui/Button';
+import { ApprovalModal } from "./ApprovalModal";  // relative path
+
 
 export default function ContentCalendarPage() {
   const [contentItems, setContentItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+const [selectedContent, setSelectedContent] = useState<{id: string, title: string} | null>(null);
+
   
   // Load existing content calendar
   useEffect(() => {
     loadContentCalendar();
   }, []);
   
+  const handleOpenApprovalModal = (contentItem) => {
+  setSelectedContent(contentItem); // save whole content object to show title etc in modal
+  setIsModalOpen(true);
+};
+const handleApprovalConfirm = async (scheduledDate: Date | null) => {
+  if (!selectedContent) return;
+
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'Authorization': AUTH_TOKEN,
+    };
+
+    if (process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET) {
+      headers['x-vercel-protection-bypass'] = process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET;
+    }
+
+    const response = await fetch('/api/admin/content/approve', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        contentId: selectedContent.id,
+        scheduledDate: scheduledDate ? scheduledDate.toISOString() : null,
+      }),
+    });
+
+    if (response.ok) {
+      alert('✅ Content approved successfully!');
+      setIsModalOpen(false);
+      await loadContentCalendar();
+    } else {
+      alert('❌ Approval failed');
+    }
+  } catch (error: any) {
+    alert(`❌ Approval failed: ${error.message}`);
+  }
+};
+
   const loadContentCalendar = async () => {
     try {
       // ✅ FIXED: Add proper headers including authorization
@@ -231,17 +274,23 @@ const cleanupContent = async (autoCleanup = false) => {
             
             {/* Approval Button */}
             {item.status === 'draft' && (
-              <Button
-                onClick={() => approveContent(item.id)}
-                className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700"
-              >
-                ✅ Approve & Schedule
-              </Button>
+              <button
+  onClick={() => handleOpenApprovalModal(item)}
+  className="btn-approve"
+>
+  Approve
+</button>
+
             )}
           </div>
         ))}
       </div>
-      
+      <ApprovalModal
+      isOpen={isModalOpen}
+      onClose={() => setIsModalOpen(false)}
+      contentTitle={selectedContent?.title ?? ""}
+      onConfirm={handleApprovalConfirm}
+    />
       {contentItems.length === 0 && (
         <div className="text-center py-12">
           <p className="text-gray-600 text-lg mb-4">
@@ -251,6 +300,7 @@ const cleanupContent = async (autoCleanup = false) => {
             Click "Generate Weekly Content" to create automated branded content
           </p>
         </div>
+        
       )}
     </div>
   );
