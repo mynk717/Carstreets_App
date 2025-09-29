@@ -9,8 +9,13 @@ jobs:
   post-scheduled-content:
     runs-on: ubuntu-latest
     steps:
-      - name: Call Vercel API
+      - name: Call Scheduled Posting API
+        env:
+          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
-          curl -X POST "${{ secrets.VERCEL_URL }}/api/admin/content/postScheduled" \
-            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
-            -H "Content-Type: application/json"
+          curl -X POST "${VERCEL_URL}/api/admin/content/postScheduled" \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -H "Content-Type: application/json" \
+            -w "HTTP Status: %{http_code}\n" \
+            -v
