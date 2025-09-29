@@ -1,0 +1,16 @@
+name: Scheduled Social Media Posting
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+  workflow_dispatch:  # Manual trigger for testing
+
+jobs:
+  post-scheduled-content:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Vercel API
+        run: |
+          curl -X POST "${{ secrets.VERCEL_URL }}/api/admin/content/postScheduled" \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json"
