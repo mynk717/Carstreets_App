@@ -67,78 +67,45 @@ export async function POST(request: Request) {
 
     for (const content of scheduledContents) {
       try {
-        // Fetch social media tokens for this dealer and platform
-        const tokens = await prisma.socialMediaToken.findFirst({
-          where: {
-            dealerId: content.dealerId,
-            platform: content.platform,
-          },
-        });
+        console.log(`🚀 Processing post ${content.id} for platform ${content.platform}`);
 
-        if (!tokens) {
-          console.error(`No social media tokens found for dealerId=${content.dealerId} and platform=${content.platform}`);
-          continue;
-        }
-
-        // Check if token is expired
-        if (tokens.expiresAt && tokens.expiresAt < now) {
-          console.error(`Token expired for dealerId=${content.dealerId} and platform=${content.platform}`);
-          continue;
-        }
-
+        // ✅ USE ENVIRONMENT VARIABLES INSTEAD OF DATABASE
         if (content.platform === "facebook") {
-          // For Facebook, we need pageId - you might store this in a separate field or get it from API
-          // For now, using accessToken directly (adjust based on your token storage strategy)
-          await postToFacebookPage(tokens.accessToken, "your-page-id", content.textContent || "");
-        } else if (content.platform === "instagram") {
-          if (!content.brandedImage) {
-            throw new Error("Instagram post requires a brandedImage URL");
+          const fbPageId = process.env.FACEBOOK_PAGE_ID;
+          const fbAccessToken = process.env.FACEBOOK_ACCESS_TOKEN;
+          
+          if (!fbPageId || !fbAccessToken) {
+            console.error('❌ Facebook credentials missing in environment variables');
+            continue;
           }
-          // For Instagram, we need the Instagram User ID (adjust based on your storage)
-          await postToInstagram(tokens.accessToken, "your-ig-user-id", content.textContent || "", content.brandedImage);
-        } else {
-          console.log(`Unsupported platform ${content.platform} for content ID ${content.id}`);
-          continue;
+          
+          // Post to Facebook using environment variables
+          await postToFacebookPage(fbAccessToken, fbPageId, content.textContent);
+        }
+        
+        else if (content.platform === "instagram") {
+          const igUserId = process.env.INSTAGRAM_USER_ID;
+          const igAccessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
+          
+          if (!igUserId || !igAccessToken) {
+            console.error('❌ Instagram credentials missing in environment variables');
+            continue;
+          }
+          
+          // Post to Instagram using environment variables
+          await postToInstagram(igAccessToken, igUserId, content.textContent, content.brandedImage);
         }
 
-        // Update post status to "posted"
+        // ✅ UPDATE STATUS TO POSTED
         await prisma.contentCalendar.update({
           where: { id: content.id },
-          data: { 
-            status: "posted",
-            // You could add postedAt field to schema if needed
-          },
+          data: { status: "posted" },
         });
 
-        // Create a record in SocialPost table for tracking
-        await prisma.socialPost.create({
-          data: {
-            dealerId: content.dealerId,
-            platform: content.platform,
-            status: "posted",
-            postedAt: now,
-          },
-        });
+        console.log(`✅ Successfully posted and updated ${content.id}`);
 
-        console.log(`Content ID ${content.id} posted successfully on ${content.platform}`);
       } catch (postError) {
-        console.error(`Posting failed for content ID ${content.id} on platform ${content.platform}:`, postError);
-        
-        // Update status to failed
-        await prisma.contentCalendar.update({
-          where: { id: content.id },
-          data: { status: "failed" },
-        });
-
-        // Record failure in SocialPost table
-        await prisma.socialPost.create({
-          data: {
-            dealerId: content.dealerId,
-            platform: content.platform,
-            status: "failed",
-            failureReason: postError.message,
-          },
-        });
+        console.error(`❌ Error processing post ${content.id}:`, postError);
       }
     }
 
