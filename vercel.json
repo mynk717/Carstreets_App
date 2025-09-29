@@ -2,8 +2,7 @@
   "crons": [
     {
       "path": "/api/admin/content/postScheduled",
-      "schedule": "*/5 * * * *"
-      
+      "schedule": "*/5 * * * *" 
     }
   ]
 }
