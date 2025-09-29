@@ -1,7 +1,7 @@
 # CarStreets AI-Powered Social Content Engine
 
 ## Overview
-CarStreets is an AI-driven platform designed to automate content generation, editing, approval, and distribution tailored for automotive dealerships. It integrates multiple agents handling market research, content strategy, image and text generation, quality control, and multi-platform publishing.
+CarStreets is an `AI-driven` platform designed to automate content generation, editing, approval, and distribution tailored for automotive dealerships. It integrates multiple agents handling market research, content strategy, image and text generation, quality control, and multi-platform publishing.
 
 ---
 
