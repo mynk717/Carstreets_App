@@ -43,8 +43,16 @@ async function postToInstagram(igAccessToken: string, igUserId: string, caption:
   return json;
 }
 
-export async function POST() {
+export async function POST(request: Request) {
   try {
+    // Vercel automatically adds this header for cron jobs
+    const authHeader = request.headers.get('authorization');
+    const cronSecret = process.env.CRON_SECRET;
+    
+    // Only check auth if CRON_SECRET is set (for security)
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: 'Unauthorized cron request' }, { status: 401 });
+    }
     const now = new Date();
     
     // Fetch scheduled posts from ContentCalendar
