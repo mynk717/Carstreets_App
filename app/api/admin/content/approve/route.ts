@@ -26,17 +26,43 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 });
     }
 
+    // ✅ FIXED: Handle "Post Now" vs "Schedule Later"
+    let status = 'approved';
+    let finalScheduledDate = null;
+
+    if (scheduledDate) {
+      const scheduleDateTime = new Date(scheduledDate);
+      const now = new Date();
+      
+      // If scheduled for within 1 minute, treat as "Post Now"
+      if (scheduleDateTime <= new Date(now.getTime() + 60000)) {
+        status = 'scheduled';
+        finalScheduledDate = new Date(); // Schedule immediately
+      } else {
+        status = 'scheduled';
+        finalScheduledDate = scheduleDateTime;
+      }
+    }
+
     const updatedContent = await prisma.contentCalendar.update({
       where: { id: contentId },
       data: {
-        status: scheduledDate ? 'scheduled' : 'approved',
-        approvedBy: authResult.user.id,
+        status: status,
+        approvedBy: authResult.user?.id || authResult.user?.email || 'admin',
         approvedAt: new Date(),
-        scheduledDate: scheduledDate ? new Date(scheduledDate) : null,
+        scheduledDate: finalScheduledDate,
       },
     });
 
-    return NextResponse.json({ success: true, content: updatedContent });
+    return NextResponse.json({ 
+      success: true, 
+      content: updatedContent,
+      message: status === 'scheduled' && finalScheduledDate <= new Date() ? 
+               'Content will be posted immediately' : 
+               status === 'scheduled' ? 
+               'Content scheduled successfully' : 
+               'Content approved'
+    });
   } catch (error) {
     console.error('Error approving content:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

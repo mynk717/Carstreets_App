@@ -273,18 +273,31 @@ const cleanupContent = async (autoCleanup = false) => {
             </div>
             
             {/* Approval Button */}
-            {item.status === 'draft' && (
-              <button
-  onClick={() => handleOpenApprovalModal(item)}
-  className="btn-approve"
->
-  Approve
-</button>
-
-            )}
+            <div className="mt-4">
+        {item.status === 'draft' && (
+          <button
+            onClick={() => handleOpenApprovalModal(item)}
+            className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+          >
+            ✅ Approve & Schedule
+          </button>
+        )}
+        
+        {item.status === 'scheduled' && (
+          <div className="w-full bg-yellow-100 text-yellow-800 py-2 px-4 rounded-lg text-center text-sm font-medium">
+            📅 Scheduled for {new Date(item.scheduledDate).toLocaleDateString()}
           </div>
-        ))}
+        )}
+        
+        {item.status === 'posted' && (
+          <div className="w-full bg-green-100 text-green-800 py-2 px-4 rounded-lg text-center text-sm font-medium">
+            ✅ Posted successfully
+          </div>
+        )}
       </div>
+    </div>
+  ))}
+</div>
       <ApprovalModal
       isOpen={isModalOpen}
       onClose={() => setIsModalOpen(false)}
