@@ -42,9 +42,24 @@ model Car {
   isUserAdded      Boolean  @default(false) // True for cars added via "Add Car" button
   scrapedData      Json? // Store original scraped data for comparison
 
+  // Enhanced search and performance fields
+  searchVector    String?
+  tags            String[] @default([])
+  viewCount       Int @default(0)
+  leadCount       Int @default(0)
+  
+  // SEO optimization
+  slug            String?
+  metaTitle       String?
+  metaDescription String?
+
   // Relations
   contentCalendar ContentCalendar[]
 
+  @@index([dealerId, isVerified, carStreetsListed])
+  @@index([brand, model, year])
+  @@index([price, location])
+  @@index([createdAt])
   @@map("cars")
 }
 
