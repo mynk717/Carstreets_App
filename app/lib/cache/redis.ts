@@ -1,7 +1,7 @@
 import { Redis } from '@upstash/redis';
 
 class CacheManager {
-  private redis: Redis;
+  public redis: Redis;
   
   constructor() {
     this.redis = new Redis({

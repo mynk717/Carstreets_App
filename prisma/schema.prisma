@@ -53,6 +53,10 @@ model Car {
   metaTitle       String?
   metaDescription String?
 
+  // Vector embeddings for RAG
+  contentEmbedding String? // pgvector for semantic search
+  marketContext    Json?   // Structured market data
+
   // Relations
   contentCalendar ContentCalendar[]
 
@@ -61,6 +65,43 @@ model Car {
   @@index([price, location])
   @@index([createdAt])
   @@map("cars")
+}
+
+// New models for external data
+model MarketIntelligence {
+  id            String @id @default(cuid())
+  source        String // 'news', 'trends', 'forums', 'social'
+  title         String
+  content       String @db.Text
+  summary       String?
+  relevantFor   String[] // ['maruti-suzuki', 'hyundai', 'sedan', 'suv']
+  sentiment     String? // 'positive', 'negative', 'neutral'
+  credibility   Float @default(0.8)
+  
+  // Vector search
+  contentEmbedding String? // pgvector
+  
+  // Metadata
+  publishedAt   DateTime
+  scrapedAt     DateTime @default(now())
+  isActive      Boolean @default(true)
+  
+  @@index([source, isActive])
+  @@index([publishedAt])
+  @@map("market_intelligence")
+}
+
+model ContentTemplate {
+  id           String @id @default(cuid())
+  category     String // 'storytelling', 'comparison', 'news_correlation'
+  template     String @db.Text
+  variables    Json   // Template variables
+  performance  Float @default(0.0)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@map("content_templates")
 }
 
 model ContentCalendar {
