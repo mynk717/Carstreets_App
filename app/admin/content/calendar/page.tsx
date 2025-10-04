@@ -1,20 +1,22 @@
 // app/admin/content/calendar/page.tsx - FIXED VERSION
 'use client';
 
-const AUTH_TOKEN = 'Bearer admin-temp-key';
 import { useState, useEffect } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { ApprovalModal } from "./ApprovalModal";  // relative path
+import { useSession } from 'next-auth/react'
 
 
 export default function ContentCalendarPage() {
+  const { data: session, status } = useSession()
   const [contentItems, setContentItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 const [selectedContent, setSelectedContent] = useState<{id: string, title: string} | null>(null);
 
-  
+if (status === 'loading') return <div>Checking authentication...</div>
+if (!session) return <div>Please sign in to access admin features</div>
   // Load existing content calendar
   useEffect(() => {
     loadContentCalendar();
@@ -30,7 +32,6 @@ const handleApprovalConfirm = async (scheduledDate: Date | null) => {
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Authorization': AUTH_TOKEN,
     };
 
     if (process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET) {
@@ -62,7 +63,6 @@ const handleApprovalConfirm = async (scheduledDate: Date | null) => {
     try {
       // ✅ FIXED: Add proper headers including authorization
       const headers: Record<string, string> = {
-        'Authorization': AUTH_TOKEN  // ✅ Add missing auth header
       };
       
       // Add Vercel bypass token if available
@@ -93,7 +93,6 @@ const handleApprovalConfirm = async (scheduledDate: Date | null) => {
       // ✅ FIXED: Add Vercel bypass headers for production
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'Authorization': AUTH_TOKEN
       };
       
       // Add Vercel bypass token if available
@@ -129,7 +128,6 @@ const cleanupContent = async (autoCleanup = false) => {
   try {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'Authorization': AUTH_TOKEN,
     };
     
     if (process.env.NEXT_PUBLIC_VERCEL_AUTOMATION_BYPASS_SECRET) {
@@ -165,7 +163,6 @@ const cleanupContent = async (autoCleanup = false) => {
       // ✅ FIXED: Add Vercel bypass headers for approval
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
-        'Authorization': AUTH_TOKEN
       };
       
       // Add Vercel bypass token if available

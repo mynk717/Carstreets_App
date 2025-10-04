@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import { RefreshCw, Play, CheckCircle, AlertCircle } from 'lucide-react'
+import { useSession } from 'next-auth/react'
 
-const AUTH_TOKEN = 'Bearer admin-temp-key';
 
 interface ScrapeResult {
   success: boolean
@@ -18,9 +18,12 @@ interface ScrapeResult {
 }
 
 export function ScrapeButton() {
+  const { data: session, status } = useSession()
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState<ScrapeResult | null>(null)
 
+  if (status === 'loading') return <div>Checking authentication...</div>
+  if (!session) return <div>Please sign in to access admin features</div>
   const handleScrape = async () => {
     setLoading(true)
     setResult(null)
@@ -30,7 +33,6 @@ export function ScrapeButton() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: AUTH_TOKEN,
         },
         body: JSON.stringify({
           profileUrl: 'https://www.olx.in/profile/your-profile-url', // Replace with actual profile

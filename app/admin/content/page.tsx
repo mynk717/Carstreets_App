@@ -2,8 +2,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSession } from 'next-auth/react'
 
 export default function ContentStudioPage() {
+  const { data: session, status } = useSession()
   const [cars, setCars] = useState([])
   const [selectedCar, setSelectedCar] = useState(null)
   const [batchContent, setBatchContent] = useState('') // ✅ Separate state
@@ -11,6 +13,8 @@ export default function ContentStudioPage() {
   const [generatedContent, setGeneratedContent] = useState('')
   const [loading, setLoading] = useState(false)
 
+  if (status === 'loading') return <div>Loading...</div>
+  if (!session) return <div>Please sign in to access content studio</div>
   useEffect(() => {
     fetchCars()
   }, [])
@@ -32,7 +36,6 @@ export default function ContentStudioPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer admin-temp-key'
         },
         body: JSON.stringify({
           contentType: 'batch_content',
@@ -72,7 +75,6 @@ export default function ContentStudioPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer admin-temp-key'
         },
         body: JSON.stringify({
           carId: selectedCar.id,

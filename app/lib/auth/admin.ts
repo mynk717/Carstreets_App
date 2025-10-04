@@ -5,7 +5,6 @@ import { authOptions } from "../../api/auth/[...nextauth]/route";
 // Marketing Dime Admin Configuration
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "shukla.mayank247@gmail.com";
 const COMPANY_NAME = process.env.COMPANY_NAME || "Marketing Dime";
-const LEGACY_TOKEN = "admin-temp-key"; // For backwards compatibility during migration
 
 export interface AuthResult {
   success: boolean;
@@ -47,20 +46,19 @@ export async function verifyAdminAuth(request: NextRequest): Promise<AuthResult>
       };
     }
 
-    // Fallback to legacy Bearer token (for migration period)
-    const authHeader = request.headers.get("authorization");
-    if (authHeader === `Bearer ${LEGACY_TOKEN}`) {
-      console.log("⚠️ Legacy token auth (migrate to NextAuth soon)");
+    
+    if (session?.user?.email === ADMIN_EMAIL) {
+      console.log('NextAuth session valid for:', session.user.email)
       return {
         success: true,
         user: {
-          id: "1",
-          email: ADMIN_EMAIL,
-          name: "Mayank",
-          role: "admin",
+          id: session.user.id,
+          email: session.user.email,
+          name: session.user.name || 'Mayank',
+          role: 'admin',
           company: COMPANY_NAME,
         },
-      };
+      }
     }
 
     console.log("❌ Authentication failed - no valid session or token");
@@ -77,25 +75,7 @@ export async function verifyAdminAuth(request: NextRequest): Promise<AuthResult>
   }
 }
 
-/**
- * Create auth headers for internal API calls
- * Use NextAuth session when available, fallback to Bearer token
- */
-export function createAuthHeaders(): HeadersInit {
-  return {
-    "Authorization": `Bearer ${LEGACY_TOKEN}`,
-    "Content-Type": "application/json",
-    "X-Company": COMPANY_NAME,
-    "X-Admin-Email": ADMIN_EMAIL,
-  };
-}
 
-/**
- * Validate legacy admin token (backwards compatibility)
- */
-export function isValidAdminToken(token: string): boolean {
-  return token === `Bearer ${LEGACY_TOKEN}`;
-}
 
 /**
  * Marketing Dime branding helper
@@ -114,5 +94,7 @@ export function getCompanyInfo() {
  * Check if user has admin privileges for Marketing Dime operations
  */
 export function hasMarketingDimeAccess(userEmail: string): boolean {
-  return userEmail === ADMIN_EMAIL || userEmail.endsWith("@mktgdime.com");
+  return userEmail === ADMIN_EMAIL || 
+  userEmail.endsWith("@mktgdime.com") || 
+  userEmail === "shukla.mayank247@gmail.com";
 }

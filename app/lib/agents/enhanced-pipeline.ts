@@ -1,6 +1,7 @@
 import { cacheManager } from '../cache/redis';
 import { CarMarketIntelligence } from '../intelligence/carScoring';
 import { prisma } from '../database/db';
+import { StrategyAgent } from './strategyAgent'
 
 interface ContentAgent {
   name: string;
@@ -343,6 +344,7 @@ export class EnhancedContentPipeline {
   constructor() {
     this.agents = [
       new ResearchAgent(),
+      new StrategyAgent(),
       new ContentCreatorAgent(), 
       new QualityAssuranceAgent()
     ];
@@ -358,6 +360,9 @@ export class EnhancedContentPipeline {
     }
     
     const results = [];
+
+    console.log('🎯 Strategy phase: Analyzing performance and planning...')
+    const strategy = await this.agents[1].execute({ dealerId, carIds: selectedCarIds, platforms })
     
     for (const carId of selectedCarIds) {
       try {
@@ -391,7 +396,9 @@ export class EnhancedContentPipeline {
                 generationCost: content.generationCost,
                 brandingApplied: content.brandingApplied,
                 success: true,
-                cached: content.cached || false
+                cached: content.cached || false,
+                optimalPostingTime: strategy.optimalPostingTimes.find(t => t.platform === platform),
+                contentTheme: strategy.contentThemes[0] || 'general'
               });
             } else {
               console.log('❌ Content failed quality check:', qa.improvements);
@@ -424,6 +431,7 @@ export class EnhancedContentPipeline {
     
     return {
       results,
+      strategy,
       summary: {
         totalCars: selectedCarIds.length,
         totalPlatforms: platforms.length,

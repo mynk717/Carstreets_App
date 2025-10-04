@@ -30,7 +30,7 @@ const users = [
     id: "1",
     name: "Mayank",
     email: process.env.ADMIN_EMAIL || "shukla.mayank247@gmail.com",
-    passwordHash: process.env.ADMIN_PASSWORD_HASH || "$2a$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBHBnHS/LHSQS2", // bcrypt hash for "admin123"
+    passwordHash: process.env.ADMIN_PASSWORD_HASH || "$2a$12$SJLomRQ21HqC8qIO8wT0geT1./1cUmek5ngO3sqbb2bOC5Dkq8hH6", // bcrypt hash for "CarStreets2024!"
   },
 ];
 

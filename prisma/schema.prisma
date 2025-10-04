@@ -41,6 +41,9 @@ model Car {
   lastScrapedAt    DateTime @default(now()) // When this was last scraped
   isUserAdded      Boolean  @default(false) // True for cars added via "Add Car" button
   scrapedData      Json? // Store original scraped data for comparison
+  availability     String    @default("in_stock") // "in_stock", "out_of_stock", "preorder"
+  countryOfOrigin  String    @default("IN")       // ISO country code
+  condition        String    @default("used")     // "new", "used", "refurbished"
 
   // Enhanced search and performance fields
   searchVector    String?

@@ -1,23 +1,49 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --font-geist-sans: 'Geist Sans', system-ui, sans-serif;
-  --font-geist-mono: 'Geist Mono', monospace;
+  --background: #f8f9fa; /* Lighter, softer grey */
+  --foreground: #212529; /* Standard dark for readability */
+
+  /* Napkin.ai inspired palette */
+  --primary: #6B46E8; /* Vibrant Purple */
+  --secondary: #8D72E1; /* Lighter Purple */
+  --accent: #70D1F4; /* Bright Blue */
+  --success: #34D399; /* Emerald Green */
+  --warning: #FBBF24; /* Amber */
+  --danger: #F87171; /* Red */
+
+  --text-primary: #212529;
+  --text-secondary: #495057;
+  --text-subtle: #6C757D;
+
+  --surface: #ffffff; /* For cards, modals etc. */
+  --border: #E9ECEF;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --background: #121212;
+    --foreground: #E0E0E0;
+
+    --primary: #8A6DFF;
+    --secondary: #A08AFF;
+    --accent: #78DFFF;
+    --success: #6EE7B7;
+    --warning: #FCD34D;
+    --danger: #FCA5A5;
+
+    --text-primary: #E0E0E0;
+    --text-secondary: #ADB5BD;
+    --text-subtle: #868E96;
+
+    --surface: #1E1E1E;
+    --border: #343A40;
   }
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-geist-sans);
+  color: var(--text-primary);
 }
 
 /* Hide scrollbars for carousel thumbnails */
@@ -33,36 +59,4 @@ body {
 /* Smooth transitions for carousel */
 .carousel-transition {
   transition: transform 0.3s ease-in-out;
-}
-
-/* FIXED: Complete line-clamp with all vendor prefixes and standard property */
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  line-clamp: 2; /* Standard property for future compatibility */
-  overflow: hidden;
-}
-
-.line-clamp-3 {
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  line-clamp: 3; /* Standard property for future compatibility */
-  overflow: hidden;
-}
-
-.line-clamp-4 {
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  line-clamp: 4; /* Standard property for future compatibility */
-  overflow: hidden;
-}
-
-/* Utility for single line truncation */
-.truncate {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }

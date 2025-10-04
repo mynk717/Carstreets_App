@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import { Button } from '../../../components/ui/Button';
 import { getCarEnhancementPrompt } from '@/lib/prompts/carImagePrompts';
+import { useSession } from 'next-auth/react'
 
 
-const AUTH_TOKEN = 'Bearer admin-temp-key';
 interface CarData {
   id: string;
   make: string;
@@ -16,6 +16,7 @@ interface CarData {
 }
 
 export default function ImageStudioPage() {
+  const { data: session, status } = useSession()
   const [carData, setCarData] = useState<CarData>({
     id: '1',
     make: 'Maruti Suzuki',
@@ -35,6 +36,8 @@ export default function ImageStudioPage() {
   const [realImageFile, setRealImageFile] = useState<File | null>(null);
   const [realImageUrl, setRealImageUrl] = useState<string>('');
 
+  if (status === 'loading') return <div>Loading...</div>
+  if (!session) return <div>Please sign in to access image studio</div>
   // ✅ Handle file upload and convert to URL
   const handleFileUpload = (file: File) => {
     setRealImageFile(file);
@@ -81,7 +84,6 @@ const prompt = getCarEnhancementPrompt(promptParams);
       const response = await fetch('/api/admin/thumbnails', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json',
-          Authorization: AUTH_TOKEN
          },
         body: JSON.stringify({
           carData,
@@ -115,7 +117,6 @@ const prompt = getCarEnhancementPrompt(promptParams);
       const response = await fetch('/api/admin/test-pipeline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json',
-          Authorization: AUTH_TOKEN
          },
         body: JSON.stringify({
           userId: 'image-studio-user',

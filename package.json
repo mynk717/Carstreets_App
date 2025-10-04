@@ -29,6 +29,7 @@
     "clsx": "^2.1.1",
     "dotenv": "^17.2.2",
     "framer-motion": "^12.23.12",
+    "geist": "^1.5.1",
     "ioredis": "^5.8.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.542.0",
@@ -41,7 +42,7 @@
     "node-fetch": "^3.3.2",
     "openai": "^5.19.1",
     "playwright": "^1.55.0",
-    "prisma": "^6.15.0",
+    "prisma": "^6.16.3",
     "puppeteer": "^24.19.0",
     "puppeteer-core": "^24.19.0",
     "puppeteer-extra": "^3.3.6",
@@ -71,6 +72,4 @@
     "tailwindcss": "^4",
     "typescript": "^5"
   }
-  
 }
-

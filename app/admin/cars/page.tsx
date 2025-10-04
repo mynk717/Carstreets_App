@@ -6,10 +6,12 @@ import { Button } from '../../components/ui/Button'
 import { Car } from '../../types'
 import { CarFormModal } from './components/CarFormModal'
 import { ScrapeButton } from './components/ScrapeButton'
+import { useSession } from 'next-auth/react'
 
-const AUTH_TOKEN = 'Bearer admin-temp-key';
+
 
 export default function AdminCarsPage() {
+  const { data: session, status } = useSession()
   const [cars, setCars] = useState<Car[]>([])
   const [loading, setLoading] = useState(false)
   const [testUrl, setTestUrl] = useState('')
@@ -22,6 +24,8 @@ export default function AdminCarsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedCar, setSelectedCar] = useState<Car | null>(null)
 
+  if (status === 'loading') return <div>Checking authentication...</div>
+  if (!session) return <div>Please sign in to access admin features</div>
   // Load existing cars
   useEffect(() => {
     fetchCars()
@@ -53,7 +57,6 @@ export default function AdminCarsPage() {
       const response = await fetch('/api/admin/cars/test-scrape', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json',
-                      'Authorization': AUTH_TOKEN
          },
         body: JSON.stringify({ url: testUrl.trim() })
       })
@@ -190,7 +193,6 @@ export default function AdminCarsPage() {
     const response = await fetch(endpoint, {
       method,
       headers: { 'Content-Type': 'application/json',
-                      'Authorization': AUTH_TOKEN
        },
       body: JSON.stringify(carData)
     })
@@ -257,7 +259,6 @@ export default function AdminCarsPage() {
       const response = await fetch('/api/admin/cars/bulk-add', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json',
-                      'Authorization': AUTH_TOKEN
          },
         body: JSON.stringify({ urls })
       })
