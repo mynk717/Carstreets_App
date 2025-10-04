@@ -47,17 +47,42 @@ export const authOptions: NextAuthOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
+        console.log('🔐 Login attempt:', credentials?.email);
+        console.log('🔑 ENV vars loaded:', {
+          hasEmail: !!process.env.ADMIN_EMAIL,
+          hasHash: !!process.env.ADMIN_PASSWORD_HASH,
+          hasSecret: !!process.env.NEXTAUTH_SECRET
+        });
+        
         if (!credentials?.email || !credentials?.password) {
+          console.log('❌ Missing credentials');
           return null;
         }
-
+      
         const user = users.find(
           (user) => user.email === credentials.email.toLowerCase()
         );
-        if (!user) return null;
-
+        
+        if (!user) {
+          console.log('❌ User not found for email:', credentials.email);
+          console.log('🔍 Available users:', users.map(u => u.email));
+          return null;
+        }
+      
+        console.log('✅ User found, verifying password...');
+        console.log('🔑 Hash to compare against:', user.passwordHash.substring(0, 20) + '...');
+        
         const isValid = await compare(credentials.password, user.passwordHash);
-        if (!isValid) return null;
+        
+        console.log('🔐 Password comparison result:', isValid);
+        
+        if (!isValid) {
+          console.log('❌ Invalid password');
+          return null;
+        }
+      
+        console.log('✅ Login successful!');git add app/api/auth/[...nextauth]/route.ts
+
 
         return {
           id: user.id,
