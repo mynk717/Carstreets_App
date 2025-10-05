@@ -81,8 +81,7 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
       
-        console.log('✅ Login successful!');git add app/api/auth/[...nextauth]/route.ts
-
+        console.log('✅ Login successful!');
 
         return {
           id: user.id,
