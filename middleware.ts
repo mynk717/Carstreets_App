@@ -1,28 +1,60 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+import { NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 
-export async function middleware(req: NextRequest) {
-  // Only protect admin routes
-  if (req.nextUrl.pathname.startsWith('/admin')) {
-    const token = await getToken({ 
-      req, 
-      secret: process.env.NEXTAUTH_SECRET 
-    })
+export function middleware(request: NextRequest) {
+  const hostname = request.headers.get('host') || ''
+  const url = request.nextUrl
+  
+  console.log('🔍 Middleware:', { hostname, pathname: url.pathname })
 
-    if (!token) {
-      return NextResponse.redirect(new URL('/auth/signin', req.url))
+  // Platform domain: motoyard.mktgdime.com or localhost
+  const isPlatformDomain = hostname === 'motoyard.mktgdime.com' || 
+                           hostname === 'localhost:3000' ||
+                           hostname.startsWith('localhost')
+
+  if (isPlatformDomain) {
+    // Allow platform routes (homepage, pricing, auth, admin)
+    if (url.pathname === '/' || 
+        url.pathname.startsWith('/pricing') ||
+        url.pathname.startsWith('/features') ||
+        url.pathname.startsWith('/about') ||
+        url.pathname.startsWith('/auth') ||
+        url.pathname.startsWith('/admin') ||
+        url.pathname.startsWith('/api')) {
+      return NextResponse.next()
     }
-
-    // Add user context to headers for API routes
-    const response = NextResponse.next()
-    response.headers.set('x-user-id', token.sub || '')
-    response.headers.set('x-user-email', token.email || '')
-    return response
   }
 
+  // Subdomain detection: *.motoyard.mktgdime.com
+  if (hostname.endsWith('.motoyard.mktgdime.com') && hostname !== 'motoyard.mktgdime.com') {
+    const subdomain = hostname.replace('.motoyard.mktgdime.com', '')
+    
+    console.log('🏢 Detected subdomain:', subdomain)
+    
+    // Rewrite to dealer-specific route
+    const newUrl = url.clone()
+    newUrl.pathname = `/dealers/${subdomain}${url.pathname}`
+    
+    console.log('↪️  Rewriting to:', newUrl.pathname)
+    return NextResponse.rewrite(newUrl)
+  }
+
+  // Custom domain detection (future feature)
+  // TODO: Check database for custom domains
+  
   return NextResponse.next()
 }
 
 export const config = {
-  matcher: ['/admin/:path*']
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization)
+     * - favicon.ico
+     * - public folder
+     * - api routes (they handle their own logic)
+     */
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
 }

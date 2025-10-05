@@ -1,4 +1,3 @@
-// ------------------  prisma/schema.prisma  ------------------
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,18 +9,18 @@ datasource db {
 
 model Car {
   id               String   @id @default(cuid())
-  dealerId         String?  // new nullable tenant ID
+  dealerId         String?
   title            String
   brand            String
   model            String
   variant          String?
-  price            BigInt // keeps very large INR safely
+  price            BigInt
   year             Int
   fuelType         String
   transmission     String
   kmDriven         Int
   location         String
-  images           Json     @default("[]") // was String
+  images           Json     @default("[]")
   description      String
   sellerType       String
   postedDate       String
@@ -36,32 +35,30 @@ model Car {
   carStreetsListed Boolean  @default(false)
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
-  manuallyEdited   Boolean  @default(false) // Track if user edited this car
-  editedFields     Json     @default("[]") // Track which fields were edited
-  lastScrapedAt    DateTime @default(now()) // When this was last scraped
-  isUserAdded      Boolean  @default(false) // True for cars added via "Add Car" button
-  scrapedData      Json? // Store original scraped data for comparison
-  availability     String    @default("in_stock") // "in_stock", "out_of_stock", "preorder"
-  countryOfOrigin  String    @default("IN")       // ISO country code
-  condition        String    @default("used")     // "new", "used", "refurbished"
+  manuallyEdited   Boolean  @default(false)
+  editedFields     Json     @default("[]")
+  lastScrapedAt    DateTime @default(now())
+  isUserAdded      Boolean  @default(false)
+  scrapedData      Json?
+  availability     String    @default("in_stock")
+  countryOfOrigin  String    @default("IN")
+  condition        String    @default("used")
 
-  // Enhanced search and performance fields
   searchVector    String?
   tags            String[] @default([])
   viewCount       Int @default(0)
   leadCount       Int @default(0)
   
-  // SEO optimization
   slug            String?
   metaTitle       String?
   metaDescription String?
 
-  // Vector embeddings for RAG
-  contentEmbedding String? // pgvector for semantic search
-  marketContext    Json?   // Structured market data
+  contentEmbedding String?
+  marketContext    Json?
 
-  // Relations
+  // ✅ ADD RELATIONS
   contentCalendar ContentCalendar[]
+  dealer          Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 
   @@index([dealerId, isVerified, carStreetsListed])
   @@index([brand, model, year])
@@ -70,21 +67,47 @@ model Car {
   @@map("cars")
 }
 
-// New models for external data
+model Dealer {
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  
+  subdomain     String   @unique
+  customDomain  String?  @unique
+  domainVerified Boolean @default(false)
+  
+  businessName  String?
+  logo          String?
+  phoneNumber   String?
+  location      String?
+  description   String?
+  
+  plan          String   @default("free")
+  subscriptionStatus String @default("active")
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // ✅ ADD RELATIONS
+  cars          Car[]
+  contentCalendar ContentCalendar[]
+  
+  @@index([subdomain])
+  @@index([customDomain])
+}
+
 model MarketIntelligence {
   id            String @id @default(cuid())
-  source        String // 'news', 'trends', 'forums', 'social'
+  source        String
   title         String
   content       String @db.Text
   summary       String?
-  relevantFor   String[] // ['maruti-suzuki', 'hyundai', 'sedan', 'suv']
-  sentiment     String? // 'positive', 'negative', 'neutral'
+  relevantFor   String[]
+  sentiment     String?
   credibility   Float @default(0.8)
   
-  // Vector search
-  contentEmbedding String? // pgvector
+  contentEmbedding String?
   
-  // Metadata
   publishedAt   DateTime
   scrapedAt     DateTime @default(now())
   isActive      Boolean @default(true)
@@ -96,9 +119,9 @@ model MarketIntelligence {
 
 model ContentTemplate {
   id           String @id @default(cuid())
-  category     String // 'storytelling', 'comparison', 'news_correlation'
+  category     String
   template     String @db.Text
-  variables    Json   // Template variables
+  variables    Json
   performance  Float @default(0.0)
   
   createdAt DateTime @default(now())
@@ -110,43 +133,42 @@ model ContentTemplate {
 model ContentCalendar {
   id       String @id @default(cuid())
   carId    String
-  dealerId     String?  // new nullable tenant ID for tenant scoping
-  platform String // 'instagram', 'facebook', 'linkedin'
+  dealerId String?
+  platform String
 
-  // Generated Content
   textContent   String
   hashtags      String[]
-  originalImage String? // Cloudinary URL from Car.images
-  brandedImage  String? // nano-banana result URL
+  originalImage String?
+  brandedImage  String?
 
-  // Scheduling & Approval  
-  status        String    @default("draft") // 'draft', 'approved', 'scheduled', 'posted'
+  status        String    @default("draft")
   scheduledDate DateTime?
   approvedBy    String?
   approvedAt    DateTime?
 
-  // Quality & Cost Tracking
-  uniquenessScore Int      @default(92) // Your 92% scores
+  uniquenessScore Int      @default(92)
   generationCost  Float    @default(0.039)
-  brandingApplied String[] // ['logo', 'price', 'location']
+  brandingApplied String[]
 
-  // Auto-generation metadata
   autoGenerated  Boolean @default(true)
   requiresReview Boolean @default(false)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // Relations
-  car Car @relation(fields: [carId], references: [id], onDelete: Cascade)
+  // ✅ ADD RELATIONS
+  car    Car     @relation(fields: [carId], references: [id], onDelete: Cascade)
+  dealer Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 
+  @@index([dealerId])
   @@index([carId])
   @@index([status])
   @@index([scheduledDate])
 }
+
 model SocialMediaToken {
   id            String   @id @default(cuid())
-  dealerId      String?  // new nullable tenant ID
+  dealerId      String?
   platform      String
   accessToken   String
   refreshToken  String?
@@ -158,7 +180,7 @@ model SocialMediaToken {
 
 model SocialPost {
   id               String    @id @default(cuid())
-  dealerId         String?   // new nullable tenant ID
+  dealerId         String?
   platform         String
   status           String
   scheduledAt      DateTime?
@@ -171,7 +193,7 @@ model SocialPost {
 
 model WhatsAppContact {
   id           String   @id @default(cuid())
-  dealerId     String?  // new nullable tenant ID
+  dealerId     String?
   phoneNumber  String
   optedIn      Boolean  @default(false)
   name         String?
@@ -182,7 +204,7 @@ model WhatsAppContact {
 
 model FestivalContent {
   id         String   @id @default(cuid())
-  dealerId   String?  // new nullable tenant ID
+  dealerId   String?
   festival   String
   content    String
   createdAt  DateTime @default(now())
