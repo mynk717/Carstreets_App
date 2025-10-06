@@ -68,33 +68,42 @@ model Car {
 }
 
 model Dealer {
-  id            String   @id @default(cuid())
-  name          String
-  email         String   @unique
+  id                  String   @id @default(cuid())
+  name                String
+  email               String   @unique
   
-  subdomain     String   @unique
-  customDomain  String?  @unique
-  domainVerified Boolean @default(false)
+  subdomain           String   @unique
+  customDomain        String?  @unique
+  domainVerified      Boolean  @default(false)
   
-  businessName  String?
-  logo          String?
-  phoneNumber   String?
-  location      String?
-  description   String?
+  businessName        String?
+  logo                String?
+  phoneNumber         String?
+  location            String?
+  description         String?
   
-  plan          String   @default("free")
-  subscriptionStatus String @default("active")
+  plan                String   @default("free")
+  subscriptionStatus  String   @default("active")
+  subscriptionAmount  Int?
+
+  // Usage tracking for free tier
+  carsCount          Int      @default(0)
+  aiContentUsed      Int      @default(0)
+  socialPostsUsed    Int      @default(0)
   
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
   
-  // ✅ ADD RELATIONS
-  cars          Car[]
-  contentCalendar ContentCalendar[]
+  // Relations
+  cars                Car[]
+  contentCalendar     ContentCalendar[]
   
   @@index([subdomain])
   @@index([customDomain])
+  // REMOVE this line temporarily: @@map("dealers") 
 }
+
+
 
 model MarketIntelligence {
   id            String @id @default(cuid())

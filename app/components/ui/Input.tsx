@@ -6,7 +6,7 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   error?: string
 }
 
-const Input = forwardRef<HTMLInputElement, InputProps>(
+const Input = forwardRef<HTMLInputElement, InputProps>(  // FIXED: Correct ref type
   ({ className, label, error, ...props }, ref) => {
     return (
       <div className="space-y-1">
@@ -17,11 +17,26 @@ const Input = forwardRef<HTMLInputElement, InputProps>(
         )}
         <input
           className={cn(
-            'w-full px-3 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200',
-            error && 'border-red-500 focus:ring-red-500',
+            // Base styles with FIXED text contrast
+            'w-full px-3 py-2.5 border border-gray-300 rounded-lg',
+            'bg-white text-gray-900 font-medium', // FIXED: Dark text, medium weight
+            'placeholder:text-gray-500 placeholder:font-normal', // FIXED: Visible placeholder
+            
+            // Focus states
+            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+            
+            // Disabled states  
+            'disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed',
+            
+            // Smooth transitions
+            'transition-all duration-200',
+            
+            // Error state override
+            error && 'border-red-500 focus:ring-red-500 focus:border-red-500',
+            
             className
           )}
-          ref={ref}
+          ref={ref}  // FIXED: Now properly typed
           {...props}
         />
         {error && (

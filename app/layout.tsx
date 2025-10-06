@@ -1,13 +1,13 @@
 import type { Metadata } from 'next'
 import { Inter, Plus_Jakarta_Sans } from 'next/font/google'
-import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
+import { GeistSans } from 'geist/font/sans'
+import { GeistMono } from 'geist/font/mono'
 import '../src/app/globals.css'
-import { Header } from './components/layout/Header'
-import { AuthSessionProvider } from "./components/SessionProvider";
+import { AuthSessionProvider } from "./components/SessionProvider"
+import { ConditionalLayout } from './components/layout/ConditionalLayout'
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-plus-jakarta-sans' });
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' })
+const plusJakartaSans = Plus_Jakarta_Sans({ subsets: ['latin'], variable: '--font-plus-jakarta-sans' })
 
 export const viewport = {
   width: 'device-width',
@@ -17,9 +17,11 @@ export const viewport = {
   viewportFit: 'cover',
   themeColor: '#111827',
 }
+
+// Fixed metadata for MotoYard platform
 export const metadata: Metadata = {
-  title: 'CarStreets - Buy & Sell Used Cars',
-  description: 'Find the best deals on used cars in your city. Buy and sell cars with confidence.',
+  title: 'MotoYard - Multi-Tenant Car Dealership Platform',
+  description: 'Create your own car dealership website with MotoYard SaaS platform. Powered by AI content generation.',
 }
 
 export default function RootLayout({
@@ -30,12 +32,13 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${inter.variable} ${plusJakartaSans.variable} ${GeistSans.variable} ${GeistMono.variable}`}>
-        <Header />
-        <main className="min-h-screen bg-gray-50">
-          <AuthSessionProvider>
-          {children}
-        </AuthSessionProvider>
-        </main>
+        <ConditionalLayout>
+          <main className="min-h-screen bg-gray-50">
+            <AuthSessionProvider>
+              {children}
+            </AuthSessionProvider>
+          </main>
+        </ConditionalLayout>
       </body>
     </html>
   )
