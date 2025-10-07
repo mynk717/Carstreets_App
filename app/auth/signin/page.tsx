@@ -11,19 +11,19 @@ export default function SignInPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-
+    const callbackUrl = new URLSearchParams(window.location.search).get('callbackUrl') || '/';
     const result = await signIn("credentials", {
       redirect: false,
       email,
       password,
     });
-
     if (result?.error) {
       setError("Invalid email or password");
     } else if (result?.ok) {
-      window.location.href = "/";
+      window.location.href = callbackUrl;
     }
   }
+  
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">

@@ -3,9 +3,7 @@ import { Car, BarChart3, Calendar, Image as LucideImage, Users, Home, Settings, 
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/api/auth/[...nextauth]/route'
 import Image from 'next/image'
-
-// IMPORT USER PROFILE DROPDOWN if you plan to use it 
-// import { UserProfileDropdown } from '@/components/admin/UserProfileDropdown'
+import { UserProfileDropdown } from '@/components/admin/UserProfileDropdown'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions)
@@ -82,48 +80,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 {/* You can add breadcrumbs or page title here if needed */}
               </div>
 
-              {/* ===== Inline User Profile JSX START ===== */}
-              <div className="flex items-center gap-4">
-                {user ? (
-                  <div className="relative flex items-center">
-                    {user.image ? (
-                      <Image
-                        src={user.image}
-                        alt={user.name || 'User Profile'}
-                        className="w-8 h-8 rounded-full border border-gray-200 shadow"
-                        width={32}
-                        height={32}
-                      />
-                    ) : (
-                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
-                        {user.name?.charAt(0) || 'A'}
-                      </div>
-                    )}
-                    <div className="ml-3 flex flex-col">
-                      <span className="text-sm font-semibold text-gray-900">
-                        {user.name || user.email}
-                      </span>
-                      <span className="text-xs text-gray-500">{user.email}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <Link 
-                    href="/auth/signin"
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 text-sm"
-                  >
-                    Sign In
-                  </Link>
-                )}
-                {user && (
-                  <Link
-                    href="/auth/signout"
-                    className="ml-4 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm text-gray-600 font-semibold"
-                  >
-                    Sign Out
-                  </Link>
-                )}
-              </div>
-              {/* ===== Inline User Profile JSX END ===== */}
+              <UserProfileDropdown user={user} />
 
             </header>
             <div className="p-8">{children}</div>
