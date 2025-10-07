@@ -1,13 +1,22 @@
 import Link from 'next/link'
-import { Car, BarChart3, Calendar, Image, Users, Home, Settings, TrendingUp } from 'lucide-react'
+import { Car, BarChart3, Calendar, Image as LucideImage, Users, Home, Settings, TrendingUp } from 'lucide-react'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/api/auth/[...nextauth]/route'
+import Image from 'next/image'
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+// IMPORT USER PROFILE DROPDOWN if you plan to use it 
+// import { UserProfileDropdown } from '@/components/admin/UserProfileDropdown'
+
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const session = await getServerSession(authOptions)
+  const user = session?.user
+
   const navItems = [
     { href: '/admin', icon: Home, label: 'Overview' },
     { href: '/admin/dealerships', icon: Users, label: 'Dealerships', badge: 'New' },
     { href: '/admin/cars', icon: Car, label: 'Car Management' },
     { href: '/admin/content', icon: BarChart3, label: 'Content Studio' },
-    { href: '/admin/content/image-studio', icon: Image, label: 'Image Studio' },
+    { href: '/admin/content/image-studio', icon: LucideImage, label: 'Image Studio' },
     { href: '/admin/content/calendar', icon: Calendar, label: 'Content Calendar' },
   ]
 
@@ -15,9 +24,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <html lang="en" className="h-full">
       <body className="h-full bg-gray-50">
         <div className="h-full flex">
-          {/* Modern Sidebar */}
+          {/* Sidebar */}
           <nav className="w-64 bg-white border-r border-gray-200 flex flex-col">
-            {/* Header */}
             <div className="p-6 border-b border-gray-200">
               <Link href="/admin" className="flex items-center gap-3">
                 <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
@@ -30,7 +38,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               </Link>
             </div>
 
-            {/* Navigation Items */}
             <div className="flex-1 py-6 px-3 space-y-1 overflow-y-auto">
               {navItems.map((item) => (
                 <Link
@@ -49,7 +56,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               ))}
             </div>
 
-            {/* Footer */}
+            {/* Sidebar footer */}
             <div className="p-4 border-t border-gray-200 space-y-2">
               <Link 
                 href="/" 
@@ -68,11 +75,58 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </div>
           </nav>
 
-          {/* Main Content Area */}
+          {/* Main Content w/ Navbar */}
           <main className="flex-1 overflow-auto">
-            <div className="p-8">
-              {children}
-            </div>
+            <header className="bg-white border-b border-gray-200 px-8 py-4 flex items-center justify-between">
+              <div>
+                {/* You can add breadcrumbs or page title here if needed */}
+              </div>
+
+              {/* ===== Inline User Profile JSX START ===== */}
+              <div className="flex items-center gap-4">
+                {user ? (
+                  <div className="relative flex items-center">
+                    {user.image ? (
+                      <Image
+                        src={user.image}
+                        alt={user.name || 'User Profile'}
+                        className="w-8 h-8 rounded-full border border-gray-200 shadow"
+                        width={32}
+                        height={32}
+                      />
+                    ) : (
+                      <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg">
+                        {user.name?.charAt(0) || 'A'}
+                      </div>
+                    )}
+                    <div className="ml-3 flex flex-col">
+                      <span className="text-sm font-semibold text-gray-900">
+                        {user.name || user.email}
+                      </span>
+                      <span className="text-xs text-gray-500">{user.email}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <Link 
+                    href="/auth/signin"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg font-semibold hover:bg-blue-700 text-sm"
+                  >
+                    Sign In
+                  </Link>
+                )}
+                {user && (
+                  <Link
+                    href="/auth/signout"
+                    className="ml-4 bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg text-sm text-gray-600 font-semibold"
+                  >
+                    Sign Out
+                  </Link>
+                )}
+              </div>
+              {/* ===== Inline User Profile JSX END ===== */}
+
+            </header>
+            <div className="p-8">{children}</div>
           </main>
         </div>
       </body>
