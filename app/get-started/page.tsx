@@ -160,7 +160,7 @@ export default function GetStartedPage() {
       const data = await response.json()
       
       if (data.success) {
-        window.location.href = data.paymentUrl
+        window.location.href = data.redirectUrl  // CHANGED: paymentUrl → redirectUrl
       } else {
         setErrors({ general: data.error || 'Signup failed' })
       }
@@ -170,7 +170,7 @@ export default function GetStartedPage() {
       setLoading(false)
     }
   }
-
+  
   return (
     <>
       {/* Enhanced styles for better visibility */}

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Check subdomain availability again
+    // Check subdomain availability
     const existingDealerBySubdomain = await prisma.dealer.findUnique({
       where: { subdomain }
     })
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const planAmount = planPricing[selectedPlan] || 4999
 
-    // FIXED: Create dealer with correct field names matching your schema
+    // Create dealer with pending_payment status
     const newDealer = await prisma.dealer.create({
       data: {
         name: ownerName,
@@ -69,23 +69,29 @@ export async function POST(request: NextRequest) {
         subdomain,
         customDomain: customDomain || null,
         description: description || null,
-        plan: selectedPlan,  // FIXED: Use 'plan' instead of 'subscriptionPlan'
-        subscriptionStatus: 'pending',  // This field exists in your schema
-        // Removed subscriptionAmount since it's not in your current schema
-        domainVerified: false,  // Set default value
+        plan: selectedPlan,
+        subscriptionStatus: 'pending_payment',
+        domainVerified: false,
         createdAt: new Date(),
         updatedAt: new Date()
       }
     })
 
-    // Generate payment URL
-    const paymentUrl = `/payment/razorpay?dealerId=${newDealer.id}&amount=${planAmount}`
+    // Generate redirect URL to mktgdime.com payment page
+    const paymentUrl = `https://mktgdime.com/payments?${new URLSearchParams({
+      service: 'MotoYard Dealership',
+      tier: `${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Plan`,
+      price: planAmount.toString(),
+      dealerId: newDealer.id,
+      subdomain: subdomain,
+      source: 'motoyard'
+    }).toString()}`
 
     return NextResponse.json({
       success: true,
       dealerId: newDealer.id,
-      paymentUrl: paymentUrl,
-      message: 'Dealer account created successfully'
+      redirectUrl: paymentUrl,
+      message: 'Dealer account created successfully. Redirecting to payment...'
     })
 
   } catch (error) {
