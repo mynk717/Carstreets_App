@@ -31,9 +31,9 @@ export default function SignInPage() {
         className="bg-white p-8 rounded shadow-md max-w-sm w-full"
         onSubmit={handleSubmit}
       >
-        <h1 className="mb-5 text-2xl font-semibold">Sign In</h1>
+        <h1 className="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Sign In</h1>
 
-        <label className="block mb-2">
+        <label className="block mb-2 text-gray-800 dark:text-white font-medium">
           Email
           <input
   type="email"
@@ -46,7 +46,7 @@ export default function SignInPage() {
 
         </label>
 
-        <label className="block mb-4">
+        <label className="block mb-4 text-gray-800 dark:text-white font-medium">
           Password
           <input
   type="password"
