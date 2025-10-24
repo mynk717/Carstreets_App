@@ -31,14 +31,14 @@ export default function SignInPage() {
         className="bg-white p-8 rounded shadow-md max-w-sm w-full"
         onSubmit={handleSubmit}
       >
-        <h1 className="mb-5 text-2xl font-bold text-gray-900 dark:text-white">Sign In</h1>
+        <h1 className="mb-5 text-2xl font-bold text-gray-900">Sign In</h1>
 
-        <label className="block mb-2 text-gray-800 dark:text-white font-medium">
+        <label className="block mb-2 text-gray-800 font-medium">
           Email
           <input
   type="email"
   className="w-full border border-gray-300 p-2 rounded mt-1 text-gray-900 placeholder-gray-400"
-  placeholder="shukla.mayank247@gmail.com"
+  placeholder="your Email ID"
   value={email}
   onChange={(e) => setEmail(e.target.value)}
   required
@@ -46,7 +46,7 @@ export default function SignInPage() {
 
         </label>
 
-        <label className="block mb-4 text-gray-800 dark:text-white font-medium">
+        <label className="block mb-4 text-gray-800 font-medium">
           Password
           <input
   type="password"

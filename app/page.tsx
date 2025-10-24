@@ -1,4 +1,5 @@
 'use client'
+import Header from './components/layout/Header'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSession } from 'next-auth/react'
@@ -106,6 +107,8 @@ if (session?.user?.email) {
   ]
 
   return (
+    <>
+      <Header />
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Hero Section */}
       <section className="relative py-20 px-4 sm:px-6 lg:px-8">
@@ -249,5 +252,6 @@ if (session?.user?.email) {
         </div>
       </section>
     </div>
+    </>
   )
 }

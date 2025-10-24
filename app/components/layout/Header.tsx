@@ -8,7 +8,7 @@ import {Input} from '../ui/Input'
 import Link from 'next/link'
 
 
-export function Header() {
+export default function Header() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false)
