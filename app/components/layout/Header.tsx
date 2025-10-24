@@ -7,10 +7,10 @@ import {Button} from '../ui/Button'
 import {Input} from '../ui/Input'
 import Link from 'next/link'
 
-const { data: session, status } = useSession();
-const router = useRouter();
 
 export function Header() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
