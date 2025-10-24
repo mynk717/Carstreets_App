@@ -1,9 +1,14 @@
 'use client'
+import { useSession, signIn, signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from 'react'
 import { Search, Menu, X, User } from 'lucide-react'
 import {Button} from '../ui/Button'
 import {Input} from '../ui/Input'
 import Link from 'next/link'
+
+const { data: session, status } = useSession();
+const router = useRouter();
 
 export function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -60,20 +65,39 @@ export function Header() {
               Browse Dealers
             </Link>
             
-            {/* CTA Buttons */}
-            <div className="flex items-center space-x-3">
-              <Link href="/auth/signin">
-                <Button className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-5 py-2.5 rounded-xl border border-gray-300 transition-all duration-200 hover:shadow-md">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/get-started">
-                <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
-                  Start Your Dealership
-                </Button>
-              </Link>
-            </div>
-          </div>
+          {/* CTA Buttons */}
+<div className="flex items-center space-x-3">
+  {status === 'authenticated' && session?.user?.email ? (
+    <>
+      <Button
+        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl transition"
+        onClick={() => router.push("/dealers/carstreets/dashboard")}
+      >
+        My Dashboard
+      </Button>
+      <Button
+        className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-5 py-2.5 rounded-xl border border-gray-300 transition"
+        onClick={() => signOut()}
+      >
+        Sign Out
+      </Button>
+    </>
+  ) : (
+    <>
+      <Button
+        className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-5 py-2.5 rounded-xl border border-gray-300 transition"
+        onClick={() => signIn()}
+      >
+        Sign In
+      </Button>
+      <Link href="/get-started">
+        <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
+          Start Your Dealership
+        </Button>
+      </Link>
+    </>
+  )}
+</div>
 
           {/* Mobile menu button */}
           <div className="md:hidden">
@@ -139,6 +163,7 @@ export function Header() {
             </div>
           </div>
         )}
+      </div>
       </div>
     </header>
   )

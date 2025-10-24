@@ -1,11 +1,31 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
 import { ArrowRight, Car, Building2, Zap, Shield, BarChart3, Users, CheckCircle } from 'lucide-react'
-import {Button} from './components/ui/Button'
+import { Button } from './components/ui/Button'
 
 export default function PlatformHomepage() {
   const [email, setEmail] = useState('')
+  const { data: session } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    // If user is dealer and has subdomain, redirect them to their dashboard
+    // Fallback - using email or ID as unique dashboard for now
+if (session?.user?.email) {
+  // If you ever add subdomain to JWT, switch this field!
+  // For now, you can use a hardcoded mapping or fallback
+  // Example hard-coded:
+  // if (session.user.email === "carstreets@yourdomain.com") router.replace(`/dealers/carstreets/dashboard`);
+  // For now, skip actual redirect logic to prevent TS error, or add a TODO.
+
+  // TODO: Replace 'carstreets' below with your logic or look up from DB
+  router.replace(`/dealers/carstreets/dashboard`);
+}
+
+  }, [session, router]);
 
   const features = [
     {
