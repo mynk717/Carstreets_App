@@ -10,7 +10,11 @@ export function middleware(request: NextRequest) {
   // Platform domain: motoyard.mktgdime.com or localhost
   const isPlatformDomain = hostname === 'motoyard.mktgdime.com' || 
                            hostname === 'localhost:3000' ||
-                           hostname.startsWith('localhost')
+                           hostname.startsWith('localhost') ||
+                           hostname.startsWith('127.0.0.1') ||
+                           hostname.includes('cloudworkstations.dev') ||  // ✅ Firebase/IDX workspaces
+                           hostname.includes('vercel.app')  // ✅ Vercel preview deployments
+
 
   if (isPlatformDomain) {
     // Allow platform routes (homepage, pricing, auth, admin)
