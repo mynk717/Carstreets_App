@@ -1,102 +1,70 @@
 // app/dealers/[subdomain]/dashboard/settings/page.tsx
-'use client';
-
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
 import { Shield, CreditCard, Globe, Bell } from 'lucide-react';
 
-interface DealerData {
-  id: string;
-  businessName: string;
-  subdomain: string;
-  plan: string;
-  subscriptionStatus: string;
-  customDomain: string | null;
+async function getDealer(subdomain: string) {
+  return await prisma.dealer.findUnique({
+    where: { subdomain },
+  });
 }
 
-export default function DealerSettingsPage() {
-  // ✅ ALL HOOKS FIRST
-  const params = useParams();
-  const [dealer, setDealer] = useState<DealerData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+export default async function DealerSettingsPage({
+  params,
+}: {
+  params: { subdomain: string };
+}) {
+  const dealer = await getDealer(params.subdomain);
 
-  const subdomain = params?.subdomain as string;
-
-  useEffect(() => {
-    async function fetchDealer() {
-      try {
-        const response = await fetch(`/api/dealers/${subdomain}`);
-        const data = await response.json();
-        setDealer(data);
-        setIsLoading(false);
-      } catch (error) {
-        console.error('Failed to fetch dealer:', error);
-        setIsLoading(false);
-      }
-    }
-
-    if (subdomain) {
-      fetchDealer();
-    }
-  }, [subdomain]);
-
-  // ✅ NOW CONDITIONAL RETURNS (AFTER ALL HOOKS)
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--color-primary)] mx-auto mb-4"></div>
-          <p className="text-[var(--color-text-secondary)]">Loading settings...</p>
-        </div>
-      </div>
-    );
+  if (!dealer) {
+    notFound();
   }
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-semibold text-[var(--color-text)]">
+        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">
           Settings
         </h1>
-        <p className="text-[var(--color-text-secondary)] mt-1">
+        <p className="text-gray-600 dark:text-gray-400 mt-1">
           Manage your dealership settings and preferences
         </p>
       </div>
 
       {/* Account Information */}
-      <div className="card card__body">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-[var(--color-primary)] bg-opacity-10 rounded-lg flex items-center justify-center">
-            <Shield className="w-5 h-5 text-[var(--color-primary)]" />
+          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
+            <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-xl font-semibold text-[var(--color-text)]">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Account Information
           </h2>
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between py-3 border-b border-[var(--color-border)]">
+          <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <p className="font-medium text-[var(--color-text)]">Business Name</p>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                {dealer?.businessName}
+              <p className="font-medium text-gray-900 dark:text-white">Business Name</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {dealer.businessName}
               </p>
             </div>
           </div>
 
-          <div className="flex items-center justify-between py-3 border-b border-[var(--color-border)]">
+          <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <p className="font-medium text-[var(--color-text)]">Subdomain</p>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                {dealer?.subdomain}.motoyard.mktgdime.com
+              <p className="font-medium text-gray-900 dark:text-white">Subdomain</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {dealer.subdomain}.motoyard.mktgdime.com
               </p>
             </div>
             <a
-              href={`https://${dealer?.subdomain}.motoyard.mktgdime.com`}
+              href={`https://${dealer.subdomain}.motoyard.mktgdime.com`}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-[var(--color-primary)] hover:text-[var(--color-primary-hover)] text-sm font-medium"
+              className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
             >
               Visit Site →
             </a>
@@ -104,9 +72,9 @@ export default function DealerSettingsPage() {
 
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="font-medium text-[var(--color-text)]">Account ID</p>
-              <p className="text-sm text-[var(--color-text-secondary)] font-mono">
-                {dealer?.id}
+              <p className="font-medium text-gray-900 dark:text-white">Account ID</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 font-mono">
+                {dealer.id}
               </p>
             </div>
           </div>
@@ -114,47 +82,47 @@ export default function DealerSettingsPage() {
       </div>
 
       {/* Subscription & Billing */}
-      <div className="card card__body">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-[var(--color-primary)] bg-opacity-10 rounded-lg flex items-center justify-center">
-            <CreditCard className="w-5 h-5 text-[var(--color-primary)]" />
+          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
+            <CreditCard className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-xl font-semibold text-[var(--color-text)]">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Subscription & Billing
           </h2>
         </div>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between py-3 border-b border-[var(--color-border)]">
+          <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <p className="font-medium text-[var(--color-text)]">Current Plan</p>
-              <p className="text-sm text-[var(--color-text-secondary)] capitalize">
-                {dealer?.plan} Plan
+              <p className="font-medium text-gray-900 dark:text-white">Current Plan</p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 capitalize">
+                {dealer.plan} Plan
               </p>
             </div>
             <span
-              className={`status ${
-                dealer?.subscriptionStatus === 'active'
-                  ? 'status--success'
-                  : dealer?.subscriptionStatus === 'trial'
-                  ? 'status--info'
-                  : 'status--warning'
-              } capitalize`}
+              className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${
+                dealer.subscriptionStatus === 'active'
+                  ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
+                  : dealer.subscriptionStatus === 'trial'
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-400'
+                  : 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400'
+              }`}
             >
-              {dealer?.subscriptionStatus}
+              {dealer.subscriptionStatus}
             </span>
           </div>
 
           <div className="flex items-center justify-between py-3">
             <div>
-              <p className="font-medium text-[var(--color-text)]">
+              <p className="font-medium text-gray-900 dark:text-white">
                 Manage Subscription
               </p>
-              <p className="text-sm text-[var(--color-text-secondary)]">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
                 Upgrade, downgrade, or cancel your plan
               </p>
             </div>
-            <button className="btn btn--outline btn--sm">
+            <button className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm font-medium transition-colors">
               Manage Plan
             </button>
           </div>
@@ -162,133 +130,49 @@ export default function DealerSettingsPage() {
       </div>
 
       {/* Custom Domain */}
-      <div className="card card__body">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-[var(--color-primary)] bg-opacity-10 rounded-lg flex items-center justify-center">
-            <Globe className="w-5 h-5 text-[var(--color-primary)]" />
+          <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center">
+            <Globe className="w-5 h-5 text-blue-600 dark:text-blue-400" />
           </div>
-          <h2 className="text-xl font-semibold text-[var(--color-text)]">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
             Custom Domain
           </h2>
         </div>
 
         <div className="space-y-4">
-          <div>
-            <p className="text-sm text-[var(--color-text-secondary)] mb-4">
-              Connect your own domain to make your storefront accessible at your branded URL
-              (e.g., www.yourdealership.com)
-            </p>
+          <p className="text-sm text-gray-600 dark:text-gray-400">
+            Connect your own domain to make your storefront accessible at your branded URL
+            (e.g., www.yourdealership.com)
+          </p>
 
-            {dealer?.customDomain ? (
-              <div className="flex items-center justify-between p-4 bg-[var(--color-success)] bg-opacity-10 border border-[var(--color-success)] rounded-lg">
-                <div>
-                  <p className="font-medium text-[var(--color-text)]">
-                    {dealer.customDomain}
-                  </p>
-                  <p className="text-sm text-[var(--color-success)]">Connected</p>
-                </div>
-                <button className="btn btn--outline btn--sm">
-                  Update Domain
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center justify-between p-4 bg-[var(--color-secondary)] border border-[var(--color-border)] rounded-lg">
-                <div>
-                  <p className="font-medium text-[var(--color-text)]">
-                    No custom domain connected
-                  </p>
-                  <p className="text-sm text-[var(--color-text-secondary)]">
-                    Using {dealer?.subdomain}.motoyard.mktgdime.com
-                  </p>
-                </div>
-                <button className="btn btn--primary btn--sm">
-                  Add Domain
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Notifications (Future Feature) */}
-      <div className="card card__body">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 bg-[var(--color-primary)] bg-opacity-10 rounded-lg flex items-center justify-center">
-            <Bell className="w-5 h-5 text-[var(--color-primary)]" />
-          </div>
-          <h2 className="text-xl font-semibold text-[var(--color-text)]">
-            Notifications
-          </h2>
-        </div>
-
-        <div className="space-y-3">
-          <label className="flex items-center justify-between p-3 hover:bg-[var(--color-secondary)] rounded-lg cursor-pointer transition-colors">
-            <div>
-              <p className="font-medium text-[var(--color-text)]">
-                New Car Inquiries
-              </p>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                Get notified when someone contacts you about a car
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              className="w-5 h-5 text-[var(--color-primary)]"
-              defaultChecked
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-3 hover:bg-[var(--color-secondary)] rounded-lg cursor-pointer transition-colors">
-            <div>
-              <p className="font-medium text-[var(--color-text)]">
-                Weekly Reports
-              </p>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                Receive weekly performance summaries
-              </p>
-            </div>
-            <input
-              type="checkbox"
-              className="w-5 h-5 text-[var(--color-primary)]"
-              defaultChecked
-            />
-          </label>
-
-          <label className="flex items-center justify-between p-3 hover:bg-[var(--color-secondary)] rounded-lg cursor-pointer transition-colors">
-            <div>
-              <p className="font-medium text-[var(--color-text)]">
-                Marketing Tips
-              </p>
-              <p className="text-sm text-[var(--color-text-secondary)]">
-                Get tips to improve your car listings and sales
-              </p>
-            </div>
-            <input type="checkbox" className="w-5 h-5 text-[var(--color-primary)]" />
-          </label>
-        </div>
-      </div>
-
-      {/* Danger Zone */}
-      <div className="card border-[var(--color-error)]">
-        <div className="card__body">
-          <h2 className="text-xl font-semibold text-[var(--color-error)] mb-4">
-            Danger Zone
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 border border-[var(--color-error)] bg-[var(--color-error)] bg-opacity-5 rounded-lg">
+          {dealer.customDomain ? (
+            <div className="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
               <div>
-                <p className="font-medium text-[var(--color-text)]">
-                  Delete Account
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {dealer.customDomain}
                 </p>
-                <p className="text-sm text-[var(--color-text-secondary)]">
-                  Permanently delete your dealership account and all data
-                </p>
+                <p className="text-sm text-green-600 dark:text-green-400">Connected</p>
               </div>
-              <button className="btn btn--outline text-[var(--color-error)] border-[var(--color-error)] hover:bg-[var(--color-error)] hover:text-white btn--sm">
-                Delete Account
+              <button className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 rounded-lg text-sm font-medium transition-colors">
+                Update Domain
               </button>
             </div>
-          </div>
+          ) : (
+            <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg">
+              <div>
+                <p className="font-medium text-gray-900 dark:text-white">
+                  No custom domain connected
+                </p>
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  Using {dealer.subdomain}.motoyard.mktgdime.com
+                </p>
+              </div>
+              <button className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                Add Domain
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
