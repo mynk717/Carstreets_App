@@ -161,7 +161,7 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
                     <img 
                       src={images[currentImageIndex]} 
                       alt={car.title}
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain rounded-xl"
                       onError={(e) => {
                         e.currentTarget.src = '/placeholder-car.jpg'
                       }}
@@ -224,7 +224,7 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
                           <img 
                             src={image} 
                             alt={`${car.title} ${index + 1}`}
-                            className="w-full h-full object-cover"
+                            className="w-full h-full object-cover rounded-xl"
                           />
                         </button>
                       ))}
