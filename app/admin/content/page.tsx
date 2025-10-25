@@ -13,11 +13,14 @@ export default function ContentStudioPage() {
   const [generatedContent, setGeneratedContent] = useState('')
   const [loading, setLoading] = useState(false)
 
+  useEffect(() => {
+    if (session) {
+      fetchCars()
+    }
+  }, [session])
   if (status === 'loading') return <div>Loading...</div>
   if (!session) return <div>Please sign in to access content studio</div>
-  useEffect(() => {
-    fetchCars()
-  }, [])
+
 
   const fetchCars = async () => {
     const response = await fetch('/api/cars')

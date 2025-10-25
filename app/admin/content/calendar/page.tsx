@@ -15,12 +15,16 @@ export default function ContentCalendarPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 const [selectedContent, setSelectedContent] = useState<{id: string, title: string} | null>(null);
 
+ // ✅ Load content on mount - BEFORE early returns
+useEffect(() => {
+  if (session) {
+    loadContentCalendar();  // ← YOUR existing function name
+  }
+}, [session])
+
 if (status === 'loading') return <div>Checking authentication...</div>
 if (!session) return <div>Please sign in to access admin features</div>
-  // Load existing content calendar
-  useEffect(() => {
-    loadContentCalendar();
-  }, []);
+ 
   
   const handleOpenApprovalModal = (contentItem) => {
   setSelectedContent(contentItem); // save whole content object to show title etc in modal
