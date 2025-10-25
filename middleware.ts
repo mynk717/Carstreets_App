@@ -20,6 +20,7 @@ export function middleware(request: NextRequest) {
         url.pathname.startsWith('/about') ||
         url.pathname.startsWith('/auth') ||
         url.pathname.startsWith('/admin') ||
+        url.pathname.startsWith('/dealers') ||
         url.pathname.startsWith('/api')) {
       return NextResponse.next()
     }
@@ -31,7 +32,13 @@ export function middleware(request: NextRequest) {
     
     console.log('🏢 Detected subdomain:', subdomain)
     
-    // Rewrite to dealer-specific route
+    // ✅ FIX: Don't rewrite if path already starts with /dealers/[subdomain]
+    if (url.pathname.startsWith(`/dealers/${subdomain}`)) {
+      console.log('✅ Path already correct, no rewrite needed')
+      return NextResponse.next()
+    }
+    
+    // Rewrite to dealer-specific route ONLY if not already there
     const newUrl = url.clone()
     newUrl.pathname = `/dealers/${subdomain}${url.pathname}`
     
