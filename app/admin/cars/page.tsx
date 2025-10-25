@@ -24,13 +24,20 @@ export default function AdminCarsPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false)
   const [selectedCar, setSelectedCar] = useState<Car | null>(null)
 
-  if (status === 'loading') return <div>Checking authentication...</div>
-  if (!session) return <div>Please sign in to access admin features</div>
-  // Load existing cars
   useEffect(() => {
-    fetchCars()
-  }, [])
+    if (session) {
+      fetchCars()
+    }
+  }, [session])
 
+  // THEN conditional rendering
+  if (status === 'loading') {
+    return <div className="p-6">Checking authentication...</div>
+  }
+  
+  if (!session) {
+    return <div className="p-6">Please sign in to access admin features</div>
+  }
   const fetchCars = async () => {
     try {
       const response = await fetch('/api/cars')

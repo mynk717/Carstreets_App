@@ -25,6 +25,10 @@ export function UserProfileDropdown({ user }: UserProfileProps) {
     document.addEventListener('mousedown', handleClickOutside)
     return () => document.removeEventListener('mousedown', handleClickOutside)
   }, [])
+  
+  if (!user) {
+    return null; // or return a placeholder/loading state
+  }
 
   return (
     <div className="relative" ref={dropdownRef}>
