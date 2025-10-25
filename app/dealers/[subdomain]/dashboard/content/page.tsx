@@ -99,11 +99,8 @@ export default async function DealerContentPage({
             {dealer.logo ? (
               <img
                 src={dealer.logo}
-                alt="Logo"
+                alt="Dealer Logo"
                 className="w-24 h-24 rounded-lg object-cover border border-gray-200 dark:border-gray-700"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
               />
             ) : (
               <p className="text-gray-500 dark:text-gray-400">No logo uploaded</p>

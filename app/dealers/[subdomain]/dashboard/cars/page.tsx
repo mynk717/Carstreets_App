@@ -150,15 +150,16 @@ export default async function DealerCarsPage({
                       >
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-3">
-                            {images[0] && (
+                            {images[0] ? (
                               <img
                                 src={images[0]}
                                 alt={car.title}
                                 className="w-16 h-16 object-cover rounded-lg"
-                                onError={(e) => {
-                                  e.currentTarget.src = '/placeholder-car.jpg';
-                                }}
                               />
+                            ) : (
+                              <div className="w-16 h-16 bg-gray-200 dark:bg-gray-700 rounded-lg flex items-center justify-center">
+                                <span className="text-2xl">🚗</span>
+                              </div>
                             )}
                             <div>
                               <p className="font-medium text-gray-900 dark:text-white line-clamp-1">
