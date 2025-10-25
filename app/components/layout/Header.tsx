@@ -1,169 +1,206 @@
 'use client'
+
 import { useSession, signIn, signOut } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useState, useEffect } from 'react'
 import { Search, Menu, X, User } from 'lucide-react'
-import {Button} from '../ui/Button'
-import {Input} from '../ui/Input'
+import { Button } from '../ui/Button'
+import { Input } from '../ui/Input'
 import Link from 'next/link'
 
-
 export default function Header() {
-  const { data: session, status } = useSession();
-  const router = useRouter();
+  const pathname = usePathname()
+  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  
+  // Only use session on routes that need it (admin, dashboard, etc.)
+  // For dealer public routes, session will be null
+  const isDealerPublicRoute = pathname?.startsWith('/dealers/') && !pathname?.includes('/dashboard')
+  
+  // Safe session handling - only call useSession on auth-enabled routes
+  let session = null
+  let status = 'unauthenticated'
+  
+  if (!isDealerPublicRoute) {
+    try {
+      const sessionData = useSession()
+      session = sessionData.data
+      status = sessionData.status
+    } catch (e) {
+      // Session not available, continue with null
+    }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (searchQuery.trim()) {
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
+    }
+  }
+
+  const handleSignOut = async () => {
+    await signOut({ callbackUrl: '/' })
+  }
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <div className="flex-shrink-0">
-            <Link href="/" className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">M</span>
-              </div>
-              <h1 className="text-2xl font-bold text-blue-700">
-                Moto<span className="text-gray-800">Yard</span>
-              </h1>
-            </Link>
-          </div>
-
-          {/* Search Bar - Desktop */}
-          <div className="hidden md:flex flex-1 max-w-lg mx-8">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-5 w-5" />
-              <Input
-                type="text"
-                placeholder="Search dealerships, cars, or services..."
-                className="pl-12 pr-4 w-full h-12 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder:text-gray-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-200 transition-all duration-200"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+          <Link href="/" className="flex items-center gap-2">
+            <div className="text-2xl font-bold text-blue-600">
+              CarStreets
             </div>
-          </div>
+          </Link>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link 
-              href="/features" 
-              className="text-gray-700 hover:text-orange-600 font-medium text-sm tracking-wide transition-colors duration-200"
-            >
-              Features
-            </Link>
-            <Link 
-              href="/pricing" 
-              className="text-gray-700 hover:text-orange-600 font-medium text-sm tracking-wide transition-colors duration-200"
-            >
-              Pricing
-            </Link>
-            <Link 
-              href="/dealers" 
-              className="text-gray-700 hover:text-orange-600 font-medium text-sm tracking-wide transition-colors duration-200"
-            >
+          <nav className="hidden md:flex items-center gap-6">
+            <Link href="/dealers" className="text-gray-700 hover:text-blue-600 transition">
               Browse Dealers
             </Link>
-            
-          {/* CTA Buttons */}
-<div className="flex items-center space-x-3">
-  {status === 'authenticated' && session?.user?.email ? (
-    <>
-      <Button
-        className="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2.5 rounded-xl transition"
-        onClick={() => router.push("/dealers/carstreets/dashboard")}
-      >
-        My Dashboard
-      </Button>
-      <Button
-        className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-5 py-2.5 rounded-xl border border-gray-300 transition"
-        onClick={() => signOut()}
-      >
-        Sign Out
-      </Button>
-    </>
-  ) : (
-    <>
-      <Button
-        className="bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-5 py-2.5 rounded-xl border border-gray-300 transition"
-        onClick={() => signIn()}
-      >
-        Sign In
-      </Button>
-      <Link href="/get-started">
-        <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold px-6 py-2.5 rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105">
-          Start Your Dealership
-        </Button>
-      </Link>
-    </>
-  )}
-</div>
-
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <Button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="p-3 bg-gray-100 hover:bg-gray-200 rounded-xl text-gray-700 transition-colors duration-200"
-            >
-              {isMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          </div>
-        </div>
-
-        {/* Mobile Search */}
-        <div className="md:hidden pb-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 h-5 w-5" />
-            <Input
-              type="text"
-              placeholder="Search dealerships..."
-              className="pl-12 pr-4 w-full h-12 bg-gray-50 border-gray-300 rounded-xl text-gray-900 placeholder:text-gray-500 focus:border-orange-400 focus:ring-2 focus:ring-orange-200"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-          </div>
-        </div>
-
-        {/* Mobile Navigation */}
-        {isMenuOpen && (
-          <div className="md:hidden pb-6 space-y-4 bg-gray-50 -mx-4 px-4 py-4 rounded-b-2xl border-t border-gray-200">
-            <Link 
-              href="/features" 
-              className="block py-3 text-gray-800 hover:text-orange-600 font-medium transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Features
+            <Link href="/about" className="text-gray-700 hover:text-blue-600 transition">
+              About
             </Link>
-            <Link 
-              href="/pricing" 
-              className="block py-3 text-gray-800 hover:text-orange-600 font-medium transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Pricing
+            <Link href="/contact" className="text-gray-700 hover:text-blue-600 transition">
+              Contact
             </Link>
-            <Link 
-              href="/dealers" 
-              className="block py-3 text-gray-800 hover:text-orange-600 font-medium transition-colors duration-200"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Browse Dealers
-            </Link>
-            
-            <div className="pt-4 space-y-3 border-t border-gray-200">
-              <Link href="/auth/signin">
-                <Button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-medium px-5 py-3 rounded-xl border border-gray-300 transition-all duration-200">
-                  Sign In
-                </Button>
-              </Link>
-              <Link href="/get-started">
-                <Button className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white font-semibold px-6 py-3 rounded-xl shadow-lg transition-all duration-200">
-                  Start Your Dealership
-                </Button>
-              </Link>
+          </nav>
+
+          {/* Search Bar */}
+          <form onSubmit={handleSearch} className="hidden md:flex items-center gap-2 flex-1 max-w-md mx-4">
+            <div className="relative w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search cars..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 w-full"
+              />
             </div>
+          </form>
+
+          {/* Auth Actions - Only show on non-public routes */}
+          <div className="hidden md:flex items-center gap-3">
+            {!isDealerPublicRoute && session ? (
+              <>
+                <Link href="/admin/dashboard">
+                  <Button variant="outline" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
+                <Button onClick={handleSignOut} variant="outline" size="sm">
+                  Sign Out
+                </Button>
+              </>
+            ) : !isDealerPublicRoute ? (
+              <Button onClick={() => signIn()} size="sm">
+                Sign In
+              </Button>
+            ) : (
+              // For public dealer routes, show generic CTA
+              <Link href="/">
+                <Button size="sm">
+                  Back to Home
+                </Button>
+              </Link>
+            )}
+          </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className="md:hidden p-2 text-gray-600 hover:text-gray-900"
+          >
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
+
+        {/* Mobile Menu */}
+        {isMenuOpen && (
+          <div className="md:hidden py-4 border-t border-gray-200">
+            {/* Mobile Search */}
+            <form onSubmit={handleSearch} className="mb-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <Input
+                  type="text"
+                  placeholder="Search cars..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 w-full"
+                />
+              </div>
+            </form>
+
+            {/* Mobile Navigation */}
+            <nav className="flex flex-col gap-3">
+              <Link 
+                href="/dealers" 
+                className="text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Browse Dealers
+              </Link>
+              <Link 
+                href="/about" 
+                className="text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                About
+              </Link>
+              <Link 
+                href="/contact" 
+                className="text-gray-700 hover:text-blue-600 transition py-2"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                Contact
+              </Link>
+
+              {/* Mobile Auth Actions */}
+              <div className="pt-3 border-t border-gray-200 mt-3">
+                {!isDealerPublicRoute && session ? (
+                  <>
+                    <Link href="/admin/dashboard" onClick={() => setIsMenuOpen(false)}>
+                      <Button variant="outline" size="sm" className="w-full mb-2">
+                        Dashboard
+                      </Button>
+                    </Link>
+                    <Button 
+                      onClick={() => {
+                        handleSignOut()
+                        setIsMenuOpen(false)
+                      }} 
+                      variant="outline" 
+                      size="sm"
+                      className="w-full"
+                    >
+                      Sign Out
+                    </Button>
+                  </>
+                ) : !isDealerPublicRoute ? (
+                  <Button 
+                    onClick={() => {
+                      signIn()
+                      setIsMenuOpen(false)
+                    }} 
+                    size="sm"
+                    className="w-full"
+                  >
+                    Sign In
+                  </Button>
+                ) : (
+                  <Link href="/" onClick={() => setIsMenuOpen(false)}>
+                    <Button size="sm" className="w-full">
+                      Back to Home
+                    </Button>
+                  </Link>
+                )}
+              </div>
+            </nav>
           </div>
         )}
-      </div>
       </div>
     </header>
   )
