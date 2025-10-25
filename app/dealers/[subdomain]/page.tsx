@@ -1,11 +1,76 @@
 import { notFound } from 'next/navigation'
 import {prisma} from '@/lib/prisma'
 import { DealerCarCard } from './CarCard'
+import type { Metadata } from 'next'
 
 interface PageProps {
   params: Promise<{ subdomain: string }>
 }
 
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const resolvedParams = await params
+  const { subdomain } = resolvedParams
+
+  if (!subdomain) {
+    return { title: 'Dealer Not Found' }
+  }
+
+  try {
+    const dealer = await prisma.dealer.findUnique({
+      where: { subdomain },
+      include: {
+        cars: {
+          where: { carStreetsListed: true },
+          take: 1,
+          orderBy: { createdAt: 'desc' },
+        },
+      },
+    })
+
+    if (!dealer) {
+      return { title: 'Dealer Not Found' }
+    }
+
+    const dealerName = dealer.businessName || dealer.name || 'CarStreets'
+    
+    // Use location field instead of city/state
+    const dealerLocation = dealer.location || 'India'
+    
+    // Use description only (no tagline field)
+    const description = dealer.description 
+      || `Browse quality used cars at ${dealerName}. Located in ${dealerLocation}.`
+
+    // Use logo or first car image
+    const ogImage = dealer.logo 
+      || (dealer.cars[0]?.images?.[0] as string)
+      || '/default-dealer-og.jpg'
+
+    return {
+      title: `${dealerName} - Used Cars`,
+      description: description.substring(0, 160),
+      openGraph: {
+        title: `${dealerName} - Quality Used Cars`,
+        description: description.substring(0, 160),
+        siteName: 'MotoYard',
+        images: [{ url: ogImage, width: 1200, height: 630, alt: dealerName }],
+        locale: 'en_IN',
+        type: 'website',
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: `${dealerName} - Quality Used Cars`,
+        description: description.substring(0, 160),
+        images: [ogImage],
+      },
+    }
+  } catch (error) {
+    console.error('Error generating dealer metadata:', error)
+    return {
+      title: 'Used Car Dealer',
+      description: 'Browse our collection of quality used cars',
+    }
+  }
+}
 export default async function DealerStorefront({ params }: PageProps) {
   // FIXED: Properly await and validate params
   const resolvedParams = await params
