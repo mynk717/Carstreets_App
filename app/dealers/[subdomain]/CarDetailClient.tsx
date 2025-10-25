@@ -1,6 +1,7 @@
 'use client'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Header from '@/components/layout/Header'
 import { 
   ArrowLeft, 
   Share2, 
@@ -27,9 +28,11 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
   const [currentUrl, setCurrentUrl] = useState('')
   
   useEffect(() => {
-    // FIXED: Set correct URL format
-    const correctUrl = `https://motoyard.mktgdime.com/dealers/${dealerSubdomain}/cars/${car.id}`
-    setCurrentUrl(correctUrl)
+    // ✅ FIXED: Dynamic URL for multi-tenant
+    const url = typeof window !== 'undefined' 
+      ? `${window.location.origin}/dealers/${dealerSubdomain}/cars/${car.id}`
+      : `/dealers/${dealerSubdomain}/cars/${car.id}`
+    setCurrentUrl(url)
   }, [dealerSubdomain, car.id])
 
   const images = Array.isArray(car.images) ? car.images as string[] : []
@@ -38,29 +41,32 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
   const prevImage = () => setCurrentImageIndex(prev => (prev - 1 + images.length) % images.length)
 
   const handleWhatsAppShare = () => {
-    const phone = '919009008756'
-    const message = `Hi! I'm interested in ${car.title} for ₹${car.price.toLocaleString('en-IN')}. Is it still available? ${currentUrl}`
-    const whatsappUrl = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`
+    // ✅ FIXED: Use dealer's phone number
+    const dealerPhone = car.dealer?.phone || car.dealer?.contactNumber || '917225991909'
+    const shareText = `Check out this ${car.title} for ${car.price} at ${currentUrl}`
+    const whatsappUrl = `https://wa.me/${dealerPhone}?text=${encodeURIComponent(shareText)}`
     window.open(whatsappUrl, '_blank')
   }
 
-  const handleShare = async () => {
-    const shareData = {
-      title: car.title,
-      text: `Check out this ${car.title} for ₹${car.price.toLocaleString('en-IN')}`,
-      url: currentUrl
-    }
+  const handleCallDealer = () => {
+    // ✅ FIXED: Use dealer's phone number
+    const dealerPhone = car.dealer?.phone || car.dealer?.contactNumber || '919009008756'
+    window.location.href = `tel:${dealerPhone}`
+  }
 
+  const handleShare = async () => {
     if (navigator.share) {
       try {
-        await navigator.share(shareData)
+        await navigator.share({
+          title: car.title,
+          text: `Check out this ${car.title}`,
+          url: currentUrl
+        })
       } catch (err) {
-        // Fallback to clipboard
-        await navigator.clipboard.writeText(`${shareData.text} - ${currentUrl}`)
-        alert('Link copied to clipboard!')
+        console.log('Share cancelled')
       }
     } else {
-      await navigator.clipboard.writeText(`${shareData.text} - ${currentUrl}`)
+      navigator.clipboard.writeText(currentUrl)
       alert('Link copied to clipboard!')
     }
   }
@@ -75,6 +81,8 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
   ]
 
   return (
+    <>
+    <Header />
     <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
       {/* Header Navigation */}
       <header className="bg-white shadow-sm sticky top-0 z-40 border-b border-gray-200">
@@ -329,5 +337,6 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
         </div>
       </div>
     </div>
+    </>
   )
 }
