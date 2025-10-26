@@ -18,8 +18,7 @@ export default async function DealerDashboardLayout({
   children: ReactNode;
   params: { subdomain: string };
 }) {
-   const { subdomain } = await params;
-  const dealer = await getDealer(subdomain);
+  const dealer = await getDealer(params.subdomain);
 
   if (!dealer) {
     notFound();

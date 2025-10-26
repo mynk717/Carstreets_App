@@ -53,7 +53,7 @@ export default async function DealerCarsPage({
           </p>
         </div>
         <Link
-          href={`/dealers/${subdomain}/cars/new`}
+          href={`/dealers/${dealer.subdomain}/cars`}
           className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
         >
           <Plus className="w-5 h-5" />
@@ -106,7 +106,7 @@ export default async function DealerCarsPage({
                 Start adding cars to showcase on your storefront
               </p>
               <Link
-                href={`/dealers/${subdomain}/cars/new`}
+                href={`/dealers/${dealer.subdomain}/cars`}
                 className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 <Plus className="w-5 h-5" />
@@ -199,7 +199,7 @@ export default async function DealerCarsPage({
                         <td className="py-3 px-4">
                           <div className="flex items-center justify-end gap-2">
                             <Link
-                              href={`/dealers/${subdomain}/cars/${car.id}`}
+                              href={`/dealers/${dealer.subdomain}/cars/${car.id}`}
                               className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
                               title="Edit car"
                             >

@@ -27,8 +27,7 @@ export default async function DealerDashboardPage({
 }: {
   params: { subdomain: string };
 }) {
-  const { subdomain } = await params;
-  const stats = await getDealerStats(subdomain);
+  const stats = await getDealerStats(params.subdomain);
 
   if (!stats) {
     notFound();

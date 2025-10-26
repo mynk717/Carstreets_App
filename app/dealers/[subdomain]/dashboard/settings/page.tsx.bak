@@ -14,8 +14,7 @@ export default async function DealerSettingsPage({
 }: {
   params: { subdomain: string };
 }) {
-  const { subdomain } = await params;
-  const dealer = await getDealer(subdomain);
+  const dealer = await getDealer(params.subdomain);
 
   if (!dealer) {
     notFound();

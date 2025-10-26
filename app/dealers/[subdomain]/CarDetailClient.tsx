@@ -21,36 +21,37 @@ import {
 interface CarDetailClientProps {
   car: any
   dealerSubdomain: string
+  dealerId?: string
 }
 
-export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) {
+export function CarDetailClient({ car, dealerSubdomain, dealerId }: CarDetailClientProps) {
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [currentUrl, setCurrentUrl] = useState('')
   
   useEffect(() => {
     // ✅ FIXED: Dynamic URL for multi-tenant
     const url = typeof window !== 'undefined' 
-      ? `${window.location.origin}/dealers/${dealerSubdomain}/cars/${car.id}`
-      : `/dealers/${dealerSubdomain}/cars/${car.id}`
+      ? `${window.location.origin}/dealers/${dealerSubdomain}/cars/${car?.id}`
+      : `/dealers/${dealerSubdomain}/cars/${car?.id}`
     setCurrentUrl(url)
-  }, [dealerSubdomain, car.id])
+  }, [dealerSubdomain, car?.id])
 
-  const images = Array.isArray(car.images) ? car.images as string[] : []
+  const images = Array.isArray(car?.images) ? (car?.images as string[]) : [];
   
   const nextImage = () => setCurrentImageIndex(prev => (prev + 1) % images.length)
   const prevImage = () => setCurrentImageIndex(prev => (prev - 1 + images.length) % images.length)
 
   const handleWhatsAppShare = () => {
     // ✅ FIXED: Use dealer's phone number
-    const dealerPhone = car.dealer?.phone || car.dealer?.contactNumber || '917225991909'
-    const shareText = `Check out this ${car.title} for ${car.price} at ${currentUrl}`
+    const dealerPhone = car?.dealer?.phone || car?.dealer?.contactNumber || '917225991909'
+    const shareText = `Check out this ${car?.title} for ${car?.price} at ${currentUrl}`
     const whatsappUrl = `https://wa.me/${dealerPhone}?text=${encodeURIComponent(shareText)}`
     window.open(whatsappUrl, '_blank')
   }
 
   const handleCallDealer = () => {
     // ✅ FIXED: Use dealer's phone number
-    const dealerPhone = car.dealer?.phone || car.dealer?.contactNumber || '919009008756'
+    const dealerPhone = car?.dealer?.phone || car?.dealer?.contactNumber || '919009008756'
     window.location.href = `tel:${dealerPhone}`
   }
 
@@ -58,8 +59,8 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
     if (navigator.share) {
       try {
         await navigator.share({
-          title: car.title,
-          text: `Check out this ${car.title}`,
+          title: car?.title,
+          text: `Check out this ${car?.title}`,
           url: currentUrl
         })
       } catch (err) {
@@ -72,12 +73,12 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
   }
 
   const carSpecs = [
-    { icon: Calendar, label: 'Year', value: car.year },
-    { icon: Gauge, label: 'KM Driven', value: `${car.kmDriven?.toLocaleString()} km` },
-    { icon: Fuel, label: 'Fuel Type', value: car.fuelType },
-    { icon: Settings2, label: 'Transmission', value: car.transmission },
-    { icon: Users, label: 'Owners', value: `${car.owners} Previous` },
-    { icon: MapPin, label: 'Location', value: car.location },
+    { icon: Calendar, label: 'Year', value: car?.year },
+    { icon: Gauge, label: 'KM Driven', value: `${car?.kmDriven?.toLocaleString()} km` },
+    { icon: Fuel, label: 'Fuel Type', value: car?.fuelType },
+    { icon: Settings2, label: 'Transmission', value: car?.transmission },
+    { icon: Users, label: 'Owners', value: `${car?.owners} Previous` },
+    { icon: MapPin, label: 'Location', value: car?.location },
   ]
 
   return (
@@ -93,7 +94,7 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
               className="flex items-center gap-3 text-gray-700 hover:text-blue-600 font-medium transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
-              <span>Back to {car.dealer?.businessName || 'Listings'}</span>
+              <span>Back to {car?.dealer?.businessName || 'Listings'}</span>
             </Link>
             
             <button 
@@ -114,32 +115,32 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
             <div className="flex items-start justify-between mb-4">
               <div className="flex-1">
                 <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
-                  {car.title}
+                  {car?.title}
                 </h1>
                 <div className="flex flex-wrap items-center gap-4 text-gray-600">
                   <div className="flex items-center gap-1">
                     <MapPin className="w-4 h-4" />
-                    <span>{car.location}</span>
+                    <span>{car?.location}</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    <span>Listed {new Date(car.createdAt).toLocaleDateString()}</span>
+                    <span>Listed {new Date(car?.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
               </div>
               
               <div className="text-right">
                 <div className="text-4xl font-bold text-blue-600 mb-2">
-                  ₹{car.price.toLocaleString('en-IN')}
+                  ₹{car?.price.toLocaleString('en-IN')}
                 </div>
                 <div className="flex items-center gap-2 justify-end">
-                  {car.isVerified && (
+                  {car?.isVerified && (
                     <span className="flex items-center gap-1 bg-green-100 text-green-800 px-3 py-1 rounded-full text-sm font-medium">
                       <CheckCircle className="w-4 h-4" />
                       Verified
                     </span>
                   )}
-                  {car.isFeatured && (
+                  {car?.isFeatured && (
                     <span className="flex items-center gap-1 bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium">
                       <Star className="w-4 h-4" />
                       Featured
@@ -160,10 +161,10 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
                     {/* Main Image */}
                     <img 
                       src={images[currentImageIndex]} 
-                      alt={car.title}
+                      alt={car?.title}
                       className="w-full h-full object-contain rounded-xl"
                       onError={(e) => {
-                        e.currentTarget.src = '/placeholder-car.jpg'
+                        e.currentTarget.src = '/placeholder-car?.jpg'
                       }}
                     />
                     
@@ -223,7 +224,7 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
                         >
                           <img 
                             src={image} 
-                            alt={`${car.title} ${index + 1}`}
+                            alt={`${car?.title} ${index + 1}`}
                             className="w-full h-full object-cover rounded-xl"
                           />
                         </button>
@@ -252,11 +253,11 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
               </div>
 
               {/* Description */}
-              {car.description && (
+              {car?.description && (
                 <div className="bg-white rounded-2xl shadow-lg p-8">
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">Description</h2>
                   <p className="text-gray-700 leading-relaxed text-lg">
-                    {car.description}
+                    {car?.description}
                   </p>
                 </div>
               )}
@@ -268,7 +269,7 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
                 {/* Price Display */}
                 <div className="text-center mb-8 pb-8 border-b border-gray-200">
                   <div className="text-4xl font-bold text-blue-600 mb-2">
-                    ₹{car.price.toLocaleString('en-IN')}
+                    ₹{car?.price.toLocaleString('en-IN')}
                   </div>
                   <p className="text-gray-600">Best Price Available</p>
                 </div>
@@ -303,23 +304,23 @@ export function CarDetailClient({ car, dealerSubdomain }: CarDetailClientProps) 
                 </div>
 
                 {/* Dealer Info */}
-                {car.dealer && (
+                {car?.dealer && (
                   <div className="mt-8 pt-8 border-t border-gray-200">
                     <h3 className="font-semibold text-gray-900 mb-4">Sold by</h3>
                     <div className="flex items-center gap-3 mb-4">
-                      {car.dealer.logo && (
+                      {car?.dealer.logo && (
                         <img 
-                          src={car.dealer.logo} 
-                          alt={car.dealer.businessName}
+                          src={car?.dealer.logo} 
+                          alt={car?.dealer.businessName}
                           className="w-12 h-12 rounded-full object-cover border-2 border-gray-200"
                         />
                       )}
                       <div>
                         <p className="font-semibold text-gray-900">
-                          {car.dealer.businessName || car.dealer.name}
+                          {car?.dealer.businessName || car?.dealer.name}
                         </p>
                         <p className="text-sm text-gray-600">
-                          {car.dealer.location}
+                          {car?.dealer.location}
                         </p>
                       </div>
                     </div>
