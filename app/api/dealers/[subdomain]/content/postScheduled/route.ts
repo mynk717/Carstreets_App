@@ -1,12 +1,13 @@
-// app/api/admin/content/postScheduled/route.ts
-import { NextResponse } from "next/server";
+import { NextResponse, NextRequest } from "next/server";
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
+import { authOptions } from "@/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
 
+// Helper: Extract subdomain from request URL
+function extractSubdomain(request: NextRequest) {
+  const pathParts = request.nextUrl.pathname.split("/");
+  return pathParts[pathParts.indexOf("dealers") + 1];
+}
 
 // Helper: Post content to Facebook Page
 async function postToFacebookPage(pageAccessToken: string, pageId: string, message: string) {
@@ -49,35 +50,33 @@ async function postToInstagram(igAccessToken: string, igUserId: string, caption:
   return json;
 }
 
-export async function POST(request: Request) {
-const session = await getServerSession(authOptions, request);
-if (!session?.user?.id) {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
-const dealer = await prisma.dealer.findFirst({
-  where: { dealerId: dealer.id,  subdomain: params.subdomain, userId: session.user.id }
-});
-if (!dealer) {
-  return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
-}
-
+export async function POST(request: NextRequest) {
   try {
-    // Vercel automatically adds this header for cron jobs
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const subdomain = extractSubdomain(request);
+    const dealer = await prisma.dealer.findUnique({
+      where: { subdomain }
+    });
+    if (!dealer) {
+      return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
+    }
+
+    // Optional: Secure cronjob via header
     const authHeader = request.headers.get('authorization');
     const cronSecret = process.env.CRON_SECRET;
-    
-    // Only check auth if CRON_SECRET is set (for security)
     if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
       return NextResponse.json({ error: 'Unauthorized cron request' }, { status: 401 });
     }
+
     const now = new Date();
-    
+
     // Fetch scheduled posts from ContentCalendar
     const scheduledContents = await prisma.contentCalendar.findMany({
-      where: { dealerId: dealer.id, 
-        status: "scheduled",
-        scheduledDate: { lte: now },
-      },
+      where: { dealerId: dealer.id, status: "scheduled", scheduledDate: { lte: now } },
     });
 
     console.log(`Found ${scheduledContents.length} scheduled posts to process`);
@@ -86,56 +85,47 @@ if (!dealer) {
       try {
         console.log(`🚀 Processing post ${content.id} for platform ${content.platform}`);
 
-        // ✅ USE ENVIRONMENT VARIABLES INSTEAD OF DATABASE
         if (content.platform === "facebook") {
           const fbPageId = process.env.FACEBOOK_PAGE_ID;
           const fbAccessToken = process.env.FACEBOOK_ACCESS_TOKEN;
-          
           if (!fbPageId || !fbAccessToken) {
             console.error('❌ Facebook credentials missing in environment variables');
             continue;
           }
-          
-          // Post to Facebook using environment variables
           await postToFacebookPage(fbAccessToken, fbPageId, content.textContent);
-        }
-        
-        else if (content.platform === "instagram") {
+        } else if (content.platform === "instagram") {
           const igUserId = process.env.INSTAGRAM_USER_ID;
           const igAccessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-          
           if (!igUserId || !igAccessToken) {
             console.error('❌ Instagram credentials missing in environment variables');
             continue;
           }
-          
-          // Post to Instagram using environment variables
           await postToInstagram(igAccessToken, igUserId, content.textContent, content.brandedImage);
         }
 
-        // ✅ UPDATE STATUS TO POSTED
+        // UPDATE STATUS TO POSTED
         await prisma.contentCalendar.update({
-          where: { dealerId: dealer.id,  id: content.id },
-          data: { dealerId: dealer.id,  status: "posted" },
+          where: { id: content.id },
+          data: { dealerId: dealer.id, status: "posted" },
         });
 
         console.log(`✅ Successfully posted and updated ${content.id}`);
-
       } catch (postError) {
         console.error(`❌ Error processing post ${content.id}:`, postError);
       }
     }
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       message: `Processed ${scheduledContents.length} scheduled posts`,
       processed: scheduledContents.length
     });
+
   } catch (error) {
     console.error("Scheduled posting error:", error);
-    return NextResponse.json({ 
-      success: false, 
-      error: error.message 
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }

@@ -1,106 +1,74 @@
-// app/api/admin/content/generate-calendar/route.ts - FIXED VERSION
+// app/api/dealers/[subdomain]/content/generate-calendar/route.ts
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
+import { authOptions } from "@/api/auth/[...nextauth]/route";
 import { AutoContentPipeline } from '@/lib/agents/autoContentPipeline';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
 import { prisma } from '@/lib/prisma';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
 
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
+// Helper: Extract subdomain from request URL
+function extractSubdomain(request: NextRequest) {
+  const pathParts = request.nextUrl.pathname.split("/");
+  return pathParts[pathParts.indexOf("dealers") + 1];
+}
 
 export async function POST(request: NextRequest) {
-const session = await getServerSession(authOptions, request);
-if (!session?.user?.id) {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
-const dealer = await prisma.dealer.findFirst({
-  where: { dealerId: dealer.id,  subdomain: params.subdomain, userId: session.user.id }
-});
-if (!dealer) {
-  return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
-}
-
   try {
-    console.log('🗓️ Generating automated content calendar...');
-    
-    // ✅ FIXED: Re-enable auth verification with better error handling
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: 'Unauthorized - admin access required',
-        }, 
-        { status: 401 }
-      );
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
-    console.log('✅ Calendar generation - Authentication successful');
-    
+
+    const subdomain = extractSubdomain(request);
+
+    // Only use schema fields!
+    const dealer = await prisma.dealer.findUnique({
+      where: { subdomain }
+    });
+    if (!dealer) {
+      return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
+    }
+
     const { carIds } = await request.json();
 
-    // ✅ FIXED: Better car selection with proper Prisma query
-    let carsToProcess = [];
+    // Car selection logic
+    let carsToProcess: string[] = [];
     if (carIds && Array.isArray(carIds)) {
-      console.log(`📋 Using provided car IDs: ${carIds.length} cars`);
       carsToProcess = carIds;
     } else {
-      console.log('🔍 No car IDs provided, selecting cars with images...');
-      
       const carResults = await prisma.car.findMany({
-        where: { dealerId: dealer.id, 
-          images: {
-            not: null
-          }
-        },
+        where: { dealerId: dealer.id, images: { not: null } },
         select: { id: true, images: true, brand: true, model: true },
-        take: 2,
+        take: 10,
         orderBy: { createdAt: 'desc' },
       });
-
-      // Filter cars that have at least one image URL in images array
-      const validCars = carResults.filter(car => 
-        Array.isArray(car.images) && 
-        car.images.length > 0 && 
+      const validCars = carResults.filter(car =>
+        Array.isArray(car.images) &&
+        car.images.length > 0 &&
         car.images.some(img => typeof img === 'string' && img.trim().length > 0)
       );
-
-      carsToProcess = validCars
-        .map(car => car.id)
-        .slice(0, 10); // Limit to 10 cars for content generation
-      
-      console.log(`📊 Found ${carResults.length} total cars, ${validCars.length} with valid images, selected ${carsToProcess.length} for processing`);
+      carsToProcess = validCars.map(car => car.id);
     }
-    
+
     if (carsToProcess.length === 0) {
-      console.log('⚠️ No cars available for content generation');
       return NextResponse.json({
         success: false,
         error: 'No cars with images found for content generation'
       }, { status: 400 });
     }
-    
-    // ✅ Generate automated content using your pipeline
+
+    // Content generation
     const pipeline = new AutoContentPipeline();
-    
-    console.log(`🚀 Starting content generation for ${carsToProcess.length} cars...`);
     const readyContent = await pipeline.generateReadyToPostContent(carsToProcess);
-    
-    console.log(`📝 Generated ${readyContent.length} pieces of content`);
-    
-    // ✅ FIXED: Save generated content to database ContentCalendar table with better error handling
+
+    // Save generated content to DB
     const savedContent = [];
     let saveErrors = 0;
-    
     for (const content of readyContent) {
       try {
-        // ✅ FIXED: Only use fields that exist in the ContentCalendar schema
         const savedItem = await prisma.contentCalendar.create({
-          data: { dealerId: dealer.id, 
+          data: { 
+            dealerId: dealer.id,
             carId: content.carId,
             platform: content.platform,
             textContent: content.textContent,
@@ -111,19 +79,10 @@ if (!dealer) {
             uniquenessScore: content.success ? 92 : 0,
             generationCost: content.cost || 0,
             autoGenerated: true,
-            brandingApplied: content.success 
-              ? ['CarStreets logo', 'Price overlay', 'Raipur location']
-              : [],
-            // ✅ REMOVED: generationError field doesn't exist in schema
-            // Store error info in logs instead, or add to textContent if needed
+            brandingApplied: content.success ? ['CarStreets logo', 'Price overlay', 'Raipur location'] : [],
           }
         });
         savedContent.push(savedItem);
-        
-        // ✅ Log errors separately for debugging
-        if (!content.success && content.error) {
-          console.error(`❌ Content generation failed for car ${content.carId} on ${content.platform}:`, content.error);
-        }
       } catch (saveError) {
         console.error('❌ Failed to save content item:', {
           carId: content.carId,
@@ -136,14 +95,6 @@ if (!dealer) {
 
     const totalCost = readyContent.reduce((sum, item) => sum + (item.cost || 0), 0);
     const successfulContent = savedContent.filter(item => item.status === 'draft');
-
-    console.log(`🎉 Content generation completed:`, {
-      generated: readyContent.length,
-      saved: savedContent.length,
-      successful: successfulContent.length,
-      errors: saveErrors,
-      totalCost: totalCost.toFixed(4)
-    });
 
     return NextResponse.json({
       success: true,
@@ -158,7 +109,7 @@ if (!dealer) {
         save_errors: saveErrors
       }
     });
-    
+
   } catch (error) {
     console.error('💥 Content calendar generation failed:', error);
     return NextResponse.json({

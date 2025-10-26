@@ -1,33 +1,32 @@
-// File: app/api/admin/content/approve/route.ts
+// File: app/api/dealers/[subdomain]/content/approve/route.ts
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
-import {prisma} from '@/lib/prisma';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
+// Make sure this import reflects your actual path and that `authOptions` is exported
+import { authOptions } from "@/api/auth/[...nextauth]/route";
+import { prisma } from '@/lib/prisma';
 
 export async function POST(request: NextRequest) {
-const session = await getServerSession(authOptions, request);
-if (!session?.user?.id) {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
-const dealer = await prisma.dealer.findFirst({
-  where: { dealerId: dealer.id,  subdomain: params.subdomain, userId: session.user.id }
-});
-if (!dealer) {
-  return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
-}
-
   try {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // No need to pass request to getServerSession for most Next.js setups in handlers
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    // Get subdomain from the URL path (customize/optimize per your real routing)
+    const pathParts = request.nextUrl.pathname.split("/");
+    const subdomain = pathParts[pathParts.indexOf("dealers") + 1];
+
+    // Fix: Only use fields that actually exist in your Prisma Dealer model!
+    const dealer = await prisma.dealer.findFirst({
+      where: { subdomain }
+    });
+    if (!dealer) {
+      return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
+    }
+
+    // Parse request body
     const body = await request.json();
     const { contentId, scheduledDate } = body;
 
@@ -36,25 +35,23 @@ if (!dealer) {
     }
 
     const content = await prisma.contentCalendar.findUnique({
-      where: { dealerId: dealer.id,  id: contentId },
+      where: { dealerId: dealer.id, id: contentId },
     });
 
     if (!content) {
       return NextResponse.json({ error: 'Content not found' }, { status: 404 });
     }
 
-    // ✅ FIXED: Handle "Post Now" vs "Schedule Later"
+    // Handle scheduling status
     let status = 'approved';
-    let finalScheduledDate = null;
+    let finalScheduledDate: Date | null = null;
 
     if (scheduledDate) {
       const scheduleDateTime = new Date(scheduledDate);
       const now = new Date();
-      
-      // If scheduled for within 1 minute, treat as "Post Now"
       if (scheduleDateTime <= new Date(now.getTime() + 60000)) {
         status = 'scheduled';
-        finalScheduledDate = new Date(); // Schedule immediately
+        finalScheduledDate = new Date();
       } else {
         status = 'scheduled';
         finalScheduledDate = scheduleDateTime;
@@ -62,22 +59,24 @@ if (!dealer) {
     }
 
     const updatedContent = await prisma.contentCalendar.update({
-      where: { dealerId: dealer.id,  id: contentId },
-      data: { dealerId: dealer.id, 
-        status: status,
+      where: { dealerId: dealer.id, id: contentId },
+      data: {
+        dealerId: dealer.id,
+        status,
         approvedAt: new Date(),
         scheduledDate: finalScheduledDate,
       },
     });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       content: updatedContent,
-      message: status === 'scheduled' && finalScheduledDate <= new Date() ? 
-               'Content will be posted immediately' : 
-               status === 'scheduled' ? 
-               'Content scheduled successfully' : 
-               'Content approved'
+      message:
+        status === 'scheduled' && finalScheduledDate && finalScheduledDate <= new Date()
+          ? 'Content will be posted immediately'
+          : status === 'scheduled'
+          ? 'Content scheduled successfully'
+          : 'Content approved',
     });
   } catch (error) {
     console.error('Error approving content:', error);

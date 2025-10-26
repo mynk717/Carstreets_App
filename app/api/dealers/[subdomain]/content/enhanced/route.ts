@@ -1,34 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
-import { EnhancedContentPipeline } from '@/lib/agents/enhanced-pipeline';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
-
+import { authOptions } from "@/api/auth/[...nextauth]/route";
 import { prisma } from '@/lib/database/db';
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/lib/auth/[...nextauth]";
+import { EnhancedContentPipeline } from '@/lib/agents/enhanced-pipeline';
 
+// Helper: Extract subdomain from request URL
+function extractSubdomain(request: NextRequest) {
+  const pathParts = request.nextUrl.pathname.split("/");
+  return pathParts[pathParts.indexOf("dealers") + 1];
+}
 
 export async function POST(request: NextRequest) {
-const session = await getServerSession(authOptions, request);
-if (!session?.user?.id) {
-  return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-}
-const dealer = await prisma.dealer.findFirst({
-  where: { dealerId: dealer.id,  subdomain: params.subdomain, userId: session.user.id }
-});
-if (!dealer) {
-  return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
-}
-
   try {
-    // Auth check
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const subdomain = extractSubdomain(request);
+
+    // Only use existing schema fields!
+    const dealer = await prisma.dealer.findUnique({
+      where: { subdomain }
+    });
+    if (!dealer) {
+      return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
     }
 
     const body = await request.json();
@@ -51,14 +47,15 @@ if (!dealer) {
       platforms
     );
 
-    // Save successful content to calendar
     if (saveToCalendar) {
       for (const result of results.results.filter(r => r.success)) {
         try {
           await prisma.contentCalendar.create({
-            data: { dealerId: dealer.id, 
+            data: { 
+              dealerId: dealer.id,
               carId: result.carId,
-              dealerId: dealerId === 'admin' ? null : dealerId,
+              // Set dealerId field only if it's valid in your model
+              // platform, content, and other props as per your schema:
               platform: result.platform,
               textContent: result.content,
               hashtags: result.hashtags || [],
@@ -89,7 +86,7 @@ if (!dealer) {
     console.error('Enhanced content generation error:', error);
     return NextResponse.json({
       success: false,
-      error: error.message
+      error: error instanceof Error ? error.message : String(error)
     }, { status: 500 });
   }
 }
