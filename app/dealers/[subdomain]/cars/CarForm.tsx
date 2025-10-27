@@ -19,8 +19,9 @@ type CarFormValues = {
 
 type CarFormProps = {
   dealerId: string;
+  subdomain: string;
   onSuccess?: () => void;
-  initialCar?: CarFormValues;
+  initialCar?: any;  // ✅ Changed to 'any' to handle Prisma BigInt types
 };
 
 // ------ HEADER/FOOTER ------
@@ -37,7 +38,9 @@ function SiteHeader() {
 function SiteFooter() {
   return (
     <footer className="w-full mt-12 bg-gray-50 border-t">
-      <div className="max-w-5xl mx-auto p-4 text-gray-500 text-sm text-center">© {new Date().getFullYear()} CarStreets. All rights reserved.</div>
+      <div className="max-w-5xl mx-auto p-4 text-gray-700 text-sm text-center">
+        © {new Date().getFullYear()} CarStreets. All rights reserved.
+      </div>
     </footer>
   );
 }
@@ -45,27 +48,35 @@ function SiteFooter() {
 // ------ MAIN CAR FORM ------
 export default function CarForm({
   dealerId,
+  subdomain,
   onSuccess,
   initialCar = {},
 }: CarFormProps) {
+  // ✅ Convert BigInt to string/number for form state
   const [form, setForm] = useState<CarFormValues>({
     brand: initialCar.brand || "",
     model: initialCar.model || "",
     year: initialCar.year || "",
-    price: initialCar.price || "",
+    price: initialCar.price ? Number(initialCar.price) : "",  // ✅ Convert BigInt to Number
     kmDriven: initialCar.kmDriven || "",
     fuelType: initialCar.fuelType || "",
     transmission: initialCar.transmission || "",
     owners: initialCar.owners || "",
     location: initialCar.location || "",
     description: initialCar.description || "",
-    images: Array.isArray(initialCar.images) ? initialCar.images : [],
+    images: Array.isArray(initialCar.images) ? [...initialCar.images] : [],
   });
+  
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);  // ✅ Add success state
 
-  function handleImageUpload(urls: string[]) {
-    setForm(f => ({ ...f, images: [...(f.images ?? []), ...urls] }));
+  // Remove image utility
+  function handleRemoveImage(idx: number) {
+    setForm(f => ({
+      ...f,
+      images: (f.images ?? []).filter((_, i) => i !== idx),
+    }));
   }
 
   function handleChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -77,16 +88,50 @@ export default function CarForm({
     e.preventDefault();
     setLoading(true);
     setError("");
+    setSuccess(false);  // ✅ Reset success state
+    
     try {
-      const res = await fetch("/api/dealers/[subdomain]/cars", {
+      const res = await fetch(`/api/dealers/${subdomain}/cars`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dealerId, ...form }),
       });
-      if (!res.ok) throw new Error(await res.text());
-      if (onSuccess) onSuccess();
+      
+      if (!res.ok) {
+        let msg = "Submission failed";
+        try {
+          const contentType = res.headers.get("content-type");
+          if (contentType && contentType.includes("application/json")) {
+            const json = await res.json();
+            msg = typeof json.error === "string"
+              ? json.error
+              : (json.error?.message || msg);
+          } else {
+            msg = await res.text();
+          }
+        } catch {}
+        throw new Error(msg);
+      }
+      
+      // ✅ Success handling
+      setSuccess(true);
+      setForm({
+        brand: "", model: "", year: "", price: "",
+        kmDriven: "", fuelType: "", transmission: "", owners: "",
+        location: "", description: "", images: []
+      });
+      
+      // ✅ Redirect after 2 seconds
+      setTimeout(() => {
+        if (onSuccess) {
+          onSuccess();
+        } else {
+          window.location.href = `/dealers/${subdomain}/dashboard`;
+        }
+      }, 2000);
+      
     } catch (err: any) {
-      setError(err.message || "Submission failed");
+      setError(typeof err === "string" ? err : (err?.message || "Submission failed"));
     } finally {
       setLoading(false);
     }
@@ -97,27 +142,110 @@ export default function CarForm({
       <SiteHeader />
       <main className="flex flex-col min-h-screen py-8 bg-gray-100">
         <div className="max-w-2xl w-full mx-auto bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-2xl font-bold mb-8 text-blue-900">Add New Car</h1>
+          <h1 className="text-2xl font-bold mb-8 text-blue-900">
+            {initialCar.id ? "Edit Car" : "Add New Car"}
+          </h1>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
-            {error && <div className="col-span-2 bg-red-100 text-red-700 p-2 rounded">{error}</div>}
+            {error && (
+              <div className="col-span-2 bg-red-100 text-red-700 p-3 rounded break-words">
+                {error}
+              </div>
+            )}
+            {success && (
+              <div className="col-span-2 bg-green-100 text-green-700 p-3 rounded">
+                ✅ Car {initialCar.id ? "updated" : "added"} successfully! Redirecting...
+              </div>
+            )}
 
-            <input name="brand" value={form.brand as string} onChange={handleChange} placeholder="Brand" required className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
-            <input name="model" value={form.model as string} onChange={handleChange} placeholder="Model" required className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
-            <input name="year" value={form.year as string} onChange={handleChange} placeholder="Year" type="number" required className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
-            <input name="price" value={form.price as string} onChange={handleChange} placeholder="Price" type="number" required className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
-            <input name="kmDriven" value={form.kmDriven as string} onChange={handleChange} placeholder="KM Driven" type="number" required className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
-            <input name="fuelType" value={form.fuelType as string} onChange={handleChange} placeholder="Fuel Type" required className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
-            <input name="transmission" value={form.transmission as string} onChange={handleChange} placeholder="Transmission" required className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
-            <input name="owners" value={form.owners as string} onChange={handleChange} placeholder="Owners" type="number" required className="border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
+            <input 
+              name="brand" 
+              value={form.brand as string} 
+              onChange={handleChange} 
+              placeholder="Brand" 
+              required 
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
+            <input 
+              name="model" 
+              value={form.model as string} 
+              onChange={handleChange} 
+              placeholder="Model" 
+              required 
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
+            <input 
+              name="year" 
+              value={form.year as string} 
+              onChange={handleChange} 
+              placeholder="Year" 
+              type="number" 
+              required 
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
+            <input 
+              name="price" 
+              value={form.price as string} 
+              onChange={handleChange} 
+              placeholder="Price" 
+              type="number" 
+              required 
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
+            <input 
+              name="kmDriven" 
+              value={form.kmDriven as string} 
+              onChange={handleChange} 
+              placeholder="KM Driven" 
+              type="number" 
+              required 
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
+            <input 
+              name="fuelType" 
+              value={form.fuelType as string} 
+              onChange={handleChange} 
+              placeholder="Fuel Type" 
+              required 
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
+            <input 
+              name="transmission" 
+              value={form.transmission as string} 
+              onChange={handleChange} 
+              placeholder="Transmission" 
+              required 
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
+            <input 
+              name="owners" 
+              value={form.owners as string} 
+              onChange={handleChange} 
+              placeholder="Owners" 
+              type="number" 
+              required 
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
 
-            <input name="location" value={form.location as string} onChange={handleChange} placeholder="Location" className="md:col-span-2 border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
-            <textarea name="description" value={form.description as string} onChange={handleChange} placeholder="Description" className="md:col-span-2 border rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 w-full" />
+            <input 
+              name="location" 
+              value={form.location as string} 
+              onChange={handleChange} 
+              placeholder="Location" 
+              className="md:col-span-2 border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
+            <textarea 
+              name="description" 
+              value={form.description as string} 
+              onChange={handleChange} 
+              placeholder="Description" 
+              className="md:col-span-2 border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            />
 
             {/* Cloudinary upload */}
             <div className="md:col-span-2 mb-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Upload Car Images</label>
+              <label className="block text-sm font-medium text-gray-900 mb-1">Upload Car Images</label>
               <CldUploadWidget
-                uploadPreset="carstreets-unsigned" // Change to your actual unsigned preset
+                uploadPreset="carstreets-unsigned"
                 options={{
                   maxFiles: 10,
                   resourceType: "image",
@@ -128,10 +256,10 @@ export default function CarForm({
                 }}
                 onUpload={(result: any) => {
                   if (result.event === "success") {
-                    const newImageUrl = result.info.secure_url;
+                    const url = result.info.secure_url;
                     setForm(f => ({
                       ...f,
-                      images: [...(f.images ?? []), newImageUrl]
+                      images: [...(f.images ?? []), url],
                     }));
                   }
                 }}
@@ -148,13 +276,25 @@ export default function CarForm({
               </CldUploadWidget>
               <div className="flex gap-2 mt-2 flex-wrap">
                 {(form.images ?? []).map((img, i) => (
-                  <img key={i} src={img} alt={`car img ${i + 1}`} className="w-20 h-16 object-cover rounded border" />
+                  <div className="relative group" key={i}>
+                    <img src={img} alt={`car img ${i + 1}`} className="w-20 h-16 object-cover rounded border" />
+                    <button
+                      type="button"
+                      className="absolute right-1 top-1 bg-red-600 text-white rounded-full p-1 text-xs opacity-80 hover:opacity-100 transition"
+                      title="Remove"
+                      onClick={() => handleRemoveImage(i)}
+                    >×</button>
+                  </div>
                 ))}
               </div>
             </div>
 
-            <button type="submit" className="col-span-2 mt-4 w-full py-3 rounded bg-blue-700 text-white font-semibold text-lg shadow hover:bg-blue-800 transition" disabled={loading}>
-              {loading ? "Saving..." : "Add Car"}
+            <button 
+              type="submit" 
+              className="col-span-2 mt-4 w-full py-3 rounded bg-blue-700 text-white font-semibold text-lg shadow hover:bg-blue-800 transition" 
+              disabled={loading}
+            >
+              {loading ? "Saving..." : (initialCar.id ? "Update Car" : "Add Car")}
             </button>
           </form>
         </div>
