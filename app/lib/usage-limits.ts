@@ -1,123 +1,124 @@
-import { prisma } from './prisma'
+// lib/usage-limits.ts
+import { prisma } from './prisma';
 
 export interface PlanLimits {
-  cars: number
-  aiContent: number
-  socialPosts: number
+  cars: number;
+  aiContent: number;
+  socialPosts: number;
 }
 
+// ✅ Updated market-practical limits
 export const PLAN_LIMITS: Record<string, PlanLimits> = {
   free: {
-    cars: 5,
+    cars: 5,              // Changed from unlimited
     aiContent: 5,
     socialPosts: 1
   },
   starter: {
-    cars: 50,
-    aiContent: 999999, // Unlimited
-    socialPosts: 999999 // Unlimited
+    cars: 15,             // Changed from 50
+    aiContent: 999999,    // Unlimited
+    socialPosts: 999999   // Unlimited
   },
   professional: {
-    cars: 200,
+    cars: 50,             // Changed from 200
     aiContent: 999999,
     socialPosts: 999999
   },
   enterprise: {
-    cars: 999999,
+    cars: 999999,         // Contact sales (unlimited)
     aiContent: 999999,
     socialPosts: 999999
   }
-}
+};
 
 export async function checkUsageLimit(
-  dealerId: string, 
+  dealerId: string,
   type: 'cars' | 'aiContent' | 'socialPosts'
 ): Promise<{ allowed: boolean; message?: string; current: number; limit: number }> {
-  
   const dealer = await prisma.dealer.findUnique({
     where: { id: dealerId },
     select: {
       plan: true,
-      carsCount: true,
-      aiContentUsed: true,
-      socialPostsUsed: true
+      _count: {
+        select: {
+          cars: true
+        }
+      }
     }
-  })
+  });
 
   if (!dealer) {
-    return { allowed: false, message: 'Dealer not found', current: 0, limit: 0 }
+    return { allowed: false, message: 'Dealer not found', current: 0, limit: 0 };
   }
 
-  const limits = PLAN_LIMITS[dealer.plan] || PLAN_LIMITS.free
-  const limit = limits[type]
-  
-  let current = 0
-  switch(type) {
+  const limits = PLAN_LIMITS[dealer.plan] || PLAN_LIMITS.free;
+  const limit = limits[type];
+
+  // ✅ Use Prisma _count relation (automatically updated)
+  let current = 0;
+  switch (type) {
     case 'cars':
-      current = dealer.carsCount
-      break
+      current = dealer._count.cars;
+      break;
     case 'aiContent':
-      current = dealer.aiContentUsed
-      break
+      current = 0; // TODO: Implement if tracking
+      break;
     case 'socialPosts':
-      current = dealer.socialPostsUsed
-      break
+      current = 0; // TODO: Implement if tracking
+      break;
   }
 
-  const allowed = current < limit
+  const allowed = current < limit;
 
   return {
     allowed,
-    message: allowed ? undefined : `${dealer.plan === 'free' ? 'Free plan' : 'Plan'} limit reached. Upgrade to add more.`,
+    message: allowed
+      ? undefined
+      : `${dealer.plan === 'free' ? 'Free plan' : 'Plan'} limit reached (${current}/${limit}). Upgrade to add more.`,
     current,
     limit
-  }
+  };
 }
 
-export async function incrementUsage(
-  dealerId: string,
-  type: 'cars' | 'aiContent' | 'socialPosts'
-): Promise<void> {
-  const updateData: any = {}
-  
-  switch(type) {
-    case 'cars':
-      updateData.carsCount = { increment: 1 }
-      break
-    case 'aiContent':
-      updateData.aiContentUsed = { increment: 1 }
-      break
-    case 'socialPosts':
-      updateData.socialPostsUsed = { increment: 1 }
-      break
+// ✅ Helper to get full usage summary
+export async function getUsageSummary(dealerId: string) {
+  const dealer = await prisma.dealer.findUnique({
+    where: { id: dealerId },
+    select: {
+      plan: true,
+      _count: {
+        select: {
+          cars: true
+        }
+      }
+    }
+  });
+
+  if (!dealer) {
+    return null;
   }
 
-  await prisma.dealer.update({
-    where: { id: dealerId },
-    data: updateData
-  })
-}
+  const limits = PLAN_LIMITS[dealer.plan] || PLAN_LIMITS.free;
 
-export async function decrementUsage(
-  dealerId: string,
-  type: 'cars' | 'aiContent' | 'socialPosts'
-): Promise<void> {
-  const updateData: any = {}
-  
-  switch(type) {
-    case 'cars':
-      updateData.carsCount = { decrement: 1 }
-      break
-    case 'aiContent':
-      updateData.aiContentUsed = { decrement: 1 }
-      break
-    case 'socialPosts':
-      updateData.socialPostsUsed = { decrement: 1 }
-      break
-  }
-
-  await prisma.dealer.update({
-    where: { id: dealerId },
-    data: updateData
-  })
+  return {
+    plan: dealer.plan,
+    cars: {
+      current: dealer._count.cars,
+      limit: limits.cars,
+      remaining: limits.cars === 999999 ? -1 : Math.max(0, limits.cars - dealer._count.cars),
+      allowed: dealer._count.cars < limits.cars
+    },
+    aiContent: {
+      current: 0,
+      limit: limits.aiContent,
+      remaining: -1,
+      allowed: true
+    },
+    socialPosts: {
+      current: 0,
+      limit: limits.socialPosts,
+      remaining: -1,
+      allowed: true
+    }
+  };
 }

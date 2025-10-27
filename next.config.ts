@@ -1,6 +1,9 @@
-import type { NextConfig } from 'next'
+import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
+  // ✅ ADD THIS: Fix for next-auth with Next.js 15
+  transpilePackages: ['next-auth'],
+  
   eslint: {
     ignoreDuringBuilds: true,
   },
@@ -49,7 +52,7 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
-        source: '/auth/linkedin/callback', 
+        source: '/auth/linkedin/callback',
         destination: '/api/auth/linkedin/callback',
         permanent: false,
       },
@@ -57,8 +60,6 @@ const nextConfig: NextConfig = {
   },
   // Fixed: Updated from experimental.serverComponentsExternalPackages
   serverExternalPackages: ['puppeteer-core'],
+};
 
-  
-}
-
-export default nextConfig
+export default nextConfig;
