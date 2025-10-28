@@ -1,57 +1,75 @@
-import Link from "next/link";
-import { prisma } from "@/lib/prisma";
+import { notFound } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import DealerCalendarClient from './DealerCalendarClient';
 
-export default async function DealerCarsPage(context) {
-  const { params } = context;
-  const subdomain = params?.subdomain;
+async function getContentCalendar(subdomain: string) {
   const dealer = await prisma.dealer.findUnique({
     where: { subdomain },
-    select: { id: true, name: true }
-  });
-  if (!dealer) return <div>Dealer not found</div>;
-
-  const cars = await prisma.car.findMany({
-    where: { dealerId: dealer.id },
-    orderBy: { createdAt: "desc" },
-    select: {
-      id: true,
-      brand: true, // use brand, not make!
-      model: true,
-      year: true,
-      createdAt: true,
+    select: { 
+      id: true, 
+      businessName: true, 
+      name: true,
     }
   });
 
+  if (!dealer) return null;
+
+  const contentItems = await prisma.contentCalendar.findMany({
+    where: { dealerId: dealer.id },
+    orderBy: { createdAt: 'desc' },
+    include: {
+      car: {
+        select: {
+          title: true,
+          brand: true,
+          model: true,
+          images: true,
+        }
+      }
+    }
+  });
+
+  return {
+    dealer,
+    contentItems
+  };
+}
+
+export default async function DealerCalendarPage({
+  params,
+}: {
+  params: Promise<{ subdomain: string }>;
+}) {
+  const { subdomain } = await params;
+  const data = await getContentCalendar(subdomain);
+
+  if (!data) {
+    notFound();
+  }
+
+  const { dealer, contentItems } = data;
+
   return (
-    <div className="max-w-3xl mx-auto p-8">
-      <h1 className="text-3xl font-bold mb-4">
-        Car Inventory for {dealer.name}
-      </h1>
-      <Link href={`/dealers/${subdomain}/cars/new`}>
-        <button className="mb-4 px-4 py-2 bg-green-600 text-white rounded font-bold hover:bg-green-700">
-          Add New Car
-        </button>
-      </Link>
-      {cars.length === 0 ? (
-        <div className="bg-yellow-50 text-gray-700 rounded p-6 mt-4">
-          No cars added yet.
-        </div>
-      ) : (
-        <ul className="divide-y divide-gray-200">
-          {cars.map(car => (
-            <li key={car.id} className="py-3 flex items-center justify-between">
-              <span>
-                <b>{car.brand} {car.model}</b> ({car.year}) | Added: {new Date(car.createdAt).toLocaleDateString()}
-              </span>
-              <Link href={`/dealers/${subdomain}/cars/${car.id}`}>
-                <button className="ml-3 px-3 py-1 rounded bg-blue-600 text-white font-semibold hover:bg-blue-700">
-                  Edit
-                </button>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
+    <DealerCalendarClient
+      calendar={contentItems.map((i) => ({
+        id: i.id,
+        platform: (i.platform || 'facebook') as 'facebook' | 'instagram' | 'linkedin' | string,
+        status: (i.status as 'draft' | 'pending' | 'requires_review' | 'approved' | 'scheduled' | 'posted') || 'draft',
+        textContent: i.textContent ?? null,
+        createdAt: i.createdAt,
+        scheduledDate: (i as any).scheduledDate ?? null, // in your schema it might be scheduledAt/scheduledDate
+        brandedImage: (i as any).brandedImage ?? null,
+        generatedImage: (i as any).generatedImage ?? null,
+        finalImage: (i as any).finalImage ?? null,
+        car: {
+          title: i.car?.title ?? null,
+          brand: i.car?.brand ?? null,
+          model: i.car?.model ?? null,
+          images: Array.isArray(i.car?.images) ? (i.car?.images as string[]) : [],
+        },
+      }))}
+      subdomain={subdomain}
+      dealerName={dealer.businessName || dealer.name}
+    />
+  );  
 }

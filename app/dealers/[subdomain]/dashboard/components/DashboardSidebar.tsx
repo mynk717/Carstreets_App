@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Car, BarChart3, Settings, LogOut } from 'lucide-react';
+import { LayoutDashboard, Car, BarChart3, Settings, LogOut, Calendar } from 'lucide-react';
 import { Dealer } from '@prisma/client';
 
 export function DashboardSidebar({ dealer }: { dealer: Dealer }) {
@@ -12,6 +12,7 @@ export function DashboardSidebar({ dealer }: { dealer: Dealer }) {
     { href: `/dealers/${dealer.subdomain}/dashboard`, icon: LayoutDashboard, label: 'Overview' },
     { href: `/dealers/${dealer.subdomain}/dashboard/cars`, icon: Car, label: 'My Cars' },
     { href: `/dealers/${dealer.subdomain}/dashboard/content`, icon: BarChart3, label: 'Content Studio' },
+    { href: `/dealers/${dealer.subdomain}/dashboard/calendar`, icon: Calendar, label: 'Content Calendar' },
     { href: `/dealers/${dealer.subdomain}/dashboard/settings`, icon: Settings, label: 'Settings' },
   ];
 

@@ -1,6 +1,8 @@
 // app/dealers/[subdomain]/dashboard/settings/page.tsx
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
+import { AutomationSettings } from './AutomationSettings';
+import { SocialConnections } from './SocialConnections';
 import { Shield, CreditCard, Globe, Bell } from 'lucide-react';
 
 async function getDealer(subdomain: string) {
@@ -25,13 +27,12 @@ export default async function DealerSettingsPage({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl sm:text-3xl font-semibold text-gray-900 dark:text-white">
-          Settings
-        </h1>
-        <p className="text-gray-600 dark:text-gray-400 mt-1">
-          Manage your dealership settings and preferences
-        </p>
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Settings</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-1">Manage your dealership profile and integrations.</p>
       </div>
+
+      <AutomationSettings dealer={dealer} />
+      <SocialConnections dealer={dealer} />
 
       {/* Account Information */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">

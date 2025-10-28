@@ -94,6 +94,25 @@ model Dealer {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   
+  // ✅ ADD THESE NEW FIELDS BELOW YOUR EXISTING ONES
+  contentGenerationPreference String?   @default("on_demand") // 'automatic' or 'on_demand'
+  
+  // WhatsApp Integration
+  whatsappBusinessNumber    String?
+  whatsappBusinessAccountId String?
+  whatsappBusinessVerified  Boolean  @default(false)
+  whatsappApiToken          String?   // Encrypt in production
+  
+  // Meta (Facebook/Instagram) Integration
+  facebookPageId            String?
+  facebookCatalogId         String?
+  metaAccessToken           String?   // Encrypt in production
+  metaAccessTokenExpiry     DateTime?
+  
+  // Weekly AI Content Tracking
+  aiContentUsedThisWeek     Int       @default(0)
+  aiContentWeekStartDate    DateTime  @default(now())
+
   // Relations
   cars                Car[]
   contentCalendar     ContentCalendar[]
@@ -164,6 +183,12 @@ model ContentCalendar {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  // ✅ ADD THESE NEW FIELDS
+  generatedImage            String?   // AI-generated image URL
+  finalImage                String?   // Image after dealer edits
+  imagePrompt               String?   @db.Text
+  rejectionReason           String?
+  postedAt                  DateTime?
 
   // ✅ ADD RELATIONS
   car    Car     @relation(fields: [carId], references: [id], onDelete: Cascade)
