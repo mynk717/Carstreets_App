@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exchangeFacebookCode, getFacebookPages, type OAuthState } from "../../../../lib/social/oauth";
-import { verifyAdminAuth } from "../../../../lib/auth/admin";
+import { exchangeFacebookCode, getFacebookPages, type OAuthState } from "@/lib/social/oauth";
+import { verifyAdminAuth } from "@/lib/auth/admin";
+import { prisma } from "@/lib/prisma";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/api/auth/[...nextauth]/route";
 
 export async function GET(request: NextRequest) {
   try {
-    console.log("🔵 Facebook OAuth Callback - Marketing Dime");
+    console.log("🔵 Facebook OAuth Callback - Marketing Dime / Dealer");
     
     const { searchParams } = request.nextUrl;
     const code = searchParams.get("code");
@@ -26,17 +29,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Verify admin authentication
-    const authResult = await verifyAdminAuth(request);
-    if (!authResult.success) {
-      console.error("❌ Unauthorized OAuth callback");
-      return NextResponse.redirect(
-        new URL("/admin/content?error=unauthorized", request.url)
-      );
-    }
-
-    // Parse state
-    let oauthState: OAuthState;
+    // Parse state to determine if admin or dealer flow
+    let oauthState: OAuthState & { subdomain?: string; flow?: 'admin' | 'dealer' };
     try {
       oauthState = JSON.parse(decodeURIComponent(state));
     } catch {
@@ -54,27 +48,107 @@ export async function GET(request: NextRequest) {
     console.log("🔄 Fetching Facebook pages and Instagram accounts");
     const pagesData = await getFacebookPages(tokenData.accessToken);
 
-    // Store accounts in your database (implement based on your schema)
-    console.log("💾 Storing Facebook/Instagram accounts:", {
-      userId: authResult.user?.id,
-      dealerId: oauthState.dealerId,
-      pagesCount: pagesData.pages.length,
-      hasInstagram: pagesData.pages.some(p => p.instagramBusinessAccount),
-    });
+    // Determine flow: Admin or Dealer
+    if (oauthState.flow === 'dealer' && oauthState.subdomain) {
+      // DEALER FLOW: Save to dealer profile
+      console.log("👤 Dealer OAuth Flow for subdomain:", oauthState.subdomain);
 
-    // TODO: Save to database
-    // await saveSocialAccounts(authResult.user!.id, oauthState.dealerId, pagesData.pages);
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.email) {
+        return NextResponse.redirect(
+          new URL("/auth/signin?error=unauthorized", request.url)
+        );
+      }
 
-    // Success redirect
-    const successParams = new URLSearchParams({
-      success: "facebook_connected",
-      pages: pagesData.pages.length.toString(),
-      instagram: pagesData.pages.filter(p => p.instagramBusinessAccount).length.toString(),
-    });
+      const dealer = await prisma.dealer.findUnique({
+        where: { subdomain: oauthState.subdomain },
+        select: { id: true, email: true },
+      });
 
-    return NextResponse.redirect(
-      new URL(`${oauthState.redirectUrl}?${successParams.toString()}`, request.url)
-    );
+      if (!dealer || session.user.email !== dealer.email) {
+        return NextResponse.redirect(
+          new URL(`/dealers/${oauthState.subdomain}/dashboard/settings?error=forbidden`, request.url)
+        );
+      }
+
+      // Fetch WhatsApp Business Accounts
+      let wabaData: any = null;
+      try {
+        const wabaResponse = await fetch(
+          `https://graph.facebook.com/v18.0/me/businesses?fields=owned_whatsapp_business_accounts{id,name,phone_numbers}&access_token=${tokenData.accessToken}`
+        );
+        if (wabaResponse.ok) {
+          wabaData = await wabaResponse.json();
+        }
+      } catch (e) {
+        console.warn("Could not fetch WABA:", e);
+      }
+
+      const waba = wabaData?.data?.[0]?.owned_whatsapp_business_accounts?.data?.[0];
+      const phoneNumber = waba?.phone_numbers?.[0];
+      const fbPage = pagesData.pages[0];
+
+      // Update dealer profile
+      await prisma.dealer.update({
+        where: { id: dealer.id },
+        data: {
+          metaAccessToken: tokenData.accessToken,
+          metaAccessTokenExpiry: tokenData.expiresIn
+            ? new Date(Date.now() + tokenData.expiresIn * 1000)
+            : null,
+          whatsappBusinessAccountId: waba?.id || null,
+          whatsappBusinessNumber: phoneNumber?.display_phone_number || null,
+          whatsappBusinessVerified: phoneNumber?.verified_name ? true : false,
+          facebookPageId: fbPage?.id || null,
+// facebookCatalogId will be fetched separately if needed
+},
+      });
+
+      // Determine success message
+      const hasWaba = !!waba;
+      const hasFbPage = !!fbPage;
+      let successMessage = 'meta_connected';
+      if (hasWaba && hasFbPage) successMessage = 'all_connected';
+      else if (hasWaba) successMessage = 'whatsapp_connected';
+      else if (hasFbPage) successMessage = 'facebook_connected';
+      else successMessage = 'token_saved';
+
+      return NextResponse.redirect(
+        new URL(`/dealers/${oauthState.subdomain}/dashboard/settings?success=${successMessage}`, request.url)
+      );
+
+    } else {
+      // ADMIN FLOW: Original behavior
+      console.log("🔧 Admin OAuth Flow");
+
+      const authResult = await verifyAdminAuth(request);
+      if (!authResult.success) {
+        console.error("❌ Unauthorized OAuth callback");
+        return NextResponse.redirect(
+          new URL("/admin/content?error=unauthorized", request.url)
+        );
+      }
+
+      console.log("💾 Storing Facebook/Instagram accounts:", {
+        userId: authResult.user?.id,
+        dealerId: oauthState.dealerId,
+        pagesCount: pagesData.pages.length,
+        hasInstagram: pagesData.pages.some(p => p.instagramBusinessAccount),
+      });
+
+      // TODO: Save to database for admin
+      // await saveSocialAccounts(authResult.user!.id, oauthState.dealerId, pagesData.pages);
+
+      const successParams = new URLSearchParams({
+        success: "facebook_connected",
+        pages: pagesData.pages.length.toString(),
+        instagram: pagesData.pages.filter(p => p.instagramBusinessAccount).length.toString(),
+      });
+
+      return NextResponse.redirect(
+        new URL(`${oauthState.redirectUrl}?${successParams.toString()}`, request.url)
+      );
+    }
 
   } catch (error) {
     console.error("🚨 Facebook OAuth callback error:", error);

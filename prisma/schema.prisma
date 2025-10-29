@@ -56,7 +56,6 @@ model Car {
   contentEmbedding String?
   marketContext    Json?
 
-  // ✅ ADD RELATIONS
   contentCalendar ContentCalendar[]
   dealer          Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 
@@ -86,7 +85,6 @@ model Dealer {
   subscriptionStatus  String   @default("active")
   subscriptionAmount  Int?
 
-  // Usage tracking for free tier
   carsCount          Int      @default(0)
   aiContentUsed      Int      @default(0)
   socialPostsUsed    Int      @default(0)
@@ -94,19 +92,18 @@ model Dealer {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
   
-  // ✅ ADD THESE NEW FIELDS BELOW YOUR EXISTING ONES
-  contentGenerationPreference String?   @default("on_demand") // 'automatic' or 'on_demand'
+  contentGenerationPreference String?   @default("on_demand")
   
   // WhatsApp Integration
   whatsappBusinessNumber    String?
   whatsappBusinessAccountId String?
   whatsappBusinessVerified  Boolean  @default(false)
-  whatsappApiToken          String?   // Encrypt in production
+  whatsappApiToken          String?
   
   // Meta (Facebook/Instagram) Integration
   facebookPageId            String?
   facebookCatalogId         String?
-  metaAccessToken           String?   // Encrypt in production
+  metaAccessToken           String?
   metaAccessTokenExpiry     DateTime?
   
   // Weekly AI Content Tracking
@@ -116,13 +113,15 @@ model Dealer {
   // Relations
   cars                Car[]
   contentCalendar     ContentCalendar[]
+  whatsappTemplates   WhatsAppTemplate[]
+  whatsappContacts    WhatsAppContact[]
+  whatsappMessages    WhatsAppMessage[]
+  productCatalogs    ProductCatalog[]
+
   
   @@index([subdomain])
   @@index([customDomain])
-  // REMOVE this line temporarily: @@map("dealers") 
 }
-
-
 
 model MarketIntelligence {
   id            String @id @default(cuid())
@@ -183,14 +182,13 @@ model ContentCalendar {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  // ✅ ADD THESE NEW FIELDS
-  generatedImage            String?   // AI-generated image URL
-  finalImage                String?   // Image after dealer edits
-  imagePrompt               String?   @db.Text
-  rejectionReason           String?
-  postedAt                  DateTime?
+  
+  generatedImage  String?
+  finalImage      String?
+  imagePrompt     String?   @db.Text
+  rejectionReason String?
+  postedAt        DateTime?
 
-  // ✅ ADD RELATIONS
   car    Car     @relation(fields: [carId], references: [id], onDelete: Cascade)
   dealer Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 
@@ -225,17 +223,6 @@ model SocialPost {
   @@index([dealerId])
 }
 
-model WhatsAppContact {
-  id           String   @id @default(cuid())
-  dealerId     String?
-  phoneNumber  String
-  optedIn      Boolean  @default(false)
-  name         String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-  @@index([dealerId])
-}
-
 model FestivalContent {
   id         String   @id @default(cuid())
   dealerId   String?
@@ -244,4 +231,115 @@ model FestivalContent {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
   @@index([dealerId])
+}
+
+// ===== WhatsApp Models (Enhanced) =====
+
+model WhatsAppTemplate {
+  id          String   @id @default(cuid())
+  dealerId    String
+  dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  name        String
+  language    String   @default("en_US")
+  category    String
+  status      String   @default("PENDING")
+  
+  headerType  String?
+  headerText  String?
+  bodyText    String
+  footerText  String?
+  buttons     Json?
+  
+  metaTemplateId String?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  messages    WhatsAppMessage[]
+  
+  @@index([dealerId])
+  @@unique([dealerId, name])
+}
+
+model WhatsAppContact {
+  id          String   @id @default(cuid())
+  dealerId    String
+  dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  phoneNumber String
+  name        String?
+  tags        String[] @default([])
+  
+  optedIn     Boolean  @default(true)
+  optedInAt   DateTime @default(now())
+  optedOutAt  DateTime?
+  
+  lastMessageAt DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  messages    WhatsAppMessage[]
+  
+  @@index([dealerId])
+  @@unique([dealerId, phoneNumber])
+}
+
+model WhatsAppMessage {
+  id          String   @id @default(cuid())
+  dealerId    String
+  dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  contactId   String?
+  contact     WhatsAppContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  
+  templateId  String?
+  template    WhatsAppTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  
+  phoneNumber String
+  messageType String
+  content     String
+  
+  status      String   @default("queued")
+  messageId   String?
+  error       String?
+  
+  sentAt      DateTime?
+  deliveredAt DateTime?
+  readAt      DateTime?
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@index([dealerId])
+  @@index([contactId])
+  @@index([status])
+}
+
+model ProductCatalog {
+  id                String   @id @default(cuid())
+  dealerId          String
+  dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  // Meta Catalog Info
+  metaCatalogId     String?  // Facebook Commerce Manager Catalog ID
+  catalogName       String
+  catalogType       String   @default("automotive") // automotive, products
+  
+  // Sync Status
+  status            String   @default("pending") // pending, syncing, synced, failed
+  lastSyncedAt      DateTime?
+  itemCount         Int      @default(0)
+  syncError         String?
+  
+  // Feed URLs
+  xmlFeedUrl        String?  // For Google Vehicle Ads
+  csvFeedUrl        String?  // For Meta bulk upload
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([dealerId])
+  @@unique([dealerId, metaCatalogId])
 }

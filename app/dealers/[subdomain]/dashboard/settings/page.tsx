@@ -2,8 +2,8 @@
 import { notFound } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { AutomationSettings } from './AutomationSettings';
-import { SocialConnections } from './SocialConnections';
 import { Shield, CreditCard, Globe, Bell } from 'lucide-react';
+import { MetaIntegrations } from './MetaIntegrations';
 
 async function getDealer(subdomain: string) {
   return await prisma.dealer.findUnique({
@@ -32,7 +32,7 @@ export default async function DealerSettingsPage({
       </div>
 
       <AutomationSettings dealer={dealer} />
-      <SocialConnections dealer={dealer} />
+      <MetaIntegrations dealer={dealer} subdomain={subdomain} />
 
       {/* Account Information */}
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">

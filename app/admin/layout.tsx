@@ -11,7 +11,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const navItems = [
     { href: '/admin', icon: Home, label: 'Overview' },
-    { href: '/admin/dealerships', icon: Users, label: 'Dealerships', badge: 'New' },
+    { href: '/admin/dealers', icon: Users, label: 'Dealers', badge: 'New' },
     { href: '/admin/cars', icon: Car, label: 'Car Management' },
     { href: '/admin/content', icon: BarChart3, label: 'Content Studio' },
     { href: '/admin/content/image-studio', icon: LucideImage, label: 'Image Studio' },

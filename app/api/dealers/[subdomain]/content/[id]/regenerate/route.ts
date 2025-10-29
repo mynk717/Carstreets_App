@@ -2,22 +2,17 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/api/auth/[...nextauth]/route';
-
-// TODO: import your real generator
-async function generateNewCaption(item: any) {
-  // Replace with your RAG/content pipeline call
-  return `Fresh caption for ${item.car?.title || 'your car'} — short, punchy, platform-ready.`;
-}
+import { AutoContentPipeline } from '@/lib/agents/autoContentPipeline';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ subdomain: string; id: string }> }
+  { params }: { params: { subdomain: string; id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.email) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-    const { subdomain, id } = await params;
+    const { subdomain, id } = params;
 
     const dealer = await prisma.dealer.findUnique({
       where: { subdomain },
@@ -28,11 +23,15 @@ export async function POST(
 
     const item = await prisma.contentCalendar.findUnique({
       where: { id },
-      include: { car: { select: { title: true, brand: true, model: true, images: true } } }
+      include: { car: true, dealer: true }
     });
     if (!item || item.dealerId !== dealer.id) return NextResponse.json({ error: 'Content not found' }, { status: 404 });
 
-    const textContent = await generateNewCaption(item);
+    const contentEngine = new AutoContentPipeline();
+
+    // Option A: generator returns { text, hashtags }
+    const res = await contentEngine.generateUniqueText(item.car, item.platform || 'facebook');
+    const textContent = typeof res === 'string' ? res : res.text;
 
     await prisma.contentCalendar.update({
       where: { id },

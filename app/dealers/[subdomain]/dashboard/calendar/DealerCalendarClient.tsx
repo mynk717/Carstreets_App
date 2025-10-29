@@ -45,6 +45,7 @@ export default function DealerCalendarClient({
   const [preview, setPreview] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ id: string; text: string } | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [scheduleModal, setScheduleModal] = useState<{ id: string; currentDate: Date } | null>(null);
   const [showPlain, setShowPlain] = useState<boolean>(true);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
@@ -121,20 +122,25 @@ export default function DealerCalendarClient({
     }
   };
 
-  const schedule = async (id: string, when?: Date) => {
+  const schedule = async (id: string, scheduledDate: Date) => {
     setBusyId(id);
     try {
       const res = await fetch(`/api/dealers/${subdomain}/content/${id}/update`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'scheduled', scheduledDate: (when || new Date()).toISOString() }),
+        body: JSON.stringify({ status: 'scheduled', scheduledDate: scheduledDate.toISOString() }),
       });
       if (!res.ok) throw new Error(await res.text());
-      setItems((prev) => prev.map((x) => (x.id === id ? { ...x, status: 'scheduled', scheduledDate: when || new Date() } : x)));
+      const { content } = await res.json();
+      setItems(prev => prev.map(x => x.id === id ? { ...x, status: content.status, scheduledDate: content.scheduledDate } : x));
+      setScheduleModal(null);
+    } catch (e: any) {
+      alert('Failed to schedule: ' + e.message);
     } finally {
       setBusyId(null);
     }
   };
+  
 
   const regenerateText = async (id: string) => {
     setBusyId(id);
@@ -282,12 +288,16 @@ export default function DealerCalendarClient({
                         </button>
                       )}
                       <button
-                        onClick={() => schedule(item.id)}
-                        disabled={busyId === item.id}
-                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50"
-                      >
-                        <CalendarIcon className="w-4 h-4" /> Schedule
-                      </button>
+  onClick={() => setScheduleModal({ 
+    id: item.id, 
+    currentDate: item.scheduledDate ? new Date(item.scheduledDate) : new Date() 
+  })}
+  disabled={busyId === item.id}
+  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50"
+>
+  <CalendarIcon className="w-4 h-4" /> Schedule
+</button>
+
                       <button
                         onClick={() => setEditing({ id: item.id, text: stripMarkdown(item.textContent || '') })}
                         className="inline-flex items-center gap-2 px-3 py-1.5 border text-xs rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
@@ -379,6 +389,43 @@ export default function DealerCalendarClient({
           <img src={preview} alt="Preview" className="max-h-[85vh] max-w-[92vw] rounded-xl shadow-2xl border border-white/20 object-contain" />
         </div>
       )}
+
+      {/* Schedule Modal */}
+{scheduleModal && (
+  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+    <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-semibold text-gray-900 dark:text-white">Schedule Post</h3>
+        <button onClick={() => setScheduleModal(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+      <div className="space-y-4">
+        <div>
+          <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">Schedule Date & Time</label>
+          <input
+            type="datetime-local"
+            defaultValue={scheduleModal.currentDate.toISOString().slice(0, 16)}
+            onChange={(e) => setScheduleModal({ ...scheduleModal, currentDate: new Date(e.target.value) })}
+            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-3 focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="flex gap-3">
+          <button onClick={() => setScheduleModal(null)} className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+            Cancel
+          </button>
+          <button
+            onClick={() => schedule(scheduleModal.id, scheduleModal.currentDate)}
+            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            disabled={busyId === scheduleModal.id}
+          >
+            {busyId === scheduleModal.id ? 'Scheduling...' : 'Schedule'}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Text edit modal */}
       {/* Text edit modal */}
