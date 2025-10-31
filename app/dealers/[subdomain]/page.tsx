@@ -90,7 +90,6 @@ export default async function DealerStorefront({ params }: PageProps) {
         cars: {
           where: { carStreetsListed: true },
           orderBy: { createdAt: 'desc' },
-          take: 20,
         },
       },
     })
