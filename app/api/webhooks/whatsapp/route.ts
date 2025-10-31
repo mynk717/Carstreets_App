@@ -49,8 +49,15 @@ async function handleIncomingMessages(body: any) {
   const messages = body.entry?.[0]?.changes?.[0]?.value?.messages || [];
   const contacts = body.entry?.[0]?.changes?.[0]?.value?.contacts || [];
 
-  // Get dealer ID from environment or request (for multi-tenant)
-  const dealerId = process.env.DEALER_ID || 'default-carstreets'; // ← Update this
+  const phoneNumberId = body.entry?.[0]?.changes?.[0]?.value?.metadata?.phone_number_id;
+  const dealer = await prisma.dealer.findFirst({
+    where: { whatsappPhoneNumberId: phoneNumberId }
+  });
+  if (!dealer) {
+    console.warn('No dealer found for phone:', phoneNumberId);
+    return NextResponse.json({ success: true }); // Always return 200 to Meta
+  }
+  const dealerId = dealer.id;
 
   for (const message of messages) {
     try {
