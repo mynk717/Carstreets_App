@@ -85,7 +85,7 @@ export default function CatalogDashboardClient({
     }
   };
 
-  const metaConfigured = !!dealer.metaAccessToken && !!dealer.facebookCatalogId;
+  const metaConfigured = !!dealer.facebookCatalogId;
 
   return (
     <div className="space-y-6 max-w-6xl">

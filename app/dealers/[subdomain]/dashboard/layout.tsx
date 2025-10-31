@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { DashboardSidebar } from './components/DashboardSidebar';
 import { ReactNode } from 'react';
 
+
 // Fetch dealer data for the layout
 async function getDealer(subdomain: string) {
   const dealer = await prisma.dealer.findUnique({

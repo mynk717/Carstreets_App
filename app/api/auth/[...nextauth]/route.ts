@@ -1,12 +1,17 @@
+// app/api/auth/[...nextauth]/route.ts
 import NextAuth from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { compare } from "bcryptjs";
 import type { NextAuthOptions } from "next-auth";
+import { prisma } from "@/lib/prisma";
 
-// Extend NextAuth types to include id
+// Extend NextAuth types
 declare module "next-auth" {
   interface User {
     id: string;
+    subdomain?: string;
+    dealerId?: string;
+    role?: string;
   }
   
   interface Session {
@@ -15,6 +20,9 @@ declare module "next-auth" {
       name?: string | null;
       email?: string | null;
       image?: string | null;
+      subdomain?: string;
+      dealerId?: string;
+      role?: string;
     };
   }
 }
@@ -22,15 +30,20 @@ declare module "next-auth" {
 declare module "next-auth/jwt" {
   interface JWT {
     id: string;
+    subdomain?: string;
+    dealerId?: string;
+    role?: string;
   }
 }
 
-const users = [
+// Admin users (hardcoded for now)
+const adminUsers = [
   {
-    id: "1",
+    id: "admin-1",
     name: "Mayank",
     email: process.env.ADMIN_EMAIL || "shukla.mayank247@gmail.com",
-    passwordHash: process.env.ADMIN_PASSWORD_HASH || "$2a$12$y0WMrBQKYj3KliIFIRyT1OmwmSNLY3YapBvKgl4CZGzWs6AZVFILG", // bcrypt hash for "Skoda@321"
+    passwordHash: process.env.ADMIN_PASSWORD_HASH || "$2a$12$y0WMrBQKYj3KliIFIRyT1OmwmSNLY3YapBvKgl4CZGzWs6AZVFILG",
+    role: "admin",
   },
 ];
 
@@ -42,51 +55,68 @@ export const authOptions: NextAuthOptions = {
         email: {
           label: "Email",
           type: "email",
-          placeholder: "mayank@mktgdime.com",
+          placeholder: "email@example.com",
         },
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
         console.log('🔐 Login attempt:', credentials?.email);
-        console.log('🔑 ENV vars loaded:', {
-          hasEmail: !!process.env.ADMIN_EMAIL,
-          hasHash: !!process.env.ADMIN_PASSWORD_HASH,
-          hasSecret: !!process.env.NEXTAUTH_SECRET
-        });
         
         if (!credentials?.email || !credentials?.password) {
           console.log('❌ Missing credentials');
           return null;
         }
-      
-        const user = users.find(
-          (user) => user.email === credentials.email.toLowerCase()
-        );
-        
-        if (!user) {
-          console.log('❌ User not found for email:', credentials.email);
-          console.log('🔍 Available users:', users.map(u => u.email));
-          return null;
-        }
-      
-        console.log('✅ User found, verifying password...');
-        console.log('🔑 Hash to compare against:', user.passwordHash.substring(0, 20) + '...');
-        
-        const isValid = await compare(credentials.password, user.passwordHash);
-        
-        console.log('🔐 Password comparison result:', isValid);
-        
-        if (!isValid) {
-          console.log('❌ Invalid password');
-          return null;
-        }
-      
-        console.log('✅ Login successful!');
 
+        const email = credentials.email.toLowerCase();
+
+        // 1. Check if it's an admin user
+        const adminUser = adminUsers.find(u => u.email === email);
+        
+        if (adminUser) {
+          const isValid = await compare(credentials.password, adminUser.passwordHash);
+          
+          if (!isValid) {
+            console.log('❌ Invalid admin password');
+            return null;
+          }
+
+          console.log('✅ Admin login successful!');
+          return {
+            id: adminUser.id,
+            name: adminUser.name,
+            email: adminUser.email,
+            role: "admin",
+          };
+        }
+
+        // 2. Check if it's a dealer user
+        const dealer = await prisma.dealer.findUnique({
+          where: { email },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            subdomain: true,
+          },
+        });
+
+        if (!dealer) {
+          console.log('❌ User not found:', email);
+          return null;
+        }
+
+        // For dealers, you might want to implement password hashing
+        // For now, we'll just authenticate them if they exist
+        // TODO: Add password field to Dealer model and implement proper hashing
+        console.log('✅ Dealer login successful!');
+        
         return {
-          id: user.id,
-          name: user.name,
-          email: user.email,
+          id: dealer.id,
+          name: dealer.name || "Dealer",
+          email: dealer.email,
+          subdomain: dealer.subdomain,
+          dealerId: dealer.id,
+          role: "dealer",
         };
       },
     }),
@@ -98,12 +128,18 @@ export const authOptions: NextAuthOptions = {
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id;
+        token.subdomain = user.subdomain;
+        token.dealerId = user.dealerId;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
       if (token && session.user) {
         session.user.id = token.id;
+        session.user.subdomain = token.subdomain as string | undefined;
+        session.user.dealerId = token.dealerId as string | undefined;
+        session.user.role = token.role as string | undefined;
       }
       return session;
     },

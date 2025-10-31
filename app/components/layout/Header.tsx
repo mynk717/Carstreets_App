@@ -1,41 +1,29 @@
+// app/components/layout/Header.tsx
 'use client'
 
-import { useSession, signIn, signOut } from "next-auth/react";
-import { useRouter, usePathname } from "next/navigation";
-import { useState, useEffect } from 'react'
-import { Search, Menu, X, User } from 'lucide-react'
+import { useSession, signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
+import { useState } from 'react'
+import { Menu, X } from 'lucide-react'
 import { Button } from '../ui/Button'
-import { Input } from '../ui/Input'
 import Link from 'next/link'
 
 export default function Header() {
   const pathname = usePathname()
-  const router = useRouter()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
   
-  // Only use session on routes that need it (admin, dashboard, etc.)
-  // For dealer public routes, session will be null
+  // Detect if we're on a dealer public route
   const isDealerPublicRoute = pathname?.startsWith('/dealers/') && !pathname?.includes('/dashboard')
   
-  // Safe session handling - only call useSession on auth-enabled routes
+  // Safe session handling
   let session = null
-  let status = 'unauthenticated'
   
   if (!isDealerPublicRoute) {
     try {
       const sessionData = useSession()
       session = sessionData.data
-      status = sessionData.status
     } catch (e) {
-      // Session not available, continue with null
-    }
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`)
+      // Session not available
     }
   }
 
@@ -43,63 +31,71 @@ export default function Header() {
     await signOut({ callbackUrl: '/' })
   }
 
+  // Get dealer subdomain from session (scalable)
+  const dealerSubdomain = session?.user?.subdomain
+
   return (
-    <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+    <header className="bg-white border-b border-gray-200 sticky top-0 z-50 shadow-sm">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2">
-            <div className="text-2xl font-bold text-blue-600">
-              CarStreets
+            <div className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
+              MotoYard
             </div>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center gap-6">
-            <Link href="/dealers" className="text-gray-700 hover:text-blue-600 transition">
-              Browse Dealers
+            <Link 
+              href="/" 
+              className="text-gray-700 hover:text-blue-600 transition font-medium"
+            >
+              Home
             </Link>
-            <Link href="/about" className="text-gray-700 hover:text-blue-600 transition">
-              About
+            <Link 
+              href="/features" 
+              className="text-gray-700 hover:text-blue-600 transition font-medium"
+            >
+              Features
             </Link>
-            <Link href="/contact" className="text-gray-700 hover:text-blue-600 transition">
-              Contact
+            <Link 
+              href="/pricing" 
+              className="text-gray-700 hover:text-blue-600 transition font-medium"
+            >
+              Pricing
             </Link>
           </nav>
 
-          {/* Search Bar */}
-          <form onSubmit={handleSearch} className="hidden md:flex items-center gap-2 flex-1 max-w-md mx-4">
-            <div className="relative w-full">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search cars..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 w-full"
-              />
-            </div>
-          </form>
-
-          {/* Auth Actions - Only show on non-public routes */}
+          {/* Auth Actions - Desktop */}
           <div className="hidden md:flex items-center gap-3">
             {!isDealerPublicRoute && session ? (
               <>
-                <Link href="/admin/dashboard">
-                  <Button variant="outline" size="sm">
-                    Dashboard
-                  </Button>
-                </Link>
+                {session && (
+  <Link href={`/dealers/${session.user.subdomain || 'carstreets'}/dashboard`}>
+                    <Button variant="outline" size="sm">
+                      Dashboard
+                    </Button>
+                  </Link>
+                )}
                 <Button onClick={handleSignOut} variant="outline" size="sm">
                   Sign Out
                 </Button>
               </>
             ) : !isDealerPublicRoute ? (
-              <Button onClick={() => signIn()} size="sm">
-                Sign In
-              </Button>
+              <>
+                <Link href="/auth/signin">
+                  <Button variant="outline" size="sm">
+                    Sign In
+                  </Button>
+                </Link>
+                <Link href="/get-started">
+                  <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                    Get Started
+                  </Button>
+                </Link>
+              </>
             ) : (
-              // For public dealer routes, show generic CTA
               <Link href="/">
                 <Button size="sm">
                   Back to Home
@@ -120,53 +116,43 @@ export default function Header() {
         {/* Mobile Menu */}
         {isMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-200">
-            {/* Mobile Search */}
-            <form onSubmit={handleSearch} className="mb-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                <Input
-                  type="text"
-                  placeholder="Search cars..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 w-full"
-                />
-              </div>
-            </form>
-
-            {/* Mobile Navigation */}
             <nav className="flex flex-col gap-3">
               <Link 
-                href="/dealers" 
+                href="/" 
                 className="text-gray-700 hover:text-blue-600 transition py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Browse Dealers
+                Home
               </Link>
               <Link 
-                href="/about" 
+                href="/features" 
                 className="text-gray-700 hover:text-blue-600 transition py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                About
+                Features
               </Link>
               <Link 
-                href="/contact" 
+                href="/pricing" 
                 className="text-gray-700 hover:text-blue-600 transition py-2"
                 onClick={() => setIsMenuOpen(false)}
               >
-                Contact
+                Pricing
               </Link>
 
               {/* Mobile Auth Actions */}
               <div className="pt-3 border-t border-gray-200 mt-3">
                 {!isDealerPublicRoute && session ? (
                   <>
-                    <Link href="/admin/dashboard" onClick={() => setIsMenuOpen(false)}>
-                      <Button variant="outline" size="sm" className="w-full mb-2">
-                        Dashboard
-                      </Button>
-                    </Link>
+                    {dealerSubdomain && (
+                      <Link 
+                        href={`/dealers/${dealerSubdomain}/dashboard`}
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Button variant="outline" size="sm" className="w-full mb-2">
+                          Dashboard
+                        </Button>
+                      </Link>
+                    )}
                     <Button 
                       onClick={() => {
                         handleSignOut()
@@ -180,16 +166,24 @@ export default function Header() {
                     </Button>
                   </>
                 ) : !isDealerPublicRoute ? (
-                  <Button 
-                    onClick={() => {
-                      signIn()
-                      setIsMenuOpen(false)
-                    }} 
-                    size="sm"
-                    className="w-full"
-                  >
-                    Sign In
-                  </Button>
+                  <>
+                    <Link 
+                      href="/auth/signin"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Button variant="outline" size="sm" className="w-full mb-2">
+                        Sign In
+                      </Button>
+                    </Link>
+                    <Link 
+                      href="/get-started"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700">
+                        Get Started
+                      </Button>
+                    </Link>
+                  </>
                 ) : (
                   <Link href="/" onClick={() => setIsMenuOpen(false)}>
                     <Button size="sm" className="w-full">

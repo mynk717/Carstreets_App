@@ -1,6 +1,7 @@
 'use client'
 import { useState } from 'react'
-import { CheckCircle, AlertCircle, Building2, Globe } from 'lucide-react'
+import Footer from '@/components/layout/Footer'
+import { CheckCircle, AlertCircle, Building2, Globe, Lock, Zap } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import Link from 'next/link'
@@ -499,13 +500,38 @@ export default function GetStartedPage() {
             </div>
           </div>
 
-          {/* Trust Indicators */}
-          <div className="text-center mt-8 text-gray-600 text-sm">
-            <p className="font-medium">✨ 14-day free trial • Cancel anytime • No setup fees</p>
-            <p className="mt-2 font-medium">🔒 Secure payment processing by Razorpay</p>
-          </div>
+          {/* Trust Indicators - Compact Horizontal */}
+<div className="mt-10 pt-8 border-t border-gray-200">
+  <div className="flex flex-col md:flex-row items-center justify-center gap-6 max-w-3xl mx-auto">
+    {/* Indicator 1 */}
+    <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-lg">
+      <Zap className="w-5 h-5 text-yellow-500 flex-shrink-0" strokeWidth={2.5} />
+      <span className="text-sm font-medium text-gray-900">
+        Free plan: 5 car listings
+      </span>
+    </div>
+
+    {/* Indicator 2 */}
+    <div className="flex items-center gap-3 px-4 py-3 bg-green-50 border border-green-200 rounded-lg">
+      <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" strokeWidth={2.5} />
+      <span className="text-sm font-medium text-gray-900">
+        Upgrade anytime
+      </span>
+    </div>
+
+    {/* Indicator 3 */}
+    <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-lg">
+      <Lock className="w-5 h-5 text-blue-500 flex-shrink-0" strokeWidth={2.5} />
+      <span className="text-sm font-medium text-gray-900">
+        Secure by PayU
+      </span>
+    </div>
+  </div>
+</div>
+
         </div>
       </div>
+      <Footer variant="marketing-dime" /> 
     </>
   )
 }

@@ -49,9 +49,10 @@ export class CatalogService {
       },
     });
 
+    // ✅ CHANGE 1: Fixed base URL to use motoyard.mktgdime.com (Line 62-64)
     const baseUrl = dealer.customDomain
       ? `https://${dealer.customDomain}`
-      : `https://${dealer.subdomain}.carstreets.com`;
+      : `https://${dealer.subdomain}.motoyard.mktgdime.com`; // ← Changed from .carstreets.com
 
     const items: CatalogItem[] = cars.map((car) => {
       // Parse images
@@ -130,11 +131,12 @@ export class CatalogService {
       )
       .join('\n');
 
+    // ✅ CHANGE 2: Fixed RSS title and link (Line 163-165)
     return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
-    <title>CarStreets Vehicle Catalog</title>
-    <link>https://carstreets.com</link>
+    <title>MotoYard Vehicle Catalog</title>
+    <link>https://motoyard.mktgdime.com</link>
     <description>Vehicle inventory feed</description>
     ${xmlItems}
   </channel>
@@ -210,19 +212,26 @@ export class CatalogService {
         },
       });
 
-      if (!dealer?.metaAccessToken) {
-        throw new Error('Meta access token not configured');
+      // ✅ CHANGE 3: Added env token fallback (Line 254-261)
+      const accessToken = dealer?.metaAccessToken || process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
+      
+      if (!accessToken) {
+        throw new Error('Meta access token not configured. Please add FACEBOOK_PAGE_ACCESS_TOKEN to environment variables or dealer settings.');
+      }
+
+      if (!dealer?.facebookCatalogId) {
+        throw new Error('Facebook Catalog ID not configured');
       }
 
       const { items } = await this.generateCatalogFromInventory(dealerId);
 
-      // Batch upload to Meta Catalog
+      // ✅ CHANGE 4: Use accessToken variable instead of dealer.metaAccessToken (Line 271)
       const response = await fetch(
         `https://graph.facebook.com/v18.0/${dealer.facebookCatalogId}/batch`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${dealer.metaAccessToken}`,
+            Authorization: `Bearer ${accessToken}`, // ← Changed from dealer.metaAccessToken
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({

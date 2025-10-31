@@ -97,6 +97,7 @@ model Dealer {
   // WhatsApp Integration
   whatsappBusinessNumber    String?
   whatsappBusinessAccountId String?
+  whatsappPhoneNumberId      String?
   whatsappBusinessVerified  Boolean  @default(false)
   whatsappApiToken          String?
   
@@ -276,6 +277,7 @@ model WhatsAppContact {
   optedOutAt  DateTime?
   
   lastMessageAt DateTime?
+  source        String   @default("manual")
   
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
