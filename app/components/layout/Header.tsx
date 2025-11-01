@@ -143,11 +143,8 @@ export default function Header() {
               <div className="pt-3 border-t border-gray-200 mt-3">
                 {!isDealerPublicRoute && session ? (
                   <>
-                    {dealerSubdomain && (
-                      <Link 
-                        href={`/dealers/${dealerSubdomain}/dashboard`}
-                        onClick={() => setIsMenuOpen(false)}
-                      >
+                    {session && (
+  <Link href={`/dealers/${session.user.subdomain || 'carstreets'}/dashboard`}>
                         <Button variant="outline" size="sm" className="w-full mb-2">
                           Dashboard
                         </Button>

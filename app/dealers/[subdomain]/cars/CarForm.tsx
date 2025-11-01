@@ -66,7 +66,7 @@ export default function CarForm({
     description: initialCar.description || "",
     images: Array.isArray(initialCar.images) ? [...initialCar.images] : [],
   });
-  
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);  // ✅ Add success state
@@ -79,6 +79,17 @@ export default function CarForm({
     }));
   }
 
+  // ✅ NEW: Set cover utility (moves selected image to index 0)
+  function handleSetCover(idx: number) {
+    setForm(f => {
+      const current = [...(f.images ?? [])];
+      if (idx <= 0 || idx >= current.length) return f;
+      const [sel] = current.splice(idx, 1);
+      current.unshift(sel);
+      return { ...f, images: current };
+    });
+  }
+
   function handleChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
     const { name, value } = e.target;
     setForm(f => ({ ...f, [name]: value }));
@@ -89,14 +100,14 @@ export default function CarForm({
     setLoading(true);
     setError("");
     setSuccess(false);  // ✅ Reset success state
-    
+
     try {
       const res = await fetch(`/api/dealers/${subdomain}/cars`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ dealerId, ...form }),
       });
-      
+
       if (!res.ok) {
         let msg = "Submission failed";
         try {
@@ -112,7 +123,7 @@ export default function CarForm({
         } catch {}
         throw new Error(msg);
       }
-      
+
       // ✅ Success handling
       setSuccess(true);
       setForm({
@@ -120,7 +131,7 @@ export default function CarForm({
         kmDriven: "", fuelType: "", transmission: "", owners: "",
         location: "", description: "", images: []
       });
-      
+
       // ✅ Redirect after 2 seconds
       setTimeout(() => {
         if (onSuccess) {
@@ -129,7 +140,7 @@ export default function CarForm({
           window.location.href = `/dealers/${subdomain}/dashboard`;
         }
       }, 2000);
-      
+
     } catch (err: any) {
       setError(typeof err === "string" ? err : (err?.message || "Submission failed"));
     } finally {
@@ -157,88 +168,88 @@ export default function CarForm({
               </div>
             )}
 
-            <input 
-              name="brand" 
-              value={form.brand as string} 
-              onChange={handleChange} 
-              placeholder="Brand" 
-              required 
-              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="brand"
+              value={form.brand as string}
+              onChange={handleChange}
+              placeholder="Brand"
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
-            <input 
-              name="model" 
-              value={form.model as string} 
-              onChange={handleChange} 
-              placeholder="Model" 
-              required 
-              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="model"
+              value={form.model as string}
+              onChange={handleChange}
+              placeholder="Model"
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
-            <input 
-              name="year" 
-              value={form.year as string} 
-              onChange={handleChange} 
-              placeholder="Year" 
-              type="number" 
-              required 
-              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="year"
+              value={form.year as string}
+              onChange={handleChange}
+              placeholder="Year"
+              type="number"
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
-            <input 
-              name="price" 
-              value={form.price as string} 
-              onChange={handleChange} 
-              placeholder="Price" 
-              type="number" 
-              required 
-              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="price"
+              value={form.price as string}
+              onChange={handleChange}
+              placeholder="Price"
+              type="number"
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
-            <input 
-              name="kmDriven" 
-              value={form.kmDriven as string} 
-              onChange={handleChange} 
-              placeholder="KM Driven" 
-              type="number" 
-              required 
-              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="kmDriven"
+              value={form.kmDriven as string}
+              onChange={handleChange}
+              placeholder="KM Driven"
+              type="number"
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
-            <input 
-              name="fuelType" 
-              value={form.fuelType as string} 
-              onChange={handleChange} 
-              placeholder="Fuel Type" 
-              required 
-              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="fuelType"
+              value={form.fuelType as string}
+              onChange={handleChange}
+              placeholder="Fuel Type"
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
-            <input 
-              name="transmission" 
-              value={form.transmission as string} 
-              onChange={handleChange} 
-              placeholder="Transmission" 
-              required 
-              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="transmission"
+              value={form.transmission as string}
+              onChange={handleChange}
+              placeholder="Transmission"
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
-            <input 
-              name="owners" 
-              value={form.owners as string} 
-              onChange={handleChange} 
-              placeholder="Owners" 
-              type="number" 
-              required 
-              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="owners"
+              value={form.owners as string}
+              onChange={handleChange}
+              placeholder="Owners"
+              type="number"
+              required
+              className="border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
 
-            <input 
-              name="location" 
-              value={form.location as string} 
-              onChange={handleChange} 
-              placeholder="Location" 
-              className="md:col-span-2 border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <input
+              name="location"
+              value={form.location as string}
+              onChange={handleChange}
+              placeholder="Location"
+              className="md:col-span-2 border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
-            <textarea 
-              name="description" 
-              value={form.description as string} 
-              onChange={handleChange} 
-              placeholder="Description" 
-              className="md:col-span-2 border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500" 
+            <textarea
+              name="description"
+              value={form.description as string}
+              onChange={handleChange}
+              placeholder="Description"
+              className="md:col-span-2 border border-gray-300 rounded px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 w-full text-gray-900 placeholder-gray-500"
             />
 
             {/* Cloudinary upload */}
@@ -274,24 +285,54 @@ export default function CarForm({
                   </button>
                 )}
               </CldUploadWidget>
+
+              {/* Preview grid with Set cover (only addition/change) */}
               <div className="flex gap-2 mt-2 flex-wrap">
                 {(form.images ?? []).map((img, i) => (
                   <div className="relative group" key={i}>
-                    <img src={img} alt={`car img ${i + 1}`} className="w-20 h-16 object-cover rounded border" />
+                    {/* Cover badge on index 0 */}
+                    {i === 0 && (
+                      <span className="absolute left-1 top-1 z-10 bg-green-600 text-white text-[10px] px-1.5 py-0.5 rounded">
+                        Cover
+                      </span>
+                    )}
+
+                    <img
+                      src={img}
+                      alt={`car img ${i + 1}`}
+                      className="w-20 h-16 object-cover rounded border"
+                    />
+
+                    {/* Delete */}
                     <button
                       type="button"
                       className="absolute right-1 top-1 bg-red-600 text-white rounded-full p-1 text-xs opacity-80 hover:opacity-100 transition"
                       title="Remove"
                       onClick={() => handleRemoveImage(i)}
-                    >×</button>
+                    >
+                      ×
+                    </button>
+
+                    {/* NEW: Set cover overlay button */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-[11px] p-1 flex justify-between rounded-b">
+                      <button
+                        type="button"
+                        onClick={() => handleSetCover(i)}
+                        className="px-2 py-0.5 rounded bg-white/10 hover:bg-white/20"
+                        title="Set as cover"
+                      >
+                        Set cover
+                      </button>
+                      <span className="opacity-75 pr-1">#{i + 1}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <button 
-              type="submit" 
-              className="col-span-2 mt-4 w-full py-3 rounded bg-blue-700 text-white font-semibold text-lg shadow hover:bg-blue-800 transition" 
+            <button
+              type="submit"
+              className="col-span-2 mt-4 w-full py-3 rounded bg-blue-700 text-white font-semibold text-lg shadow hover:bg-blue-800 transition"
               disabled={loading}
             >
               {loading ? "Saving..." : (initialCar.id ? "Update Car" : "Add Car")}
