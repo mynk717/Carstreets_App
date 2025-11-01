@@ -5,7 +5,6 @@ import Image from 'next/image';
 import {
   Calendar as CalendarIcon,
   Clock,
-  CheckCircle2,
   Wand2,
   Sparkles,
   Eye,
@@ -68,10 +67,11 @@ export default function DealerCalendarClient({
       .replace(/\s{2,}/g, ' ')
       .trim();
 
-  const stripEmojis = (t?: string | null) => (t || '').replace(
-    /([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDD00-\uDDFF])/g,
-    ''
-  );
+  const stripEmojis = (t?: string | null) =>
+    (t || '').replace(
+      /([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDD00-\uDDFF])/g,
+      ''
+    );
 
   const platformPill = (p: string) => {
     const base = 'px-3 py-1 text-xs font-semibold rounded-full inline-flex items-center gap-1';
@@ -132,7 +132,9 @@ export default function DealerCalendarClient({
       });
       if (!res.ok) throw new Error(await res.text());
       const { content } = await res.json();
-      setItems(prev => prev.map(x => x.id === id ? { ...x, status: content.status, scheduledDate: content.scheduledDate } : x));
+      setItems((prev) =>
+        prev.map((x) => (x.id === id ? { ...x, status: content.status, scheduledDate: content.scheduledDate } : x))
+      );
       setScheduleModal(null);
     } catch (e: any) {
       alert('Failed to schedule: ' + e.message);
@@ -140,7 +142,6 @@ export default function DealerCalendarClient({
       setBusyId(null);
     }
   };
-  
 
   const regenerateText = async (id: string) => {
     setBusyId(id);
@@ -201,12 +202,12 @@ export default function DealerCalendarClient({
   const renderText = (id: string, raw?: string | null) => {
     const base = showPlain ? stripEmojis(stripMarkdown(raw)) : stripMarkdown(raw);
     const isExpanded = !!expanded[id];
-    const limit = 220; // characters visible when collapsed
+    const limit = 220;
     const needsClamp = base.length > limit;
     const display = !needsClamp || isExpanded ? base : base.slice(0, limit) + '…';
 
     return (
-      <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-6">
+      <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words leading-6">
         {display}
         {needsClamp && (
           <button
@@ -221,7 +222,7 @@ export default function DealerCalendarClient({
   };
 
   return (
-    <div className="space-y-6 max-w-6xl">
+    <div className="space-y-6 max-w-6xl w-full overflow-x-hidden">
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>
@@ -239,7 +240,7 @@ export default function DealerCalendarClient({
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard label="Total Content" value={stats.total} />
         <StatCard label="Scheduled" value={stats.scheduled} accent="text-blue-600" />
         <StatCard label="Posted" value={stats.posted} accent="text-green-600" />
@@ -255,21 +256,44 @@ export default function DealerCalendarClient({
             const img = imageFor(item);
             const pill = platformPill(item.platform);
             return (
-              <div key={item.id} className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition">
-                <div className="flex items-start gap-4">
+              <div
+                key={item.id}
+                className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl p-4 hover:shadow-md transition"
+              >
+                {/* Mobile-first stack; switch to row on large screens */}
+                <div className="flex flex-col lg:flex-row items-start gap-4 w-full">
+                  {/* Mobile inline preview (hidden on desktop) */}
+                  {img && (
+                    <button onClick={() => setPreview(img)} className="block lg:hidden w-full">
+                      <Image
+                        src={img}
+                        alt="Content"
+                        width={800}
+                        height={450}
+                        className="w-full h-56 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                        unoptimized
+                      />
+                    </button>
+                  )}
+
                   {/* Left column: pills and text */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-2">
-                      <span className={pill.cls}>{pill.icon}<span className="capitalize">{item.platform}</span></span>
+                      <span className={pill.cls}>
+                        {pill.icon}
+                        <span className="capitalize">{item.platform}</span>
+                      </span>
                       <span className={statusPill(item.status)}>{item.status.replace('_', ' ')}</span>
                     </div>
 
-                    <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-2">
                       <span>Created: {new Date(item.createdAt).toLocaleDateString()}</span>
                       {item.scheduledDate && (
                         <>
                           <span>•</span>
-                          <span className="inline-flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(item.scheduledDate).toLocaleString()}</span>
+                          <span className="inline-flex items-center gap-1">
+                            <Clock className="w-3 h-3" /> {new Date(item.scheduledDate).toLocaleString()}
+                          </span>
                         </>
                       )}
                     </div>
@@ -287,16 +311,19 @@ export default function DealerCalendarClient({
                           <BadgeCheck className="w-4 h-4" /> Approve
                         </button>
                       )}
+
                       <button
-  onClick={() => setScheduleModal({ 
-    id: item.id, 
-    currentDate: item.scheduledDate ? new Date(item.scheduledDate) : new Date() 
-  })}
-  disabled={busyId === item.id}
-  className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50"
->
-  <CalendarIcon className="w-4 h-4" /> Schedule
-</button>
+                        onClick={() =>
+                          setScheduleModal({
+                            id: item.id,
+                            currentDate: item.scheduledDate ? new Date(item.scheduledDate) : new Date(),
+                          })
+                        }
+                        disabled={busyId === item.id}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        <CalendarIcon className="w-4 h-4" /> Schedule
+                      </button>
 
                       <button
                         onClick={() => setEditing({ id: item.id, text: stripMarkdown(item.textContent || '') })}
@@ -304,6 +331,7 @@ export default function DealerCalendarClient({
                       >
                         <Pencil className="w-4 h-4" /> Edit Text
                       </button>
+
                       <button
                         onClick={() => regenerateText(item.id)}
                         disabled={busyId === item.id}
@@ -311,6 +339,7 @@ export default function DealerCalendarClient({
                       >
                         <RefreshCw className="w-4 h-4" /> Regenerate Text
                       </button>
+
                       <button
                         onClick={() => regenerateImage(item.id)}
                         disabled={busyId === item.id}
@@ -318,6 +347,7 @@ export default function DealerCalendarClient({
                       >
                         <Wand2 className="w-4 h-4" /> Regenerate Image
                       </button>
+
                       <button
                         onClick={() => {
                           const url = prompt('Paste background image URL for banana edit (yard/showroom):');
@@ -328,23 +358,25 @@ export default function DealerCalendarClient({
                       >
                         <Sparkles className="w-4 h-4" /> Edit Image (banana)
                       </button>
+
                       <button
-  onClick={async () => {
-    if (!confirm('Delete this content permanently?')) return;
-    setBusyId(item.id);
-    try {
-      const res = await fetch(`/api/dealers/${subdomain}/content/${item.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(await res.text());
-      setItems((prev) => prev.filter((x) => x.id !== item.id));
-    } finally {
-      setBusyId(null);
-    }
-  }}
-  disabled={busyId === item.id}
-  className="inline-flex items-center gap-2 px-3 py-1.5 border text-xs rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 text-red-600 border-red-200 dark:border-red-900"
->
-  Remove
-</button>
+                        onClick={async () => {
+                          if (!confirm('Delete this content permanently?')) return;
+                          setBusyId(item.id);
+                          try {
+                            const res = await fetch(`/api/dealers/${subdomain}/content/${item.id}`, { method: 'DELETE' });
+                            if (!res.ok) throw new Error(await res.text());
+                            setItems((prev) => prev.filter((x) => x.id !== item.id));
+                          } finally {
+                            setBusyId(null);
+                          }
+                        }}
+                        disabled={busyId === item.id}
+                        className="inline-flex items-center gap-2 px-3 py-1.5 border text-xs rounded-md hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50 text-red-600 border-red-200 dark:border-red-900"
+                      >
+                        Remove
+                      </button>
+
                       {img && (
                         <button
                           onClick={() => setPreview(img)}
@@ -356,10 +388,9 @@ export default function DealerCalendarClient({
                     </div>
                   </div>
 
-                  {/* Right column: big preview */}
+                  {/* Right column: big preview (desktop only) */}
                   {img && (
-                    <button onClick={() => setPreview(img)} className="group relative shrink-0">
-                      {/* Use next/image for perf; enlarge and maintain aspect */}
+                    <button onClick={() => setPreview(img)} className="group relative shrink-0 hidden lg:block">
                       <Image
                         src={img}
                         alt="Content"
@@ -382,83 +413,92 @@ export default function DealerCalendarClient({
 
       {/* Lightbox */}
       {preview && (
-        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4" onClick={() => setPreview(null)}>
+        <div
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setPreview(null)}
+        >
           <button className="absolute top-4 right-4 text-white" onClick={() => setPreview(null)}>
             <X className="w-6 h-6" />
           </button>
-          <img src={preview} alt="Preview" className="max-h-[85vh] max-w-[92vw] rounded-xl shadow-2xl border border-white/20 object-contain" />
+          <img
+            src={preview}
+            alt="Preview"
+            className="max-h-[85vh] max-w-[92vw] rounded-xl shadow-2xl border border-white/20 object-contain"
+          />
         </div>
       )}
 
       {/* Schedule Modal */}
-{scheduleModal && (
-  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-    <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900 dark:text-white">Schedule Post</h3>
-        <button onClick={() => setScheduleModal(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-      <div className="space-y-4">
-        <div>
-          <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">Schedule Date & Time</label>
-          <input
-            type="datetime-local"
-            defaultValue={scheduleModal.currentDate.toISOString().slice(0, 16)}
-            onChange={(e) => setScheduleModal({ ...scheduleModal, currentDate: new Date(e.target.value) })}
-            className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-3 focus:ring-2 focus:ring-blue-500"
-          />
+      {scheduleModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-md bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-gray-900 dark:text-white">Schedule Post</h3>
+              <button onClick={() => setScheduleModal(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">
+                  Schedule Date & Time
+                </label>
+                <input
+                  type="datetime-local"
+                  defaultValue={scheduleModal.currentDate.toISOString().slice(0, 16)}
+                  onChange={(e) => setScheduleModal({ ...scheduleModal, currentDate: new Date(e.target.value) })}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-3 focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div className="flex gap-3">
+                <button onClick={() => setScheduleModal(null)} className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
+                  Cancel
+                </button>
+                <button
+                  onClick={() => schedule(scheduleModal.id, scheduleModal.currentDate)}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  disabled={busyId === scheduleModal.id}
+                >
+                  {busyId === scheduleModal.id ? 'Scheduling...' : 'Schedule'}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <button onClick={() => setScheduleModal(null)} className="flex-1 px-4 py-2 border rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800">
-            Cancel
-          </button>
-          <button
-            onClick={() => schedule(scheduleModal.id, scheduleModal.currentDate)}
-            className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            disabled={busyId === scheduleModal.id}
-          >
-            {busyId === scheduleModal.id ? 'Scheduling...' : 'Schedule'}
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>
-)}
+      )}
 
       {/* Text edit modal */}
-      {/* Text edit modal */}
-{editing && (
-  <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
-    <div className="w-full max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="font-semibold text-gray-900 dark:text-white">Edit Post Text</h3>
-        <button onClick={() => setEditing(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-          <X className="w-5 h-5" />
-        </button>
-      </div>
-      <textarea
-        value={editing.text}
-        onChange={(e) => setEditing((s) => (s ? { ...s, text: e.target.value } : s))}
-        rows={10}
-        className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-3 focus:ring-2 focus:ring-blue-500"
-        placeholder="Write a concise, platform-friendly caption…"
-      />
-      <div className="flex items-center justify-end gap-3 mt-3">
-        <button onClick={() => setEditing(null)} className="px-4 py-2 border rounded-lg">Cancel</button>
-        <button
-          onClick={() => saveText(editing.id, editing.text)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-          disabled={busyId === editing.id}
-        >
-          {busyId === editing.id ? 'Saving...' : 'Save'}
-        </button>
-      </div>
-    </div>
-  </div>
-)}
-
+      {editing && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4">
+          <div className="w-full max-w-2xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-semibold text-gray-900 dark:text-white">Edit Post Text</h3>
+              <button onClick={() => setEditing(null)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <textarea
+              value={editing.text}
+              onChange={(e) => setEditing((s) => (s ? { ...s, text: e.target.value } : s))}
+              rows={10}
+              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-3 focus:ring-2 focus:ring-blue-500"
+              placeholder="Write a concise, platform-friendly caption…"
+            />
+            <div className="flex items-center justify-end gap-3 mt-3">
+              <button onClick={() => setEditing(null)} className="px-4 py-2 border rounded-lg">
+                Cancel
+              </button>
+              <button
+                onClick={() => saveText(editing.id, editing.text)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                disabled={busyId === editing.id}
+              >
+                {busyId === editing.id ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

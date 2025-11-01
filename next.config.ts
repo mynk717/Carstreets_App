@@ -1,7 +1,19 @@
 import type { NextConfig } from 'next';
+import withPWA from 'next-pwa';
+
+// ✅ PWA Configuration
+const pwaConfig = withPWA({
+  dest: 'public',
+  register: true,
+  skipWaiting: true,
+  disable: process.env.NODE_ENV === 'development', // Disable in dev mode
+  scope: '/',
+  sw: 'sw.js',
+  buildExcludes: [/middleware-manifest\.json$/],
+});
 
 const nextConfig: NextConfig = {
-  // ✅ ADD THIS: Fix for next-auth with Next.js 15
+  // ✅ Fix for next-auth with Next.js 15
   transpilePackages: ['next-auth'],
   
   eslint: {
@@ -62,4 +74,5 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['puppeteer-core'],
 };
 
-export default nextConfig;
+// ✅ Export with PWA wrapper
+export default pwaConfig(nextConfig);

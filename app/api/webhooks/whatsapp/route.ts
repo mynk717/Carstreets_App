@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   // Webhook verification from Meta
-  const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'carstreets-webhook-verify-token';
+  const verifyToken = process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN || 'a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0';
   const challenge = request.nextUrl.searchParams.get('hub.challenge');
   const token = request.nextUrl.searchParams.get('hub.verify_token');
 
