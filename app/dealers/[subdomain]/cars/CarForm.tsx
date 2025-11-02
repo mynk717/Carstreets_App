@@ -22,6 +22,9 @@ type CarFormValues = {
   isFeatured?: boolean;
   availableForFinance?: boolean;
   availableForExchange?: boolean;
+
+  // ✅ ADD THIS - Verification flag
+  isVerified?: boolean;
 };
 
 type InitialCar = Partial<CarFormValues> & {
@@ -144,6 +147,9 @@ export default function CarForm({
     isFeatured: ic.isFeatured ?? false,
     availableForFinance: ic.availableForFinance ?? true,
     availableForExchange: ic.availableForExchange ?? true,
+
+    // ✅ ADD THIS - Auto-verify all dealer uploads
+    isVerified: true,
   });
 
   const [loading, setLoading] = useState(false);
@@ -178,7 +184,8 @@ export default function CarForm({
       const res = await fetch(`/api/dealers/${subdomain}/cars`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ dealerId, ...form }),
+        // ✅ ADD isVerified: true to the request
+        body: JSON.stringify({ dealerId, isVerified: true, ...form }),
       });
       if (!res.ok) {
         let msg = "Submission failed";
