@@ -25,7 +25,6 @@ async function getCatalogData(subdomain: string) {
     where: {
       dealerId: dealer.id,
       isVerified: true,
-      availability: 'in_stock',
     },
   });
 
