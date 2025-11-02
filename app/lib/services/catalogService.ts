@@ -45,7 +45,6 @@ export class CatalogService {
       where: {
         dealerId,
         isVerified: true,
-        availability: 'in_stock',
       },
     });
 
