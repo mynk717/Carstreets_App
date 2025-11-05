@@ -1,245 +1,128 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '../../../auth/[...nextauth]/route'
-import { prisma } from '@/lib/prisma'
+// app/api/social/instagram/post/route.ts
 
-interface InstagramPostRequest {
-  caption: string
-  imageUrl: string | string[] // Single image or carousel
-  dealerId?: string
-  contentId?: string // Link back to ContentCalendar
-}
+import { NextRequest, NextResponse } from 'next/server'
+import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
-    console.log('📸 Instagram posting API called')
+    const { dealerId, contentId, textContent, imageUrl } = await request.json()
 
-    // Verify authentication using your existing NextAuth
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!dealerId || !textContent || !imageUrl) {
+      return NextResponse.json(
+        { error: 'Missing required fields' },
+        { status: 400 }
+      )
     }
 
-    const { caption, imageUrl, dealerId, contentId }: InstagramPostRequest = await request.json()
-
-    // Get Instagram access token from your existing SocialMediaToken table
-    const socialToken = await prisma.socialMediaToken.findFirst({
-      where: {
-        platform: 'instagram',
-        dealerId: dealerId || 'admin',
-        expiresAt: { gt: new Date() } // Token not expired
+    // ✅ Step 1: Validate dealer exists
+    const dealer = await prisma.dealer.findUnique({
+      where: { id: dealerId },
+      select: {
+        id: true,
+        subdomain: true,
+        metaAccessToken: true,
+        facebookPageId: true,  // Instagram Business Account via Facebook Page
+        metaAccessTokenExpiry: true
       }
     })
 
-    if (!socialToken) {
-      return NextResponse.json({ 
-        error: 'Instagram not connected or token expired',
-        action: 'Please reconnect Instagram account'
-      }, { status: 400 })
+    if (!dealer) {
+      return NextResponse.json(
+        { error: 'Dealer not found' },
+        { status: 404 }
+      )
     }
 
-    const { accessToken } = socialToken
-    // Use the accessToken directly - there's no platformUserId field in your schema
-
-    // For Instagram, we need to get the Instagram Business Account ID from the access token
-    // This requires an additional API call to Facebook Graph API
-    const accountResponse = await fetch(`https://graph.facebook.com/v18.0/me/accounts?fields=instagram_business_account&access_token=${accessToken}`)
-    const accountData = await accountResponse.json()
-    
-    if (!accountData.data || accountData.data.length === 0 || !accountData.data[0].instagram_business_account) {
-      throw new Error('No Instagram Business Account found. Please connect an Instagram Business Account to your Facebook Page.')
+    // ✅ Step 2: Check token expiry
+    if (dealer.metaAccessTokenExpiry && 
+        new Date(dealer.metaAccessTokenExpiry) < new Date()) {
+      return NextResponse.json(
+        { error: 'Meta token expired - please reconnect' },
+        { status: 401 }
+      )
     }
 
-    const instagramAccountId = accountData.data[0].instagram_business_account.id
-
-    // Handle single image vs carousel posting
-    const isCarousel = Array.isArray(imageUrl) && imageUrl.length > 1
-    const images = Array.isArray(imageUrl) ? imageUrl : [imageUrl]
-
-    let postResult
-
-    if (isCarousel) {
-      // Step 1: Create media containers for each image
-      const mediaContainers = []
-      for (const image of images) {
-        const containerResponse = await fetch(`https://graph.facebook.com/v18.0/${instagramAccountId}/media`, {
-          method: 'POST',
-          body: new URLSearchParams({
-            image_url: image,
-            is_carousel_item: 'true',
-            access_token: accessToken,
-          }),
-        })
-
-        if (!containerResponse.ok) {
-          throw new Error(`Failed to create media container: ${containerResponse.statusText}`)
-        }
-
-        const container = await containerResponse.json()
-        mediaContainers.push(container.id)
-      }
-
-      // Step 2: Create carousel container
-      const carouselResponse = await fetch(`https://graph.facebook.com/v18.0/${instagramAccountId}/media`, {
-        method: 'POST',
-        body: new URLSearchParams({
-          media_type: 'CAROUSEL',
-          children: mediaContainers.join(','),
-          caption: caption,
-          access_token: accessToken,
-        }),
-      })
-
-      if (!carouselResponse.ok) {
-        throw new Error(`Failed to create carousel: ${carouselResponse.statusText}`)
-      }
-
-      const carousel = await carouselResponse.json()
-
-      // Step 3: Publish carousel
-      const publishResponse = await fetch(`https://graph.facebook.com/v18.0/${instagramAccountId}/media_publish`, {
-        method: 'POST',
-        body: new URLSearchParams({
-          creation_id: carousel.id,
-          access_token: accessToken,
-        }),
-      })
-
-      postResult = await publishResponse.json()
-
-    } else {
-      // Single image post
-      // Step 1: Create media container
-      const containerResponse = await fetch(`https://graph.facebook.com/v18.0/${instagramAccountId}/media`, {
-        method: 'POST',
-        body: new URLSearchParams({
-          image_url: images[0],
-          caption: caption,
-          access_token: accessToken,
-        }),
-      })
-
-      if (!containerResponse.ok) {
-        throw new Error(`Failed to create media container: ${containerResponse.statusText}`)
-      }
-
-      const container = await containerResponse.json()
-
-      // Step 2: Publish media
-      const publishResponse = await fetch(`https://graph.facebook.com/v18.0/${instagramAccountId}/media_publish`, {
-        method: 'POST',
-        body: new URLSearchParams({
-          creation_id: container.id,
-          access_token: accessToken,
-        }),
-      })
-
-      postResult = await publishResponse.json()
+    if (!dealer.metaAccessToken || !dealer.facebookPageId) {
+      return NextResponse.json(
+        { error: 'Instagram not connected' },
+        { status: 400 }
+      )
     }
 
-    if (!postResult.id) {
-      throw new Error('Failed to publish to Instagram')
-    }
-
-    // Update your existing ContentCalendar table (using correct field names)
+    // ✅ Step 3: Validate content ownership
     if (contentId) {
-      await prisma.contentCalendar.update({
+      const content = await prisma.contentCalendar.findUnique({
         where: { id: contentId },
-        data: {
-          status: 'posted',
-          // postedAt doesn't exist - use scheduledDate or create SocialPost entry
-          scheduledDate: new Date(),
-        }
+        select: { dealerId: true }
       })
 
-      // Also create a SocialPost entry to track the actual post
-      await prisma.socialPost.create({
-        data: {
-          dealerId: dealerId || 'admin',
-          platform: 'instagram',
-          status: 'posted',
-          postedAt: new Date(),
-          // Store Instagram post ID for future reference
-        }
-      })
+      if (!content || content.dealerId !== dealerId) {
+        console.warn(
+          `⚠️ SECURITY: Unauthorized Instagram post attempt - 
+           Content: ${contentId}, Dealer: ${dealerId}`
+        )
+        return NextResponse.json(
+          { error: 'Forbidden' },
+          { status: 403 }
+        )
+      }
     }
 
-    console.log('✅ Instagram post successful:', postResult.id)
+    // ✅ Step 4: Create Instagram media (Step 1)
+    console.log(`📷 Creating Instagram media for dealer: ${dealer.subdomain}`)
+
+    const createResponse = await fetch(
+      `https://graph.instagram.com/v18.0/${dealer.facebookPageId}/media`,
+      {
+        method: 'POST',
+        body: new URLSearchParams({
+          image_url: imageUrl,
+          caption: textContent,
+          access_token: dealer.metaAccessToken  // ✅ DEALER'S token
+        })
+      }
+    )
+
+    const media = await createResponse.json()
+
+    if (!createResponse.ok) {
+      throw new Error(media.error?.message || 'Failed to create media')
+    }
+
+    // ✅ Step 5: Publish media (Step 2)
+    const publishResponse = await fetch(
+      `https://graph.instagram.com/v18.0/${dealer.facebookPageId}/media_publish`,
+      {
+        method: 'POST',
+        body: new URLSearchParams({
+          creation_id: media.id,
+          access_token: dealer.metaAccessToken
+        })
+      }
+    )
+
+    const published = await publishResponse.json()
+
+    if (!publishResponse.ok) {
+      throw new Error(published.error?.message || 'Failed to publish')
+    }
+
+    console.log(
+      `✅ Instagram post successful - Dealer: ${dealer.subdomain}, PostID: ${published.id}`
+    )
 
     return NextResponse.json({
       success: true,
+      postId: published.id,
       platform: 'instagram',
-      postId: postResult.id,
-      message: 'Successfully posted to Instagram',
-      isCarousel,
-      imageCount: images.length
+      dealer: dealer.subdomain
     })
 
   } catch (error) {
-    console.error('❌ Instagram posting failed:', error)
-    
-    // Update SocialPost with error (using correct field names)
-    try {
-      const { contentId, dealerId } = await request.json().catch(() => ({}))
-      if (contentId) {
-        await prisma.socialPost.create({
-          data: {
-            dealerId: dealerId || 'admin',
-            platform: 'instagram',
-            status: 'failed',
-            failureReason: error instanceof Error ? error.message : 'Unknown error'
-          }
-        })
-      }
-    } catch (dbError) {
-      console.error('Failed to log error to database:', dbError)
-    }
-
-    return NextResponse.json({
-      success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-      platform: 'instagram'
-    }, { status: 500 })
-  }
-}
-
-// GET - Check Instagram connection status  
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const dealerId = searchParams.get('dealerId') || 'admin'
-
-    const socialToken = await prisma.socialMediaToken.findFirst({
-      where: {
-        platform: 'instagram',
-        dealerId,
-        expiresAt: { gt: new Date() }
-      },
-      select: {
-        id: true,
-        // platformUserId doesn't exist in your schema
-        expiresAt: true,
-        createdAt: true
-      }
-    })
-
-    return NextResponse.json({
-      connected: !!socialToken,
-      token: socialToken ? {
-        id: socialToken.id,
-        expires: socialToken.expiresAt,
-        connectedSince: socialToken.createdAt
-      } : null
-    })
-
-  } catch (error) {
-    return NextResponse.json({
-      error: 'Failed to check Instagram connection'
-    }, { status: 500 })
+    console.error('❌ Instagram error:', error)
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : 'Unknown error' },
+      { status: 500 }
+    )
   }
 }

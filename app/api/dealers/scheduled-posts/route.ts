@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get all dealers with scheduled content
+    // Get all scheduled content across all dealers
     const scheduledContent = await prisma.contentCalendar.findMany({
       where: {
         status: 'scheduled',
@@ -20,7 +20,6 @@ export async function POST(request: NextRequest) {
         }
       },
       include: {
-        dealer: true,
         car: true
       }
     });
@@ -29,12 +28,23 @@ export async function POST(request: NextRequest) {
     
     for (const content of scheduledContent) {
       try {
+        // Skip if dealerId missing
+        if (!content.dealerId) {
+          results.push({ 
+            id: content.id, 
+            status: 'failed', 
+            error: 'No dealerId associated' 
+          });
+          continue;
+        }
+
         // Post to the appropriate platform
-        const postResult = await fetch(`${process.env.VERCEL_URL}/api/social/${content.platform}/post`, {
+        const postResult = await fetch(`${process.env.NEXT_PUBLIC_APP_URL}/api/social/${content.platform}/post`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             dealerId: content.dealerId,
+            contentId: content.id,
             textContent: content.textContent,
             imageUrl: content.finalImage || content.brandedImage || content.generatedImage,
             carId: content.carId
@@ -51,10 +61,19 @@ export async function POST(request: NextRequest) {
           });
           results.push({ id: content.id, status: 'posted' });
         } else {
-          results.push({ id: content.id, status: 'failed', error: await postResult.text() });
+          const errorText = await postResult.text();
+          results.push({ 
+            id: content.id, 
+            status: 'failed', 
+            error: errorText 
+          });
         }
       } catch (e: any) {
-        results.push({ id: content.id, status: 'error', error: e.message });
+        results.push({ 
+          id: content.id, 
+          status: 'error', 
+          error: e.message 
+        });
       }
     }
 

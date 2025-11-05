@@ -289,34 +289,34 @@ model WhatsAppContact {
 }
 
 model WhatsAppMessage {
-  id          String   @id @default(cuid())
-  dealerId    String
-  dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  
-  contactId   String?
-  contact     WhatsAppContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  
-  templateId  String?
-  template    WhatsAppTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  
-  phoneNumber String
-  messageType String
-  content     String
-  
-  status      String   @default("queued")
-  messageId   String?
-  error       String?
-  
-  sentAt      DateTime?
-  deliveredAt DateTime?
-  readAt      DateTime?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@index([dealerId])
-  @@index([contactId])
-  @@index([status])
+    id          String   @id @default(cuid())
+      dealerId    String
+        dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+          
+            contactId   String?
+              contact     WhatsAppContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+                
+                  templateId  String?
+                    template    WhatsAppTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+                      
+                        phoneNumber String
+                          messageType String
+                            content     String
+                              
+                                status      String   @default("queued")
+                                  messageId   String?
+                                    error       String?
+                                      
+                                        sentAt      DateTime?
+                                          deliveredAt DateTime?
+                                            readAt      DateTime?
+                                              
+                                                createdAt   DateTime @default(now())
+                                                  updatedAt   DateTime @updatedAt
+                                                    
+                                                      @@index([dealerId])
+                                                        @@index([contactId])
+                                                          @@index([status])
 }
 
 model ProductCatalog {

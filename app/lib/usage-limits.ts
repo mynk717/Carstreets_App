@@ -80,6 +80,36 @@ export async function checkUsageLimit(
   };
 }
 
+export async function incrementUsage(
+  dealerId: string,
+  type: 'cars' | 'aiContent' | 'socialPosts'
+): Promise<void> {
+  try {
+    // Note: This is mainly for tracking/logging
+    // The actual car count is maintained by Prisma relations
+    console.log(`Usage incremented: dealer=${dealerId}, type=${type}`)
+    // If you want to track AI content and social posts separately,
+    // add those fields to the Dealer model and update them here
+  } catch (error) {
+    console.error('Increment usage error:', error)
+  }
+}
+
+// ✅ DECREMENT USAGE (NEW)
+export async function decrementUsage(
+  dealerId: string,
+  type: 'cars' | 'aiContent' | 'socialPosts'
+): Promise<void> {
+  try {
+    // Note: This is mainly for tracking/logging
+    console.log(`Usage decremented: dealer=${dealerId}, type=${type}`)
+    // If you want to track AI content and social posts separately,
+    // add those fields to the Dealer model and update them here
+  } catch (error) {
+    console.error('Decrement usage error:', error)
+  }
+}
+
 // ✅ Helper to get full usage summary
 export async function getUsageSummary(dealerId: string) {
   const dealer = await prisma.dealer.findUnique({

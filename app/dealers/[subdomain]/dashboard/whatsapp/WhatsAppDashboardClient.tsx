@@ -1,32 +1,50 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { MessageSquare, Users, Send, CheckCircle2, XCircle, Clock, Plus, Upload } from 'lucide-react';
+import { useState } from 'react'
+import {
+  MessageSquare,
+  Users,
+  Send,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Plus,
+  Upload,
+  Eye,
+  RefreshCw,
+} from 'lucide-react'
 
 type Contact = {
-  id: string;
-  phoneNumber: string;
-  name: string | null;
-  tags: string[];
-  optedIn: boolean;
-};
+  id: string
+  phoneNumber: string
+  name: string | null
+  tags: string[]
+  optedIn: boolean
+}
 
 type Template = {
-  id: string;
-  name: string;
-  bodyText: string;
-  language: string;
-  category: string;
-};
+  id: string
+  name: string
+  bodyText: string
+  language: string
+  category: string
+}
 
 type Message = {
-  id: string;
-  phoneNumber: string;
-  status: string;
-  createdAt: Date | string;
-  contact: { name: string | null; phoneNumber: string } | null;
-  template: { name: string } | null;
-};
+  id: string
+  phoneNumber: string
+  status: string
+  createdAt: Date | string
+  contact: { name: string | null; phoneNumber: string } | null
+  template: { name: string } | null
+}
+
+type MessageStats = {
+  sent: number
+  delivered: number
+  failed: number
+  read: number
+}
 
 export default function WhatsAppDashboardClient({
   subdomain,
@@ -34,80 +52,175 @@ export default function WhatsAppDashboardClient({
   initialContacts,
   initialTemplates,
   initialMessages,
+  initialStats,
 }: {
-  subdomain: string;
-  dealer: any;
-  initialContacts: Contact[];
-  initialTemplates: Template[];
-  initialMessages: Message[];
+  subdomain: string
+  dealer: any
+  initialContacts: Contact[]
+  initialTemplates: Template[]
+  initialMessages: Message[]
+  initialStats?: MessageStats
 }) {
-  const [contacts, setContacts] = useState<Contact[]>(initialContacts);
-  const [templates, setTemplates] = useState<Template[]>(initialTemplates);
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
-  
-  const [selectedContacts, setSelectedContacts] = useState<string[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('');
-  const [sending, setSending] = useState(false);
-  const [showAddContact, setShowAddContact] = useState(false);
+  // ✅ Default stats
+  const defaultStats: MessageStats = {
+    sent: 0,
+    delivered: 0,
+    failed: 0,
+    read: 0,
+  }
 
-  const stats = {
-    totalContacts: contacts.length,
-    optedIn: contacts.filter((c) => c.optedIn).length,
-    sent: messages.filter((m) => m.status === 'sent' || m.status === 'delivered').length,
-    failed: messages.filter((m) => m.status === 'failed').length,
-  };
+  // ✅ FIX: Only state for data that changes
+  const [contacts, setContacts] = useState<Contact[]>(initialContacts || [])
+  const [messages, setMessages] = useState<Message[]>(initialMessages || [])
+  const [stats, setStats] = useState<MessageStats>(initialStats || defaultStats)
+
+  // ✅ Templates are static from server - don't need state
+  const templates = initialTemplates || []
+
+  const [selectedContacts, setSelectedContacts] = useState<string[]>([])
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('')
+  const [sending, setSending] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [selectedTemplatePreview, setSelectedTemplatePreview] =
+    useState<Template | null>(null)
+
+  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch(
+        `/api/dealers/${subdomain}/whatsapp/contacts/import`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      )
+
+      if (!res.ok) throw new Error(await res.text())
+
+      const result = await res.json()
+      alert(`✅ Imported ${result.imported} contacts!`)
+
+      // Refresh contacts
+      const contactRes = await fetch(
+        `/api/dealers/${subdomain}/whatsapp/contacts`
+      )
+      if (contactRes.ok) {
+        const contactData = await contactRes.json()
+        setContacts(contactData.contacts || [])
+      }
+    } catch (e: any) {
+      alert('❌ Import failed: ' + e.message)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   const handleSendBulk = async () => {
     if (selectedContacts.length === 0 || !selectedTemplate) {
-      alert('Please select contacts and a template');
-      return;
+      alert('Please select contacts and a template')
+      return
     }
 
-    setSending(true);
+    setSending(true)
     try {
       const res = await fetch(`/api/dealers/${subdomain}/whatsapp/send-bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          templateId: selectedTemplate,
           contactIds: selectedContacts,
-          templateName: templates.find((t) => t.id === selectedTemplate)?.name,
+          customVariables: [],
         }),
-      });
+      })
 
-      if (!res.ok) throw new Error(await res.text());
-      const result = await res.json();
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Send failed')
+      }
 
-      alert(`Bulk send complete!\n✅ Sent: ${result.sent}\n❌ Failed: ${result.failed}`);
-      setSelectedContacts([]);
-      setSelectedTemplate('');
+      const result = await res.json()
+
+      alert(
+        `✅ Sent to ${result.sent} contacts\n❌ Failed: ${result.failed}`
+      )
+
+      setSelectedContacts([])
+      setSelectedTemplate('')
 
       // Refresh messages
-      const msgRes = await fetch(`/api/dealers/${subdomain}/whatsapp/messages`);
+      const msgRes = await fetch(`/api/dealers/${subdomain}/whatsapp/messages`)
       if (msgRes.ok) {
-        const msgData = await msgRes.json();
-        setMessages(msgData.messages);
+        const msgData = await msgRes.json()
+        setMessages(msgData.messages || [])
+
+        // Update stats
+        const newStats: MessageStats = {
+          sent: msgData.messages.filter((m: any) => m.status === 'sent').length,
+          delivered: msgData.messages.filter(
+            (m: any) => m.status === 'delivered'
+          ).length,
+          failed: msgData.messages.filter((m: any) => m.status === 'failed')
+            .length,
+          read: msgData.messages.filter((m: any) => m.status === 'read').length,
+        }
+        setStats(newStats)
       }
     } catch (e: any) {
-      alert('Bulk send failed: ' + e.message);
+      alert('❌ Bulk send failed: ' + e.message)
     } finally {
-      setSending(false);
+      setSending(false)
     }
-  };
+  }
 
   const toggleContact = (id: string) => {
     setSelectedContacts((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
-    );
-  };
+    )
+  }
 
   const selectAll = () => {
-    if (selectedContacts.length === contacts.filter((c) => c.optedIn).length) {
-      setSelectedContacts([]);
+    const optedInContacts = contacts.filter((c) => c.optedIn)
+    if (selectedContacts.length === optedInContacts.length) {
+      setSelectedContacts([])
     } else {
-      setSelectedContacts(contacts.filter((c) => c.optedIn).map((c) => c.id));
+      setSelectedContacts(optedInContacts.map((c) => c.id))
     }
-  };
+  }
+  const handleSyncTemplates = async () => {
+    if (!dealer?.whatsappBusinessAccountId) {
+      alert('❌ WhatsApp not connected. Please add WABA ID in Settings.')
+      return
+    }
 
+    try {
+      const res = await fetch(
+        `/api/dealers/${subdomain}/whatsapp/templates/sync`,
+        {
+          method: 'POST',
+        }
+      )
+
+      if (!res.ok) {
+        const error = await res.json()
+        throw new Error(error.error || 'Sync failed')
+      }
+
+      const result = await res.json()
+      alert(`✅ Synced ${result.synced} templates from Meta!`)
+      
+      // Reload the page to show new templates
+      window.location.reload()
+    } catch (error: any) {
+      alert(`❌ Sync failed: ${error.message}`)
+      console.error('Sync error:', error)
+    }
+  }
   return (
     <div className="space-y-6 max-w-7xl">
       {/* Header */}
@@ -120,26 +233,103 @@ export default function WhatsAppDashboardClient({
             Send promotional messages to your customers
           </p>
         </div>
-        {!dealer.whatsappBusinessVerified && (
+        {!dealer?.whatsappBusinessVerified && (
           <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900 rounded-lg p-3">
             <p className="text-sm text-yellow-800 dark:text-yellow-300">
-              ⚠️ WhatsApp Business not connected
+              ⚠️ WhatsApp not connected
             </p>
           </div>
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard label="Total Contacts" value={stats.totalContacts} icon={<Users />} />
-        <StatCard label="Opted In" value={stats.optedIn} icon={<CheckCircle2 />} accent="text-green-600" />
-        <StatCard label="Messages Sent" value={stats.sent} icon={<Send />} accent="text-blue-600" />
-        <StatCard label="Failed" value={stats.failed} icon={<XCircle />} accent="text-red-600" />
+      {/* Stats Row */}
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <StatCard
+          label="Total Contacts"
+          value={contacts.length}
+          icon={<Users />}
+        />
+        <StatCard
+          label="Opted In"
+          value={contacts.filter((c) => c.optedIn).length}
+          icon={<CheckCircle2 />}
+          accent="text-green-600"
+        />
+        <StatCard
+          label="Sent"
+          value={stats?.sent || 0}
+          icon={<Send />}
+          accent="text-blue-600"
+        />
+        <StatCard
+          label="Delivered"
+          value={stats?.delivered || 0}
+          icon={<CheckCircle2 />}
+          accent="text-green-600"
+        />
+        <StatCard
+          label="Failed"
+          value={stats?.failed || 0}
+          icon={<XCircle />}
+          accent="text-red-600"
+        />
+      </div>
+
+      {/* Templates Section */}
+<div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+  <div className="flex items-center justify-between mb-4">
+    <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+      Available Templates ({templates.length})
+    </h2>
+    {/* ✅ ADD THIS SYNC BUTTON */}
+    <button
+      onClick={handleSyncTemplates}
+      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+    >
+      <RefreshCw className="w-4 h-4" />
+      Sync from Meta
+    </button>
+  </div>
+
+  {templates.length === 0 ? (
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            No approved templates. Create one in the Templates section.
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {templates.map((template) => (
+              <div
+                key={template.id}
+                className="p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50"
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <h3 className="font-medium text-gray-900 dark:text-white">
+                    {template.name}
+                  </h3>
+                  <button
+                    onClick={() => setSelectedTemplatePreview(template)}
+                    className="p-1 text-gray-500 hover:text-blue-600"
+                  >
+                    <Eye className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-xs text-gray-500 mb-2">
+                  {template.category} • {template.language}
+                </p>
+                <p className="text-sm text-gray-700 dark:text-gray-300 line-clamp-2">
+                  {template.bodyText}
+                </p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Bulk Send Section */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Send Bulk Message</h2>
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+          Send Bulk Message
+        </h2>
 
         <div className="space-y-4">
           {/* Template Selection */}
@@ -147,22 +337,31 @@ export default function WhatsAppDashboardClient({
             <label className="block text-sm font-medium mb-2 text-gray-900 dark:text-white">
               Select Template
             </label>
-            <select
-              value={selectedTemplate}
-              onChange={(e) => setSelectedTemplate(e.target.value)}
-              className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-3"
-            >
-              <option value="">Choose a template...</option>
-              {templates.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.category})
-                </option>
-              ))}
-            </select>
-            {selectedTemplate && (
-              <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-sm text-gray-700 dark:text-gray-300">
-                {templates.find((t) => t.id === selectedTemplate)?.bodyText}
-              </div>
+            {templates.length === 0 ? (
+              <p className="text-sm text-gray-500">No approved templates</p>
+            ) : (
+              <>
+                <select
+                  value={selectedTemplate}
+                  onChange={(e) => setSelectedTemplate(e.target.value)}
+                  className="w-full rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-900 text-gray-900 dark:text-white p-3"
+                >
+                  <option value="">Choose a template...</option>
+                  {templates.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                {selectedTemplate && (
+                  <div className="mt-2 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg text-sm">
+                    <p className="font-medium mb-1">Preview:</p>
+                    <p className="text-gray-700 dark:text-gray-300">
+                      {templates.find((t) => t.id === selectedTemplate)?.bodyText}
+                    </p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -170,100 +369,196 @@ export default function WhatsAppDashboardClient({
           <div>
             <div className="flex items-center justify-between mb-2">
               <label className="block text-sm font-medium text-gray-900 dark:text-white">
-                Select Contacts ({selectedContacts.length} selected)
+                Select Contacts ({selectedContacts.length})
               </label>
               <button
                 onClick={selectAll}
-                className="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+                className="text-sm text-blue-600 hover:underline"
               >
-                {selectedContacts.length === contacts.filter((c) => c.optedIn).length
+                {selectedContacts.length ===
+                contacts.filter((c) => c.optedIn).length
                   ? 'Deselect All'
                   : 'Select All'}
               </button>
             </div>
-            <div className="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded-lg p-3 space-y-2">
-              {contacts
-                .filter((c) => c.optedIn)
-                .map((contact) => (
-                  <label key={contact.id} className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 p-2 rounded">
-                    <input
-                      type="checkbox"
-                      checked={selectedContacts.includes(contact.id)}
-                      onChange={() => toggleContact(contact.id)}
-                      className="w-4 h-4"
-                    />
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900 dark:text-white">{contact.name || 'Unknown'}</p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">{contact.phoneNumber}</p>
-                    </div>
-                    {contact.tags.length > 0 && (
-                      <div className="flex gap-1">
-                        {contact.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="px-2 py-0.5 bg-blue-100 dark:bg-blue-900/20 text-blue-700 dark:text-blue-300 text-xs rounded-full"
-                          >
-                            {tag}
-                          </span>
-                        ))}
+
+            {contacts.filter((c) => c.optedIn).length === 0 ? (
+              <p className="text-sm text-gray-500">No opted-in contacts</p>
+            ) : (
+              <div className="max-h-64 overflow-y-auto border border-gray-300 dark:border-gray-700 rounded-lg p-3 space-y-2">
+                {contacts
+                  .filter((c) => c.optedIn)
+                  .map((contact) => (
+                    <label
+                      key={contact.id}
+                      className="flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-900/50 p-2 rounded"
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selectedContacts.includes(contact.id)}
+                        onChange={() => toggleContact(contact.id)}
+                        className="w-4 h-4"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-gray-900 dark:text-white truncate">
+                          {contact.name || 'Unknown'}
+                        </p>
+                        <p className="text-sm text-gray-500 truncate">
+                          {contact.phoneNumber}
+                        </p>
                       </div>
-                    )}
-                  </label>
-                ))}
-            </div>
+                    </label>
+                  ))}
+              </div>
+            )}
           </div>
 
           {/* Send Button */}
           <button
             onClick={handleSendBulk}
-            disabled={sending || selectedContacts.length === 0 || !selectedTemplate}
+            disabled={
+              sending ||
+              selectedContacts.length === 0 ||
+              !selectedTemplate ||
+              templates.length === 0
+            }
             className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
           >
             <Send className="w-5 h-5" />
-            {sending ? `Sending to ${selectedContacts.length} contacts...` : `Send to ${selectedContacts.length} contacts`}
+            {sending
+              ? `Sending to ${selectedContacts.length}...`
+              : `Send to ${selectedContacts.length}`}
           </button>
         </div>
       </div>
 
-      {/* Recent Messages */}
+      {/* Manage Contacts */}
       <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
-        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Recent Messages</h2>
-        <div className="space-y-2">
-          {messages.slice(0, 10).map((msg) => (
-            <div
-              key={msg.id}
-              className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
-            >
-              <div className="flex-1">
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {msg.contact?.name || msg.phoneNumber}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  Template: {msg.template?.name || 'N/A'}
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span
-                  className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                    msg.status === 'sent' || msg.status === 'delivered'
-                      ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
-                      : msg.status === 'failed'
-                      ? 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
-                      : 'bg-gray-100 text-gray-700 dark:bg-gray-900/20 dark:text-gray-300'
-                  }`}
-                >
-                  {msg.status}
-                </span>
-                <span className="text-xs text-gray-500 dark:text-gray-400">
-                  {new Date(msg.createdAt).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          ))}
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+          Manage Contacts
+        </h2>
+
+        <div className="flex gap-3 mb-4">
+          <label className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 cursor-pointer">
+            <Upload className="w-5 h-5" />
+            {uploading ? 'Uploading...' : 'Import CSV'}
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleCSVUpload}
+              disabled={uploading}
+              className="hidden"
+            />
+          </label>
+
+          <a
+            href={`/dealers/${subdomain}/dashboard/whatsapp/contacts`}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-900"
+          >
+            <Users className="w-5 h-5" />
+            View All
+          </a>
         </div>
       </div>
+
+      {/* Delivery Tracking */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
+        <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">
+          Delivery Performance
+        </h2>
+
+        {messages.length === 0 ? (
+          <p className="text-sm text-gray-500">No messages sent yet</p>
+        ) : (
+          <>
+            <div className="grid grid-cols-4 gap-3 mb-6">
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                <p className="text-xs text-gray-600">Sent</p>
+                <p className="text-2xl font-bold text-blue-600">
+                  {stats?.sent || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <p className="text-xs text-gray-600">Delivered</p>
+                <p className="text-2xl font-bold text-green-600">
+                  {stats?.delivered || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                <p className="text-xs text-gray-600">Read</p>
+                <p className="text-2xl font-bold text-yellow-600">
+                  {stats?.read || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <p className="text-xs text-gray-600">Failed</p>
+                <p className="text-2xl font-bold text-red-600">
+                  {stats?.failed || 0}
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {messages.slice(0, 5).map((msg) => (
+                <div
+                  key={msg.id}
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900 dark:text-white">
+                      {msg.contact?.name || msg.phoneNumber}
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      {new Date(msg.createdAt).toLocaleString()}
+                    </p>
+                  </div>
+                  <span
+                    className={`px-3 py-1 text-xs font-semibold rounded-full ${
+                      msg.status === 'delivered'
+                        ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-300'
+                        : msg.status === 'sent'
+                        ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300'
+                        : msg.status === 'read'
+                        ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/20 dark:text-purple-300'
+                        : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-300'
+                    }`}
+                  >
+                    {msg.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Template Preview Modal */}
+      {selectedTemplatePreview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              {selectedTemplatePreview.name}
+            </h3>
+            <p className="text-xs text-gray-500 mb-4">
+              {selectedTemplatePreview.category} •{' '}
+              {selectedTemplatePreview.language}
+            </p>
+            <div className="p-4 bg-gray-50 dark:bg-gray-900/50 rounded-lg mb-4">
+              <p className="text-sm text-gray-700 dark:text-gray-300">
+                {selectedTemplatePreview.bodyText}
+              </p>
+            </div>
+            <button
+              onClick={() => setSelectedTemplatePreview(null)}
+              className="w-full px-4 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-  );
+  )
 }
 
 function StatCard({
@@ -272,10 +567,10 @@ function StatCard({
   icon,
   accent,
 }: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  accent?: string;
+  label: string
+  value: number
+  icon: React.ReactNode
+  accent?: string
 }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700">
@@ -283,7 +578,13 @@ function StatCard({
         <p className="text-sm text-gray-600 dark:text-gray-400">{label}</p>
         <div className={`${accent || 'text-gray-400'}`}>{icon}</div>
       </div>
-      <p className={`text-3xl font-semibold ${accent || 'text-gray-900 dark:text-white'}`}>{value}</p>
+      <p
+        className={`text-3xl font-semibold ${
+          accent || 'text-gray-900 dark:text-white'
+        }`}
+      >
+        {value || 0}
+      </p>
     </div>
-  );
+  )
 }
