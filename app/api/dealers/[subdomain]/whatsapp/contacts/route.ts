@@ -45,7 +45,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { subdomain } = params;
+    const { subdomain } = await params;
     const { phoneNumber, name, tags } = await request.json();
 
     const dealer = await prisma.dealer.findUnique({

@@ -60,3 +60,31 @@ body {
 .carousel-transition {
   transition: transform 0.3s ease-in-out;
 }
+/* React Phone Input Custom Styles */
+.PhoneInputCountry {
+  color: #111827 !important;
+}
+
+.PhoneInputCountrySelect {
+  color: #111827 !important;
+  background: white !important;
+}
+
+.PhoneInputCountrySelectDropdown {
+  background: white !important;
+  color: #111827 !important;
+}
+
+.PhoneInputCountrySelectOption {
+  color: #111827 !important;
+  background: white !important;
+}
+
+.PhoneInputCountrySelectOption:hover {
+  background: #f3f4f6 !important;
+}
+
+.PhoneInputInput {
+  color: #111827 !important;
+}
+@import 'react-phone-number-input/style.css';

@@ -89,35 +89,99 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
-        // 2. Check if it's a dealer user
-        const dealer = await prisma.dealer.findUnique({
-          where: { email },
-          select: {
-            id: true,
-            name: true,
-            email: true,
-            subdomain: true,
+              // 2. Check if its a dealer user
+      const dealer = await prisma.dealer.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          subdomain: true,
+          passwordHash: true,
+          phone: true,
+          failedLoginAttempts: true,
+          lockedUntil: true,
+        },
+      });
+
+      if (!dealer) {
+        console.log("User not found", email);
+        return null;
+      }
+
+      // ✅ FIX: Check if account is locked
+      if (dealer.lockedUntil && new Date(dealer.lockedUntil) > new Date()) {
+        console.log("Account locked", email);
+        return null;
+      }
+
+      // ✅ FIX: Verify password
+      if (!dealer.passwordHash) {
+        console.log("No password set for dealer", email);
+        return null;
+      }
+
+      const isValidPassword = await compare(credentials.password, dealer.passwordHash);
+      
+      if (!isValidPassword) {
+        // Increment failed attempts
+        const newFailedAttempts = (dealer.failedLoginAttempts || 0) + 1;
+        const shouldLock = newFailedAttempts >= 5;
+
+        await prisma.dealer.update({
+          where: { id: dealer.id },
+          data: {
+            failedLoginAttempts: newFailedAttempts,
+            lockedUntil: shouldLock 
+              ? new Date(Date.now() + 30 * 60 * 1000) // Lock for 30 minutes
+              : undefined,
           },
         });
 
-        if (!dealer) {
-          console.log('❌ User not found:', email);
-          return null;
-        }
+        // Log failed attempt
+        await prisma.loginAudit.create({
+          data: {
+            dealerId: dealer.id,
+            success: false,
+            method: "credentials",
+            ipAddress: "unknown", // Can be enhanced with request headers
+            failureReason: "Invalid password",
+          },
+        });
 
-        // For dealers, you might want to implement password hashing
-        // For now, we'll just authenticate them if they exist
-        // TODO: Add password field to Dealer model and implement proper hashing
-        console.log('✅ Dealer login successful!');
-        
-        return {
-          id: dealer.id,
-          name: dealer.name || "Dealer",
-          email: dealer.email,
-          subdomain: dealer.subdomain,
+        console.log("Invalid password for", email);
+        return null;
+      }
+
+      // ✅ SUCCESS: Reset failed attempts and log successful login
+      await prisma.dealer.update({
+        where: { id: dealer.id },
+        data: {
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+          lastLoginAt: new Date(),
+        },
+      });
+
+      await prisma.loginAudit.create({
+        data: {
           dealerId: dealer.id,
-          role: "dealer",
-        };
+          success: true,
+          method: "credentials",
+          ipAddress: "unknown",
+        },
+      });
+
+      console.log("Dealer login successful!", email);
+      return {
+        id: dealer.id,
+        name: dealer.name || "Dealer",
+        email: dealer.email,
+        subdomain: dealer.subdomain,
+        dealerId: dealer.id,
+        role: "dealer",
+      };
+
       },
     }),
   ],

@@ -1,12 +1,25 @@
 'use client'
+
+import { useRouter } from 'next/navigation';
 import { useState } from 'react'
 import Footer from '@/components/layout/Footer'
-import { CheckCircle, AlertCircle, Building2, Globe, Lock, Zap } from 'lucide-react'
+import { CheckCircle, AlertCircle, Building2, Globe, Lock, Zap, MessageSquare } from 'lucide-react'
 import { Button } from '../components/ui/Button'
 import { Input } from '../components/ui/Input'
 import Link from 'next/link'
+import OTPInput from '../../components/auth/OTPInput'
+import dynamic from 'next/dynamic';
+
+// Dynamic import to avoid SSR issues
+const PhoneInput = dynamic(() => import('react-phone-number-input'), {
+  ssr: false,
+  loading: () => <div className="w-full h-12 bg-gray-100 animate-pulse rounded-lg"></div>
+});
+
+
 
 export default function GetStartedPage() {
+  const router = useRouter();
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -21,7 +34,13 @@ export default function GetStartedPage() {
     customDomain: '',
     description: '',
     selectedPlan: 'free',
-  })
+    password: '', // ✅ NEW
+  });
+  
+  // ✅ NEW: OTP state
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpId, setOtpId] = useState<string>(''); // For future OTP tracking
+
 
   const [subdomainStatus, setSubdomainStatus] = useState<{
     checking: boolean
@@ -132,9 +151,11 @@ export default function GetStartedPage() {
     }
     
     if (stepNumber === 2) {
-      if (!formData.subdomain) newErrors.subdomain = 'Subdomain is required'
-      if (subdomainStatus.available === false) newErrors.subdomain = 'Subdomain not available'
+      if (!formData.password || formData.password.length < 8) {
+        newErrors.password = 'Password must be at least 8 characters';
+      }
     }
+
     
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
@@ -147,34 +168,113 @@ export default function GetStartedPage() {
   }
 
   const handleSubmit = async () => {
-    if (!validateStep(step)) return
-    
-    setLoading(true)
-    
+    if (!validateStep(step)) return;
+
+    // ✅ If we're on step 4 (Plan Selection), move to step 5 (OTP)
+    if (step === 4) {
+      setStep(5);
+      return;
+    }
+
+    // ✅ Step 5: Handle OTP verification
+    // This will be triggered by OTPInput component
+  };
+
+  // ✅ NEW: Send OTP Function
+  const sendOTP = async () => {
+    setLoading(true);
     try {
-      const response = await fetch('/api/dealers/signup', {
+      const response = await fetch('/api/auth/send-otp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
-      })
-      
-      const data = await response.json()
-      
-      if (data.success) {
-        window.location.href = data.redirectUrl  // CHANGED: paymentUrl → redirectUrl
-      } else {
-        setErrors({ general: data.error || 'Signup failed' })
+        body: JSON.stringify({
+          phone: formData.phone,
+          email: formData.email,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to send OTP');
       }
-    } catch (error) {
-      setErrors({ general: 'Network error. Please try again.' })
+
+      setOtpId(data.otpId);
+      setOtpSent(true);
+    } catch (error: any) {
+      setErrors({ general: error.message });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
+
+  // ✅ NEW: Verify OTP and Create Dealer
+  const verifyOTPAndCreateDealer = async (otp: string) => {
+    setLoading(true);
+    setErrors({});
+  
+    try {
+      // Verify OTP (dealer is created in this step)
+      const verifyResponse = await fetch('/api/auth/verify-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          otpCode: otp,
+          name: formData.ownerName,
+          businessname: formData.businessName,
+          phone: formData.phone,
+          location: formData.location,
+          password: formData.password,
+          subdomain: formData.subdomain, 
+        }),
+      });      
+  
+      const verifyData = await verifyResponse.json();
+  
+      if (!verifyResponse.ok) {
+        setErrors({ general: verifyData.error || 'OTP verification failed' });
+        setLoading(false);
+        return;
+      }
+  
+      console.log('✅ OTP verified and dealer created:', verifyData.dealer);
+  
+      // Send welcome email
+      await sendWelcomeEmail(verifyData.dealer);
+  
+      // Redirect to congratulations/dashboard
+      router.push(`/welcome?subdomain=${verifyData.dealer.subdomain}`);
+      
+    } catch (error) {
+      console.error('❌ Verification error:', error);
+      setErrors({ general: 'Something went wrong. Please try again.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Helper function to send welcome email
+  const sendWelcomeEmail = async (dealer: any) => {
+    try {
+      await fetch('/api/emails/welcome', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: dealer.email,
+          name: dealer.name,
+          subdomain: dealer.subdomain,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to send welcome email:', error);
+      // Don't block signup if welcome email fails
+    }
+  };
+  
   
   return (
     <>
-      {/* Enhanced styles for better visibility */}
       <style jsx global>{`
         textarea {
           color: #111827 !important;
@@ -225,8 +325,8 @@ export default function GetStartedPage() {
             ))}
           </div>
 
-          {/* Form Steps */}
-          <div className="bg-white rounded-2xl shadow-lg p-8">
+         {/* Form Steps */}
+         <div className="bg-white rounded-2xl shadow-lg p-8">
             {step === 1 && (
               <div>
                 <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
@@ -286,16 +386,36 @@ export default function GetStartedPage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Phone Number *
                       </label>
-                      <Input
+                      <PhoneInput
+                        international
+                        defaultCountry="IN"
                         value={formData.phone}
-                        onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                        placeholder="+91 98765 43210"
-                        className={errors.phone ? 'border-red-500' : ''}
+                        onChange={(value) => setFormData(prev => ({ ...prev, phone: value || '' }))}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                       />
-                      {errors.phone && (
-                        <p className="text-red-500 text-sm mt-1">{errors.phone}</p>
-                      )}
+                      <p className="text-xs text-gray-500 mt-1">
+                        Select country code and enter your number
+                      </p>
+                      {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
                     </div>
+                  </div>
+       
+                  {/* Password Field */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Password
+                    </label>
+                    <Input
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                      placeholder="Create a secure password"
+                      className={errors.password ? 'border-red-500' : ''}
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Minimum 8 characters. You can also sign in with WhatsApp OTP later.
+                    </p>
+                    {errors.password && <p className="text-red-500 text-sm mt-1">{errors.password}</p>}
                   </div>
 
                   <div>
@@ -468,6 +588,81 @@ export default function GetStartedPage() {
               </div>
             )}
 
+           {/* Step 5: Email OTP Verification */}
+{step === 5 && (
+  <div>
+    <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-3">
+      <MessageSquare className="w-6 h-6 text-blue-600" />
+      Verify Your Email
+    </h2>
+
+    {!otpSent ? (
+      <div className="space-y-6">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <p className="text-sm text-blue-800">
+            <strong>Check your inbox:</strong> We'll send a verification code to {' '}
+            <span className="font-semibold">{formData.email}</span>
+          </p>
+        </div>
+        
+        <Button
+          onClick={sendOTP}
+          disabled={loading}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-semibold"
+        >
+          {loading ? (
+            <span className="flex items-center justify-center gap-2">
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Sending code...
+            </span>
+          ) : (
+            'Send Verification Code'
+          )}
+        </Button>
+        
+        <p className="text-xs text-center text-gray-500">
+          Make sure to check your spam folder if you don't see the email
+        </p>
+      </div>
+    ) : (
+      <div>
+        <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+          <p className="text-sm text-green-800">
+            ✓ Code sent to <strong>{formData.email}</strong>
+          </p>
+        </div>
+        
+        <p className="text-gray-700 mb-6 text-center">
+          Enter the 6-digit verification code:
+        </p>
+        
+        <OTPInput
+          length={6}
+          onComplete={verifyOTPAndCreateDealer}
+          error={errors.general}
+          loading={loading}
+        />
+
+        <div className="mt-6 text-center">
+          <button
+            onClick={() => {
+              setOtpSent(false);
+              setErrors({});
+            }}
+            className="text-sm text-blue-600 hover:text-blue-700 cursor-pointer underline"
+          >
+            Didn't receive the code? Resend
+          </button>
+        </div>
+        
+        <p className="mt-4 text-xs text-center text-gray-500">
+          The code expires in 10 minutes
+        </p>
+      </div>
+    )}
+  </div>
+)}
+
             {/* Navigation Buttons */}
             <div className="flex justify-between pt-8 border-t">
               {step > 1 && (
@@ -481,7 +676,8 @@ export default function GetStartedPage() {
               
               <div className="flex-1" />
 
-              {step < 3 ? (
+              {/* ⚠️ CHANGE: step < 3 → step < 4 */}
+              {step < 4 ? (
                 <Button
                   onClick={handleNext}
                   className="bg-blue-600 text-white hover:bg-blue-700 px-6 py-3 rounded-xl font-medium"
@@ -494,11 +690,12 @@ export default function GetStartedPage() {
                   disabled={loading}
                   className="bg-green-600 text-white hover:bg-green-700 px-8 py-3 rounded-xl font-semibold disabled:opacity-50"
                 >
-                  {loading ? 'Creating Account...' : 'Start Free Trial & Setup Payment'}
+                  {loading ? 'Processing...' : formData.selectedPlan === 'free' ? 'Continue to Verification' : 'Continue & Setup Payment'}
                 </Button>
               )}
             </div>
           </div>
+
 
           {/* Trust Indicators - Compact Horizontal */}
 <div className="mt-10 pt-8 border-t border-gray-200">

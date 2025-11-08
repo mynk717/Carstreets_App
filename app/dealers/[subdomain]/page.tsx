@@ -205,7 +205,7 @@ export default async function DealerStorefront({ params }: PageProps) {
         </main>
 
         {/* Footer */}
-        <footer className="bg-gray-900 text-white mt-20 py-12">
+        {/* <footer className="bg-gray-900 text-white mt-20 py-12">
           <div className="container mx-auto px-4 text-center">
             <h3 className="text-2xl font-bold mb-2">{dealer.businessName || dealer.name}</h3>
             <p className="text-gray-300 mb-4">{dealer.location}</p>
@@ -216,7 +216,7 @@ export default async function DealerStorefront({ params }: PageProps) {
               Powered by <span className="text-blue-400 font-medium">MotoYard</span>
             </p>
           </div>
-        </footer>
+        </footer> */}
       </div>
     )
   } catch (error) {

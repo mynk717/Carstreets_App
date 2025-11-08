@@ -69,7 +69,9 @@ model Car {
 model Dealer {
   id                  String   @id @default(cuid())
   name                String
-  email               String   @unique
+  email               String?  @unique
+  phone               String?  @unique
+  passwordHash        String?
   
   subdomain           String   @unique
   customDomain        String?  @unique
@@ -80,6 +82,18 @@ model Dealer {
   phoneNumber         String?
   location            String?
   description         String?
+  
+  // Verification Status (AUTH-001)
+  emailVerified       DateTime?
+  phoneVerified       DateTime?
+  isVerified          Boolean  @default(false)
+  
+  // Account Security (AUTH-001)
+  authProviders       String[]  @default([])
+  twoFactorEnabled    Boolean   @default(false)
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+  lastLoginAt         DateTime?
   
   plan                String   @default("free")
   subscriptionStatus  String   @default("active")
@@ -111,18 +125,27 @@ model Dealer {
   aiContentUsedThisWeek     Int       @default(0)
   aiContentWeekStartDate    DateTime  @default(now())
 
-  // Relations
+  passwordResetToken   String?   @db.VarChar(255)
+  passwordResetExpiry  DateTime?
+
+    // Relations
   cars                Car[]
   contentCalendar     ContentCalendar[]
   whatsappTemplates   WhatsAppTemplate[]
   whatsappContacts    WhatsAppContact[]
   whatsappMessages    WhatsAppMessage[]
-  productCatalogs    ProductCatalog[]
+  productCatalogs     ProductCatalog[]
+  otpVerifications    OTPVerification[]
+  passwordResets      PasswordResetToken[]
+  loginAudits         LoginAudit[]
 
   
   @@index([subdomain])
   @@index([customDomain])
+  @@index([email])
+  @@index([phone])
 }
+
 
 model MarketIntelligence {
   id            String @id @default(cuid())
@@ -344,4 +367,79 @@ model ProductCatalog {
   
   @@index([dealerId])
   @@unique([dealerId, metaCatalogId])
+}
+
+model OTPVerification {
+  id            String    @id @default(cuid())
+  dealerId      String?
+  dealer        Dealer?   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  // Contact Info (for unregistered users)
+  phone         String
+  email         String?
+  
+  // OTP Details
+  otpCode       String
+  otpHash       String
+  expiresAt     DateTime
+  verified      Boolean   @default(false)
+  verifiedAt    DateTime?
+  
+  // Delivery Status
+  deliveryMethod String   @default("whatsapp")
+  messageId     String?
+  deliveryStatus String   @default("pending")
+  
+  // Security
+  attempts      Int       @default(0)
+  maxAttempts   Int       @default(5)
+  ipAddress     String?
+  userAgent     String?
+  
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  
+  @@index([phone])
+  @@index([otpHash])
+  @@index([expiresAt])
+  @@map("otp_verifications")
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  dealerId  String
+  dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  token     String    @unique
+  expiresAt DateTime
+  used      Boolean   @default(false)
+  usedAt    DateTime?
+  
+  createdAt DateTime  @default(now())
+  
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model LoginAudit {
+  id        String    @id @default(cuid())
+  dealerId  String
+  dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  // Login Details
+  success   Boolean
+  method    String
+  ipAddress String
+  userAgent String?
+  location  String?
+  
+  // Failure Reason
+  failureReason String?
+  
+  createdAt DateTime  @default(now())
+  
+  @@index([dealerId])
+  @@index([createdAt])
+  @@map("login_audits")
 }

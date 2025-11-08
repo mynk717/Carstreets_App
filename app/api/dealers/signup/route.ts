@@ -58,41 +58,55 @@ export async function POST(request: NextRequest) {
 
     const planAmount = planPricing[selectedPlan] || 4999
 
-    // Create dealer with pending_payment status
-    const newDealer = await prisma.dealer.create({
-      data: {
-        name: ownerName,
-        businessName,
-        email,
-        phoneNumber: phone,
-        location,
-        subdomain,
-        customDomain: customDomain || null,
-        description: description || null,
-        plan: selectedPlan,
-        subscriptionStatus: 'pending_payment',
-        domainVerified: false,
-        createdAt: new Date(),
-        updatedAt: new Date()
+      // Determine subscription status based on plan
+      const subscriptionStatus = selectedPlan === 'free' ? 'active' : 'pending_payment';
+
+      // Create dealer
+      const newDealer = await prisma.dealer.create({
+        data: {
+          name: ownerName,
+          businessName,
+          email,
+          phoneNumber: phone,
+          location,
+          subdomain,
+          customDomain: customDomain || null,
+          description: description || null,
+          plan: selectedPlan,
+          subscriptionStatus,
+          domainVerified: false,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      });
+  
+      // Free plan: Skip payment, go directly to dashboard
+      if (selectedPlan === 'free') {
+        return NextResponse.json({
+          success: true,
+          dealerId: newDealer.id,
+          redirectUrl: `/dealers/${subdomain}/dashboard`,
+          message: 'Account created successfully!',
+        });
       }
-    })
-
-    // Generate redirect URL to mktgdime.com payment page
-    const paymentUrl = `https://mktgdime.com/payments?${new URLSearchParams({
-      service: 'MotoYard Dealership',
-      tier: `${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Plan`,
-      price: planAmount.toString(),
-      dealerId: newDealer.id,
-      subdomain: subdomain,
-      source: 'motoyard'
-    }).toString()}`
-
-    return NextResponse.json({
-      success: true,
-      dealerId: newDealer.id,
-      redirectUrl: paymentUrl,
-      message: 'Dealer account created successfully. Redirecting to payment...'
-    })
+  
+      // Paid plans: Redirect to payment
+      const paymentUrl = `https://mktgdime.com/payment?${new URLSearchParams({
+        service: 'MotoYard Dealership',
+        tier: selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1) + ' Plan',
+        price: planAmount.toString(),
+        dealerId: newDealer.id,
+        subdomain: subdomain,
+        source: 'motoyard',
+      }).toString()}`;
+  
+      return NextResponse.json({
+        success: true,
+        dealerId: newDealer.id,
+        redirectUrl: paymentUrl,
+        message: 'Dealer account created successfully. Redirecting to payment...',
+      });
+  
 
   } catch (error) {
     console.error('Error creating dealer:', error)

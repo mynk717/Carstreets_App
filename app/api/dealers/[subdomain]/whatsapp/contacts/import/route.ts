@@ -13,7 +13,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { subdomain } = params;
+    const { subdomain } = await params;
     const formData = await request.formData();
     const file = formData.get('file') as File;
 

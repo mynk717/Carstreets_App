@@ -13,7 +13,7 @@ export async function GET(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { subdomain } = params
+    const { subdomain } = await params
 
     const dealer = await prisma.dealer.findUnique({
       where: { subdomain },
