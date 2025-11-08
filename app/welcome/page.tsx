@@ -1,32 +1,32 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { CheckCircle, ArrowRight, Rocket, Mail } from 'lucide-react';
 import Link from 'next/link';
 
-export default function WelcomePage() {
+function WelcomeContent() {
   const searchParams = useSearchParams();
   const subdomain = searchParams.get('subdomain');
   
-  // FIXED: Correct URL patterns
   const storefrontUrl = `https://${subdomain}.motoyard.mktgdime.com`;
   const dashboardUrl = `https://motoyard.mktgdime.com/dealers/${subdomain}/dashboard`;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
-       {/* Success Icon */}
-<div className="text-center mb-8">
-  <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4 animate-bounce">
-    <CheckCircle className="w-12 h-12 text-green-600" />
-  </div>
-  <h1 className="text-4xl font-bold text-gray-900 mb-2">
-    🎉 Congratulations!
-  </h1>
-  <p className="text-xl text-gray-600">
-    Your dealership is ready to go!
-  </p>
-</div>
+        {/* Success Icon */}
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-green-100 rounded-full mb-4 animate-bounce">
+            <CheckCircle className="w-12 h-12 text-green-600" />
+          </div>
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">
+            🎉 Congratulations!
+          </h1>
+          <p className="text-xl text-gray-600">
+            Your dealership is ready to go!
+          </p>
+        </div>
 
         {/* Info Card */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-6">
@@ -127,5 +127,20 @@ export default function WelcomePage() {
         </p>
       </div>
     </div>
+  );
+}
+
+export default function WelcomePage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-green-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <WelcomeContent />
+    </Suspense>
   );
 }
