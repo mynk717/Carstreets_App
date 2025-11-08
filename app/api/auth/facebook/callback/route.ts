@@ -3,6 +3,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { exchangeFacebookCode, getFacebookPages } from '@/lib/social/oauth'
+import { encrypt } from '@/lib/crypto';
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,7 +73,7 @@ export async function GET(request: NextRequest) {
       where: { id: dealer.id },
       data: {
         // Token from Marketing Dime app
-        metaAccessToken: tokenData.accessToken,
+        metaAccessToken: encrypt(tokenData.accessToken),
         metaAccessTokenExpiry: tokenData.expiresIn
           ? new Date(Date.now() + tokenData.expiresIn * 1000)
           : null,

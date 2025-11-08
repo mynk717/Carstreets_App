@@ -1,0 +1,133 @@
+// app/api/dealers/signup/route.ts (RATE LIMITED)
+
+import { NextRequest, NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { signupLimiter } from '@/lib/api-rate-limit';
+
+export async function POST(request: NextRequest) {
+  try {
+    // ✅ Rate limiting - FIRST thing to check
+    const ip = request.headers.get('x-forwarded-for') || 
+               request.headers.get('x-real-ip') || 
+               'anonymous';
+    
+    const { success } = await signupLimiter.limit(ip);
+    
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many signup attempts. Please try again in 1 hour.' },
+        { status: 429 }
+      );
+    }
+
+    const formData = await request.json();
+    const {
+      businessName,
+      ownerName,
+      email,
+      phone,
+      location,
+      subdomain,
+      customDomain,
+      description,
+      selectedPlan
+    } = formData;
+
+    // Validate required fields
+    if (!businessName || !ownerName || !email || !phone || !location || !subdomain) {
+      return NextResponse.json(
+        { success: false, error: 'All required fields must be filled' },
+        { status: 400 }
+      );
+    }
+
+    // Check if email already exists
+    const existingDealerByEmail = await prisma.dealer.findUnique({
+      where: { email }
+    });
+
+    if (existingDealerByEmail) {
+      return NextResponse.json(
+        { success: false, error: 'A dealer with this email already exists' },
+        { status: 400 }
+      );
+    }
+
+    // Check subdomain availability
+    const existingDealerBySubdomain = await prisma.dealer.findUnique({
+      where: { subdomain }
+    });
+
+    if (existingDealerBySubdomain) {
+      return NextResponse.json(
+        { success: false, error: 'This subdomain is no longer available' },
+        { status: 400 }
+      );
+    }
+
+    // Plan pricing
+    const planPricing: Record<string, number> = {
+      free: 0,        // ✅ Free plan added
+      starter: 2999,
+      professional: 4999,
+      enterprise: 9999
+    };
+
+    const planAmount = planPricing[selectedPlan] || 0;
+
+    // Determine subscription status
+    const subscriptionStatus = selectedPlan === 'free' ? 'active' : 'pending_payment';
+
+    // Create dealer
+    const newDealer = await prisma.dealer.create({
+      data: {
+        name: ownerName,
+        businessName,
+        email,
+        phoneNumber: phone,
+        location,
+        subdomain,
+        customDomain: customDomain || null,
+        description: description || null,
+        plan: selectedPlan,
+        subscriptionStatus,
+        domainVerified: false,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    });
+
+    // ✅ Free plan: Skip payment, go directly to dashboard
+    if (selectedPlan === 'free' || planAmount === 0) {
+      return NextResponse.json({
+        success: true,
+        dealerId: newDealer.id,
+        redirectUrl: `/dealers/${subdomain}/dashboard`,
+        message: 'Account created successfully!'
+      });
+    }
+
+    // Paid plans: Redirect to payment
+    const paymentUrl = `https://mktgdime.com/payment?${new URLSearchParams({
+      service: 'MotoYard Dealership',
+      tier: `${selectedPlan.charAt(0).toUpperCase() + selectedPlan.slice(1)} Plan`,
+      price: planAmount.toString(),
+      dealerId: newDealer.id,
+      subdomain: subdomain,
+      source: 'motoyard'
+    }).toString()}`;
+
+    return NextResponse.json({
+      success: true,
+      dealerId: newDealer.id,
+      redirectUrl: paymentUrl,
+      message: 'Dealer account created successfully. Redirecting to payment...'
+    });
+  } catch (error) {
+    console.error('Error creating dealer:', error);
+    return NextResponse.json(
+      { success: false, error: 'Failed to create dealer account' },
+      { status: 500 }
+    );
+  }
+}

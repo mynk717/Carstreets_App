@@ -1,11 +1,22 @@
-// app/api/social/facebook/post/route.ts (REVISED)
+// app/api/social/facebook/post/route.ts (FULLY FIXED)
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { decrypt } from '@/lib/crypto'; // ✅ Imported
+import { socialPostLimiter } from '@/lib/api-rate-limit'; // ✅ Add this
 
 export async function POST(request: NextRequest) {
   try {
     const { dealerId, contentId, textContent, imageUrl } = await request.json()
+
+    // ✅ STEP 0: Rate limiting (MUST be first)
+    const { success } = await socialPostLimiter.limit(dealerId || 'anonymous');
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Posting too frequently. Please wait before posting again.' },
+        { status: 429 }
+      );
+    }
 
     if (!dealerId || !textContent || !imageUrl) {
       return NextResponse.json(
@@ -33,7 +44,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ✅ Step 2: Check token expiry (crucial with shared app)
+    // ✅ Step 2: Check token expiry
     if (dealer.metaAccessTokenExpiry && 
         new Date(dealer.metaAccessTokenExpiry) < new Date()) {
       return NextResponse.json(
@@ -49,14 +60,13 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // ✅ Step 3: Validate content ownership (CRITICAL for multi-dealer)
+    // ✅ Step 3: Validate content ownership
     if (contentId) {
       const content = await prisma.contentCalendar.findUnique({
         where: { id: contentId },
         select: { dealerId: true, carId: true }
       })
 
-      // Double-check: content must belong to THIS dealer
       if (!content || content.dealerId !== dealerId) {
         console.warn(
           `⚠️ SECURITY: Attempt to post content from wrong dealer. 
@@ -69,12 +79,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // ✅ Step 4: Post to Facebook with dealer's token
+    // ✅ Step 4: Decrypt token before use (CRITICAL FIX)
+    const accessToken = decrypt(dealer.metaAccessToken); // ← FIX: Decrypt!
+    
     console.log(
       `📤 Posting to Facebook for dealer: ${dealer.subdomain} 
        (Page: ${dealer.facebookPageId})`
     )
-
+    
     const response = await fetch(
       `https://graph.facebook.com/v18.0/${dealer.facebookPageId}/photos`,
       {
@@ -82,7 +94,7 @@ export async function POST(request: NextRequest) {
         body: new URLSearchParams({
           url: imageUrl,
           caption: textContent,
-          access_token: dealer.metaAccessToken // ✅ DEALER'S token, not global
+          access_token: accessToken // ✅ Use decrypted token
         })
       }
     )
