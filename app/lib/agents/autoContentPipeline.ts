@@ -1,236 +1,276 @@
 import { prisma } from '@/lib/prisma';
-import { CAR_STREETS_PROFILE } from '../../data/carStreetsProfile';
 import { generateText } from 'ai';
 import { openai } from '@ai-sdk/openai';
-import {
-  getCarEnhancementPrompt,
-  getPromptMetrics,
-} from '../prompts/carImagePrompts';
+import { ImagePromptAgent } from './imagePromptAgent';
+import { groupPlatformsByRatio, PLATFORM_SPECS } from './platformGrouping';
+import { fal } from '@fal-ai/client';  // ✅ CORRECT IMPORT
 
-// Consistent auth token for API calls
-const AUTH_TOKEN = 'Bearer admin-temp-key';
+interface ContentItem {
+  carId: string;
+  platform: string;
+  textContent: string;
+  hashtags: string[];
+  imageUrl: string;
+  originalImage: string;
+  success: boolean;
+  cost: number;
+}
+
+interface DealerContext {
+  id: string;
+  businessName: string;
+  location: string;
+  logo?: string | null;
+  description?: string | null;
+  phoneNumber?: string | null;
+  email?: string | null;
+}
 
 export class AutoContentPipeline {
-  async generateUniqueText(car: any, platform: string) {
-    if (!car?.brand || !car?.model || !car?.year) {
-      throw new Error('Missing required car fields: brand, model, or year');
-    }
-    const profile = CAR_STREETS_PROFILE;
-    const contextPrompt = `Generate ${platform} content for ${car.year} ${car.brand} ${car.model} at CarStreets:
+  private imagePromptAgent: ImagePromptAgent;
 
-CARSTREETS CONTEXT:
-- Owner: ${profile.operations.key_personnel[0]}
-- Location: Raipur, Chhattisgarh
-- Price: ₹${car.price || 'Price on Request'}
-- Operating: ${profile.operations.operating_hours}
-- Specialization: ${profile.business.specialization.join(', ')}
-
-Create unique, engaging ${platform} post with CarStreets branding, Raipur location context, and September 2025 relevance.
-Include specific details that competitors cannot replicate.`;
-
-    const result = await generateText({
-      model: openai('gpt-4o-mini'),
-      prompt: contextPrompt,
-      temperature: 0.8,
-    });
-
-    return {
-      text: result.text,
-      hashtags: [
-        '#CarStreets',
-        '#RaipurCars',
-        '#AnkitPandeyAutos',
-        `#${car.brand.replace(/\s+/g, '')}`,
-      ],
-      platform,
-    };
+  constructor() {
+    this.imagePromptAgent = new ImagePromptAgent();
   }
 
-  async generateReadyToPostContent(carIds: string[]) {
-    const results = [];
-    const batchSize = 1; // smaller batch for quality and rate control
+  async generateReadyToPostContent(
+    carIds: string[],
+    platforms: string[] = ['instagram', 'facebook'],
+    dealerContext: DealerContext
+  ): Promise<ContentItem[]> {
+    
+    console.log(`🚀 Starting content generation for ${carIds.length} cars across ${platforms.length} platforms`);
+    
+    const cars = await this.fetchCars(carIds);
+    console.log(`✅ Fetched ${cars.length} cars from database`);
 
-    for (let i = 0; i < carIds.length; i += batchSize) {
-      const carBatch = carIds.slice(i, i + batchSize);
-      console.log(
-        `🚀 Processing batch ${Math.floor(i / batchSize) + 1}/${
-          Math.ceil(carIds.length / batchSize)
-        }: ${carBatch.length} cars`
-      );
+    if (cars.length === 0) {
+      console.warn('⚠️  No cars found with valid images');
+      return [];
+    }
 
-      const batchPromises = carBatch.map(async (carId) => {
-        const car = await prisma.car.findUnique({
-          where: { id: carId },
-          select: {
-            id: true,
-            brand: true,
-            model: true,
-            year: true,
-            price: true,
-            images: true,
-          },
-        });
+    const content: ContentItem[] = [];
+    const platformGroups = groupPlatformsByRatio(platforms);
+    
+    console.log(`📊 Platform groups:`, platformGroups);
 
-        if (!car) {
-          console.warn(`Car with ID ${carId} not found, skipping.`);
-          return [];
+    for (let i = 0; i < cars.length; i++) {
+      const car = cars[i];
+      console.log(`\n🚗 Processing car ${i + 1}/${cars.length}: ${car.year} ${car.brand} ${car.model}`);
+
+      const imagesByRatio: Record<string, { url: string; cost: number }> = {};
+
+      for (const [ratio, groupPlatforms] of Object.entries(platformGroups)) {
+        console.log(`\n  📸 Generating ${ratio} image for platforms: ${groupPlatforms.join(', ')}`);
+        
+        try {
+          const representativePlatform = groupPlatforms[0];
+          
+          const imageResult = await this.generateImage(
+            car, 
+            representativePlatform, 
+            dealerContext
+          );
+          
+          imagesByRatio[ratio] = imageResult;
+          console.log(`  ✅ ${ratio} image generated - Cost: ₹${imageResult.cost.toFixed(2)}`);
+        } catch (error) {
+          console.error(`  ❌ Failed to generate ${ratio} image:`, error);
+          imagesByRatio[ratio] = {
+            url: car.images[0],
+            cost: 0
+          };
         }
+      }
 
-        const carResults = [];
-        const platforms = ['instagram', 'facebook', 'linkedin'];
+      for (const platform of platforms) {
+        console.log(`\n  📝 Generating ${platform} content...`);
+        
+        try {
+          const spec = PLATFORM_SPECS[platform];
+          const imageData = imagesByRatio[spec.ratio];
 
-        const platformPromises = platforms.map(async (platform) => {
-          console.log(`🎯 Generating content for ${car.year} ${car.brand} ${car.model} on ${platform}`);
+          const textResult = platform === 'whatsapp'
+            ? this.generateWhatsAppTemplate(car, dealerContext)
+            : await this.generateTextContent(car, platform, dealerContext);
 
-          const textContent = await this.generateUniqueText(car, platform);
+          content.push({
+            carId: car.id,
+            platform,
+            textContent: textResult.text,
+            hashtags: textResult.hashtags,
+            imageUrl: imageData.url,
+            originalImage: car.images[0],
+            success: true,
+            cost: imageData.cost / platforms.length
+          });
 
-          // Get prompt for multi-images (pass all images)
-          let enhancedPrompt: string;
-          try {
-            const promptParams = {
-              car: {
-                id: car.id,
-                brand: car.brand,
-                model: car.model,
-                year: car.year,
-                price: Number(car.price),
-              },
-              platform: platform as 'instagram' | 'facebook' | 'linkedin',
-              imageUrl: null, // not used, multiple images passed
-              contentType: 'standard' as const,
-            };
-
-            enhancedPrompt = getCarEnhancementPrompt(promptParams);
-
-            const promptMetrics = getPromptMetrics(enhancedPrompt);
-            if (promptMetrics.length < 50) {
-              console.warn(`${platform} prompt too short, using fallback`);
-              enhancedPrompt = `Professional CarStreets automotive photography: ${car.year} ${car.brand} ${car.model} for ${platform}, price ₹${car.price}`;
-            }
-            console.log(`🤖 Prompt for ${platform}:`, enhancedPrompt.substring(0, 100) + '...');
-          } catch (e) {
-            console.error(`❌ Prompt generation failed for ${platform}:`, e);
-            enhancedPrompt = `Professional ${platform} automotive photography for ${car.year} ${car.brand} ${car.model}, price ₹${car.price}`;
-          }
-
-          const baseUrl = process.env.VERCEL_URL
-            ? `https://${process.env.VERCEL_URL}`
-            : process.env.NEXTAUTH_URL || 'http://localhost:3000';
-
-          try {
-            const headers: Record<string, string> = {
-              'Content-Type': 'application/json',
-              Authorization: AUTH_TOKEN,
-            };
-            if (process.env.VERCEL_AUTOMATION_BYPASS_SECRET) {
-              headers['x-vercel-protection-bypass'] = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
-            }
-
-            // Pass all images
-            const imageResponse = await fetch(`${baseUrl}/api/admin/thumbnails`, {
-              method: 'POST',
-              headers,
-              body: JSON.stringify({
-                carData: {
-                  id: car.id,
-                  brand: car.brand,
-                  model: car.model,
-                  year: car.year,
-                  price: Number(car.price),
-                  images: car.images,
-                },
-                platform,
-                style: 'professional_automotive',
-                prompt: enhancedPrompt,
-                contentType: 'standard',
-              }),
-            });
-
-            const contentType = imageResponse.headers.get('content-type');
-            if (!imageResponse.ok) {
-              const errorText = await imageResponse.text();
-              console.error(`❌ ${platform} image generation failed:`, imageResponse.status, errorText);
-              return {
-                carId: car.id,
-                platform,
-                textContent: textContent.text,
-                hashtags: textContent.hashtags,
-                imageUrl: null,
-                originalImages: car.images,
-                success: false,
-                error: `Image generation failed: ${imageResponse.status}`,
-                cost: 0,
-                promptUsed: enhancedPrompt.substring(0, 100) + '...',
-              };
-            }
-
-            if (!contentType?.includes('application/json')) {
-              console.error(`❌ ${platform} unexpected content type:`, contentType);
-              return {
-                carId: car.id,
-                platform,
-                textContent: textContent.text,
-                hashtags: textContent.hashtags,
-                imageUrl: null,
-                originalImages: car.images,
-                success: false,
-                error: `Expected JSON, received ${contentType}`,
-                cost: 0,
-                promptUsed: enhancedPrompt.substring(0, 100) + '...',
-              };
-            }
-
-            const imageResult = await imageResponse.json();
-            console.log(`✅ ${platform} generation completed:`, { success: imageResult.success, mode: imageResult.mode });
-
-            return {
-              carId: car.id,
-              platform,
-              textContent: textContent.text,
-              hashtags: textContent.hashtags,
-              imageUrl: imageResult.success ? imageResult.imageUrl : null,
-              originalImages: car.images,
-              success: imageResult.success || false,
-              cost: imageResult.cost || 0,
-              promptUsed: enhancedPrompt.substring(0, 100) + '...',
-              mode: imageResult.mode || 'unknown',
-            };
-          } catch (fetchError) {
-            console.error(`❌ ${platform} network error:`, fetchError);
-            return {
-              carId: car.id,
-              platform,
-              textContent: textContent.text,
-              hashtags: textContent.hashtags,
-              imageUrl: null,
-              originalImages: car.images,
-              success: false,
-              error: `Network error: ${fetchError instanceof Error ? fetchError.message : 'Unknown error'}`,
-              cost: 0,
-              promptUsed: enhancedPrompt.substring(0, 100) + '...' || 'generation-failed',
-            };
-          }
-        });
-
-        const platformResults = await Promise.all(platformPromises);
-        carResults.push(...platformResults);
-
-        return carResults;
-      });
-
-      const batchResults = await Promise.all(batchPromises);
-      results.push(...batchResults.flat());
-
-      if (i + batchSize < carIds.length) {
-        console.log('⏳ Waiting 2 seconds before next batch...');
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+          console.log(`  ✅ ${platform} content generated`);
+        } catch (error) {
+          console.error(`  ❌ Failed to generate ${platform} content:`, error);
+        }
       }
     }
 
-    const successCount = results.filter((r) => r.success).length;
-    const totalCount = results.length;
-    console.log(`🎉 Content generation completed: ${successCount}/${totalCount} successful`);
+    const totalCost = content.reduce((sum, item) => sum + item.cost, 0);
+    console.log(`\n✨ Content generation complete!`);
+    console.log(`📊 Generated: ${content.length} items`);
+    console.log(`💰 Total cost: ₹${totalCost.toFixed(2)}`);
 
-    return results;
+    return content;
+  }
+
+  private async fetchCars(carIds: string[]) {
+    return await prisma.car.findMany({
+      where: {
+        id: { in: carIds },
+        images: { not: null }
+      },
+      select: {
+        id: true,
+        brand: true,
+        model: true,
+        year: true,
+        price: true,
+        images: true,
+        fuelType: true,
+        transmission: true
+      }
+    });
+  }
+
+  private async generateImage(
+    car: any,
+    platform: string,
+    dealerContext: DealerContext
+  ): Promise<{ url: string; cost: number }> {
+    
+    const originalImage = Array.isArray(car.images) ? car.images[0] : car.images;
+    
+    const enhancedPrompt = this.imagePromptAgent.generateHighValuePrompt(
+      car,
+      {
+        businessName: dealerContext.businessName,
+        location: dealerContext.location,
+        logo: dealerContext.logo || undefined,
+        description: dealerContext.description || undefined
+      },
+      platform,
+      originalImage
+    );
+
+    console.log(`    🤖 Calling Banana API (${enhancedPrompt.length} chars)...`);
+
+    try {
+      // ✅ CORRECT: Using official fal.ai API pattern
+      const result = await fal.subscribe("fal-ai/nano-banana/edit", {
+        input: {
+          prompt: enhancedPrompt,
+          image_urls: [originalImage],
+          num_images: 1,
+          aspect_ratio: platform === 'linkedin' ? '16:9' : '1:1',
+          output_format: 'jpeg',
+        },
+        logs: true,
+        onQueueUpdate: (update) => {
+          if (update.status === "IN_PROGRESS") {
+            console.log(`    ⏳ Status: ${update.status}`);
+          }
+        },
+      });
+
+      if (!result.data?.images?.length) {
+        throw new Error('No images returned from Banana API');
+      }
+
+      const imageUrl = result.data.images[0].url;
+      console.log(`    ✅ Banana API success`);
+      console.log(`    📸 Image URL: ${imageUrl.substring(0, 60)}...`);
+      
+      return {
+        url: imageUrl,
+        cost: 0.04
+      };
+    } catch (error) {
+      console.error(`    ❌ Banana API failed:`, error);
+      return {
+        url: originalImage,
+        cost: 0
+      };
+    }
+  }
+
+  private async generateTextContent(
+    car: any,
+    platform: string,
+    dealerContext: DealerContext
+  ): Promise<{ text: string; hashtags: string[] }> {
+    
+    const spec = PLATFORM_SPECS[platform];
+    
+    const prompt = `Create ${platform} post content for a preowned car dealer:
+
+Car: ${car.year} ${car.brand} ${car.model}
+Price: ₹${Number(car.price).toLocaleString()}
+
+DEALER INFORMATION (MUST USE - DO NOT USE PLACEHOLDERS):
+Dealership: ${dealerContext.businessName}
+Location: ${dealerContext.location}
+${dealerContext.phoneNumber ? `Contact: ${dealerContext.phoneNumber}` : ''}
+${dealerContext.email ? `Email: ${dealerContext.email}` : ''}
+
+Platform: ${platform}
+Tone: ${spec.tone}
+Max length: ${spec.maxChars} characters
+
+CRITICAL REQUIREMENTS:
+- Use ACTUAL dealer contact details above (NEVER use placeholders like [Your contact number])
+- Include ${dealerContext.businessName} naturally in the post
+- Mention ${dealerContext.location} for local SEO
+- Add compelling call-to-action
+- Authentic preowned car appeal (not new showroom)
+${platform === 'linkedin' ? '- Professional business tone' : ''}
+${platform === 'instagram' ? '- Lifestyle and aspirational' : ''}
+${platform === 'facebook' ? '- Family-friendly and trustworthy' : ''}
+
+Format:
+[Engaging caption with dealer name and location]
+
+[Call to action with real contact info]
+
+Include exactly ${spec.hashtags} relevant hashtags at the end.`;
+
+    const result = await generateText({
+      model: openai('gpt-4o-mini'),
+      prompt
+    });
+
+    const text = result.text;
+    const hashtagMatch = text.match(/#[\w]+/g);
+    const hashtags = hashtagMatch || [];
+
+    return { text, hashtags };
+  }
+
+  private generateWhatsAppTemplate(
+    car: any,
+    dealerContext: DealerContext
+  ): { text: string; hashtags: string[] } {
+    
+    const text = `Hi {{1}},
+
+Check out this ${car.year} ${car.brand} ${car.model} available at ${dealerContext.businessName}!
+
+💰 Price: ₹${Number(car.price).toLocaleString()}
+📍 Location: ${dealerContext.location}
+${dealerContext.phoneNumber ? `📞 Contact: ${dealerContext.phoneNumber}` : ''}
+✅ Test drive available today
+
+Interested? Reply YES to book your visit!
+
+Best regards,
+${dealerContext.businessName}`;
+
+    return { text, hashtags: [] };
   }
 }
