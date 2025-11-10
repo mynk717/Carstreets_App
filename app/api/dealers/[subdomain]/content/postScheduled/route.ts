@@ -9,47 +9,6 @@ function extractSubdomain(request: NextRequest) {
   return pathParts[pathParts.indexOf("dealers") + 1];
 }
 
-// Helper: Post content to Facebook Page
-async function postToFacebookPage(pageAccessToken: string, pageId: string, message: string) {
-  const url = `https://graph.facebook.com/v17.0/${pageId}/feed`;
-  const body = new URLSearchParams({
-    message,
-    access_token: pageAccessToken,
-  });
-  const res = await fetch(url, { method: "POST", body });
-  const json = await res.json();
-  if (!res.ok) throw new Error(`Facebook posting failed: ${JSON.stringify(json)}`);
-  return json;
-}
-
-// Helper: Post content to Instagram
-async function postToInstagram(igAccessToken: string, igUserId: string, caption: string, imageUrl: string) {
-  // Step 1: Create media container
-  let res = await fetch(`https://graph.facebook.com/v17.0/${igUserId}/media`, {
-    method: "POST",
-    body: new URLSearchParams({
-      image_url: imageUrl,
-      caption,
-      access_token: igAccessToken,
-    }),
-  });
-  let json = await res.json();
-  if (!res.ok) throw new Error(`Instagram media creation failed: ${JSON.stringify(json)}`);
-  const containerId = json.id;
-
-  // Step 2: Publish media container
-  res = await fetch(`https://graph.facebook.com/v17.0/${igUserId}/media_publish`, {
-    method: "POST",
-    body: new URLSearchParams({
-      creation_id: containerId,
-      access_token: igAccessToken,
-    }),
-  });
-  json = await res.json();
-  if (!res.ok) throw new Error(`Instagram publish failed: ${JSON.stringify(json)}`);
-  return json;
-}
-
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -58,11 +17,40 @@ export async function POST(request: NextRequest) {
     }
 
     const subdomain = extractSubdomain(request);
+
+    // ✅ Get dealer with social tokens (FIXED: removed invalid field)
     const dealer = await prisma.dealer.findUnique({
-      where: { subdomain }
+      where: { subdomain },
+      select: {
+        id: true,
+        businessName: true,
+        metaAccessToken: true,
+        metaAccessTokenExpiry: true,
+        facebookPageId: true,
+        // ✅ REMOVED: instagramBusinessAccountId (doesn't exist in schema)
+      }
     });
+
     if (!dealer) {
+      return NextResponse.json({ error: "Dealer not found" }, { status: 404 });
+    }
+
+    // ✅ Verify session user matches dealer
+    if (session.user.id !== dealer.id) {
       return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
+    }
+
+    // ✅ Check token expiry
+    if (dealer.metaAccessTokenExpiry && new Date(dealer.metaAccessTokenExpiry) < new Date()) {
+      return NextResponse.json({
+        error: "Meta access token expired. Please reconnect Facebook."
+      }, { status: 401 });
+    }
+
+    if (!dealer.metaAccessToken) {
+      return NextResponse.json({
+        error: "Social media not connected. Please connect Facebook/Instagram first."
+      }, { status: 400 });
     }
 
     // Optional: Secure cronjob via header
@@ -74,51 +62,108 @@ export async function POST(request: NextRequest) {
 
     const now = new Date();
 
-    // Fetch scheduled posts from ContentCalendar
+    // ✅ Fetch scheduled posts for THIS dealer only
     const scheduledContents = await prisma.contentCalendar.findMany({
-      where: { dealerId: dealer.id, status: "scheduled", scheduledDate: { lte: now } },
+      where: {
+        dealerId: dealer.id,
+        status: "scheduled",
+        scheduledDate: { lte: now }
+      },
     });
 
-    console.log(`Found ${scheduledContents.length} scheduled posts to process`);
+    console.log(`Found ${scheduledContents.length} scheduled posts for dealer ${subdomain}`);
+
+    const results = [];
 
     for (const content of scheduledContents) {
       try {
         console.log(`🚀 Processing post ${content.id} for platform ${content.platform}`);
 
+        let postResult;
+
+        // ✅ Post using dealer-specific social posting routes
         if (content.platform === "facebook") {
-          const fbPageId = process.env.FACEBOOK_PAGE_ID;
-          const fbAccessToken = process.env.FACEBOOK_ACCESS_TOKEN;
-          if (!fbPageId || !fbAccessToken) {
-            console.error('❌ Facebook credentials missing in environment variables');
-            continue;
-          }
-          await postToFacebookPage(fbAccessToken, fbPageId, content.textContent);
+          postResult = await fetch(`${process.env.NEXTAUTH_URL}/api/social/facebook/post`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dealerId: dealer.id,
+              contentId: content.id,
+              textContent: content.textContent,
+              imageUrl: content.brandedImage || content.originalImage,
+            })
+          });
         } else if (content.platform === "instagram") {
-          const igUserId = process.env.INSTAGRAM_USER_ID;
-          const igAccessToken = process.env.INSTAGRAM_ACCESS_TOKEN;
-          if (!igUserId || !igAccessToken) {
-            console.error('❌ Instagram credentials missing in environment variables');
-            continue;
-          }
-          await postToInstagram(igAccessToken, igUserId, content.textContent, content.brandedImage);
+          postResult = await fetch(`${process.env.NEXTAUTH_URL}/api/social/instagram/post`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dealerId: dealer.id,
+              contentId: content.id,
+              textContent: content.textContent,
+              imageUrl: content.brandedImage || content.originalImage,
+            })
+          });
+        } else if (content.platform === "linkedin") {
+          postResult = await fetch(`${process.env.NEXTAUTH_URL}/api/social/linkedin/post`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              dealerId: dealer.id,
+              contentId: content.id,
+              textContent: content.textContent,
+              imageUrl: content.brandedImage || content.originalImage,
+            })
+          });
         }
 
-        // UPDATE STATUS TO POSTED
-        await prisma.contentCalendar.update({
-          where: { id: content.id },
-          data: { dealerId: dealer.id, status: "posted" },
-        });
+        if (postResult && postResult.ok) {
+          // ✅ Update status to posted
+          await prisma.contentCalendar.update({
+            where: { id: content.id },
+            data: {
+              status: 'posted',
+              postedAt: new Date(),
+            }
+          });
 
-        console.log(`✅ Successfully posted and updated ${content.id}`);
+          results.push({
+            contentId: content.id,
+            platform: content.platform,
+            status: 'posted',
+            success: true
+          });
+
+          console.log(`✅ Successfully posted ${content.id} to ${content.platform}`);
+        } else {
+          const errorText = postResult ? await postResult.text() : 'Unknown error';
+          results.push({
+            contentId: content.id,
+            platform: content.platform,
+            status: 'failed',
+            error: errorText,
+            success: false
+          });
+
+          console.error(`❌ Failed to post ${content.id} to ${content.platform}: ${errorText}`);
+        }
       } catch (postError) {
-        console.error(`❌ Error processing post ${content.id}:`, postError);
+        console.error(`Error processing post ${content.id}:`, postError);
+        results.push({
+          contentId: content.id,
+          platform: content.platform,
+          status: 'error',
+          error: postError instanceof Error ? postError.message : 'Unknown error',
+          success: false
+        });
       }
     }
 
     return NextResponse.json({
       success: true,
       message: `Processed ${scheduledContents.length} scheduled posts`,
-      processed: scheduledContents.length
+      processed: scheduledContents.length,
+      results
     });
 
   } catch (error) {

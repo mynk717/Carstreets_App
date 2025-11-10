@@ -1,10 +1,12 @@
-import { notFound } from 'next/navigation'
-import {prisma} from '@/lib/prisma'
+import { notFound } from 'next/navigation'  // ✅ FIXED IMPORT
+import { prisma } from '@/lib/prisma'
 import { DealerCarCard } from './CarCard'
 import type { Metadata } from 'next'
+import { CarFilters } from './CarFilters';
 
 interface PageProps {
   params: Promise<{ subdomain: string }>
+  searchParams: Promise<{ [key: string]: string | undefined }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -32,15 +34,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
 
     const dealerName = dealer.businessName || dealer.name || 'CarStreets'
-    
-    // Use location field instead of city/state
     const dealerLocation = dealer.location || 'India'
-    
-    // Use description only (no tagline field)
     const description = dealer.description 
       || `Browse quality used cars at ${dealerName}. Located in ${dealerLocation}.`
 
-    // Use logo or first car image
     const ogImage = dealer.logo 
       || (dealer.cars[0]?.images?.[0] as string)
       || '/default-dealer-og.jpg'
@@ -71,33 +68,111 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 }
-export default async function DealerStorefront({ params }: PageProps) {
-  // FIXED: Properly await and validate params
+
+export default async function DealerStorefront({ params, searchParams }: PageProps) {
+  // ✅ Await both params and searchParams
   const resolvedParams = await params
+  const filters = await searchParams  // ✅ Added filters
   const { subdomain } = resolvedParams
   
   if (!subdomain) {
     console.error('Missing subdomain parameter')
-    notFound()
+    return notFound()  // ✅ FIXED: return notFound()
   }
 
-  console.log('Dealer storefront params:', { subdomain }) // Debug log
+  console.log('Dealer storefront params:', { subdomain })
   
   try {
+    // ✅ Fetch dealer first
     const dealer = await prisma.dealer.findUnique({
       where: { subdomain },
-      include: {
-        cars: {
-          where: { carStreetsListed: true },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
     })
 
     if (!dealer) {
       console.log('Dealer not found:', subdomain)
-      notFound()
+      return notFound()  // ✅ FIXED: return notFound()
     }
+
+    // ✅ Build dynamic where clause based on filters
+    const where: any = {
+      dealerId: dealer.id,
+      carStreetsListed: true,
+    }
+
+    // Search filter
+    if (filters.search) {
+      where.OR = [
+        { title: { contains: filters.search, mode: 'insensitive' } },
+        { brand: { contains: filters.search, mode: 'insensitive' } },
+        { model: { contains: filters.search, mode: 'insensitive' } },
+      ]
+    }
+
+    // Brand filter
+    if (filters.brand && filters.brand !== 'all') {
+      where.brand = filters.brand
+    }
+
+    // Price range filter
+    if (filters.minPrice || filters.maxPrice) {
+      where.price = {}
+      if (filters.minPrice) {
+        where.price.gte = BigInt(filters.minPrice)
+      }
+      if (filters.maxPrice) {
+        where.price.lte = BigInt(filters.maxPrice)
+      }
+    }
+
+    // Year range filter
+    if (filters.minYear || filters.maxYear) {
+      where.year = {}
+      if (filters.minYear) {
+        where.year.gte = parseInt(filters.minYear)
+      }
+      if (filters.maxYear) {
+        where.year.lte = parseInt(filters.maxYear)
+      }
+    }
+
+    // Fuel type filter
+    if (filters.fuelType && filters.fuelType !== 'all') {
+      where.fuelType = filters.fuelType
+    }
+
+    // Transmission filter
+    if (filters.transmission && filters.transmission !== 'all') {
+      where.transmission = filters.transmission
+    }
+
+    // Sort option
+    let orderBy: any = { createdAt: 'desc' }
+
+    if (filters.sort === 'price_low') {
+      orderBy = { price: 'asc' }
+    } else if (filters.sort === 'price_high') {
+      orderBy = { price: 'desc' }
+    } else if (filters.sort === 'year_new') {
+      orderBy = { year: 'desc' }
+    } else if (filters.sort === 'year_old') {
+      orderBy = { year: 'asc' }
+    }
+
+    // ✅ Fetch filtered cars
+    const cars = await prisma.car.findMany({
+      where,
+      orderBy,
+    })
+
+    // ✅ Get unique brands for filter dropdown
+    const allBrands = await prisma.car.findMany({
+      where: { dealerId: dealer.id, carStreetsListed: true },
+      select: { brand: true },
+      distinct: ['brand'],
+      orderBy: { brand: 'asc' },
+    })
+
+    const brands = allBrands.map(b => b.brand)
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
@@ -108,7 +183,7 @@ export default async function DealerStorefront({ params }: PageProps) {
               {dealer.logo && (
                 <img 
                   src={dealer.logo} 
-                  alt={dealer.name} 
+                  alt={dealer.name || ''} 
                   className="w-20 h-20 rounded-2xl object-cover shadow-lg border-2 border-gray-100" 
                 />
               )}
@@ -161,27 +236,28 @@ export default async function DealerStorefront({ params }: PageProps) {
           </div>
         </header>
 
-        {/* Car Grid */}
+        {/* Main Content with Filters */}
         <main className="container mx-auto px-4 py-12">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-bold text-gray-900">
-              Available Cars ({dealer.cars.length})
-            </h2>
-            <div className="flex items-center gap-4">
-              <span className="text-gray-500">Showing {dealer.cars.length} cars</span>
-              {/* Future: Add sort/filter dropdown */}
-            </div>
-          </div>
+          {/* ✅ Filter Component - REMOVED currentFilters prop */}
+          <CarFilters
+            brands={brands}
+            totalCars={cars.length}
+          />
 
-          {dealer.cars.length === 0 ? (
+          {/* Cars Grid */}
+          {cars.length === 0 ? (
             <div className="text-center py-16 bg-white rounded-2xl shadow-sm">
               <div className="w-24 h-24 mx-auto mb-6 bg-gray-100 rounded-full flex items-center justify-center">
                 <svg className="w-12 h-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">No cars available</h3>
-              <p className="text-gray-600 mb-6">We're updating our inventory. Check back soon for new arrivals!</p>
+              <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                {filters.search || filters.brand ? 'No cars match your filters' : 'No cars available'}
+              </h3>
+              <p className="text-gray-600 mb-6">
+                {filters.search || filters.brand ? 'Try adjusting your search or filters' : "We're updating our inventory. Check back soon for new arrivals!"}
+              </p>
               <a 
                 href={`https://api.whatsapp.com/send?phone=${dealer.phoneNumber}&text=${encodeURIComponent('Hi! When will you have new cars available?')}`}
                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200"
@@ -193,7 +269,7 @@ export default async function DealerStorefront({ params }: PageProps) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
-              {dealer.cars.map((car) => (
+              {cars.map((car) => (
                 <DealerCarCard 
                   key={car.id} 
                   car={car} 
@@ -203,24 +279,10 @@ export default async function DealerStorefront({ params }: PageProps) {
             </div>
           )}
         </main>
-
-        {/* Footer */}
-        {/* <footer className="bg-gray-900 text-white mt-20 py-12">
-          <div className="container mx-auto px-4 text-center">
-            <h3 className="text-2xl font-bold mb-2">{dealer.businessName || dealer.name}</h3>
-            <p className="text-gray-300 mb-4">{dealer.location}</p>
-            <p className="text-sm text-gray-400">
-              © 2025 {dealer.businessName || dealer.name}
-            </p>
-            <p className="text-sm text-gray-500 mt-2">
-              Powered by <span className="text-blue-400 font-medium">MotoYard</span>
-            </p>
-          </div>
-        </footer> */}
       </div>
     )
   } catch (error) {
     console.error('Database error in dealer storefront:', error)
-    notFound()
+    return notFound()  // ✅ FIXED: return notFound()
   }
 }
