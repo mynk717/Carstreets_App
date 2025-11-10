@@ -1,9 +1,9 @@
-name: Scheduled Social Media Posting (All Dealers)
+name: Scheduled Social Media Posting
 
 on:
   schedule:
     - cron: '*/5 * * * *'  # Every 5 minutes
-  workflow_dispatch:  # Manual trigger for testing
+  workflow_dispatch:  # Manual trigger
 
 jobs:
   post-scheduled-content:
@@ -12,13 +12,13 @@ jobs:
     steps:
       - name: Post Scheduled Content for All Dealers
         env:
-          VERCEL_URL: ${{ secrets.VERCEL_URL }}
+          PRODUCTION_URL: ${{ secrets.PRODUCTION_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           echo "🚀 Calling scheduled posting endpoint..."
           
           response=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
-            "${VERCEL_URL}/api/cron/scheduled-posting" \
+            "https://${PRODUCTION_URL}/api/cron/scheduled-posting" \
             -H "Authorization: Bearer ${CRON_SECRET}" \
             -H "Content-Type: application/json")
           

@@ -46,6 +46,13 @@ export async function POST(request: NextRequest) {
 
     const results = [];
 
+    // ✅ Use production URL
+    const baseUrl = process.env.PRODUCTION_URL 
+      || process.env.NEXTAUTH_URL 
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+    console.log(`🌐 Using base URL: ${baseUrl}`);
+
     // ✅ Process each dealer
     for (const dealer of dealersWithScheduledPosts) {
       try {
@@ -65,20 +72,35 @@ export async function POST(request: NextRequest) {
         }
 
         // ✅ Call dealer-specific posting route
-        const baseUrl = process.env.VERCEL_URL 
-          ? `https://${process.env.VERCEL_URL}` 
-          : (process.env.NEXTAUTH_URL || 'http://localhost:3000');
+        const postUrl = `${baseUrl}/api/dealers/${dealer.subdomain}/content/postScheduled`;
+        console.log(`🔗 Calling: ${postUrl}`);
 
-        const response = await fetch(
-          `${baseUrl}/api/dealers/${dealer.subdomain}/content/postScheduled`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'authorization': authHeader || ''
-            }
+        const response = await fetch(postUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'authorization': authHeader || ''
           }
-        );
+        });
+
+        console.log(`📡 Response status: ${response.status}`);
+
+        // ✅ Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const htmlText = await response.text();
+          console.error(`❌ Expected JSON but got ${contentType}`);
+          console.error(`Response preview: ${htmlText.substring(0, 200)}`);
+          
+          results.push({
+            dealerId: dealer.id,
+            subdomain: dealer.subdomain,
+            success: false,
+            error: `Invalid response: Expected JSON but got ${contentType || 'unknown'}`,
+            responsePreview: htmlText.substring(0, 100)
+          });
+          continue;
+        }
 
         const result = await response.json();
 

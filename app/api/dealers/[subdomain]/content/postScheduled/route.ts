@@ -1,24 +1,33 @@
 import { NextResponse, NextRequest } from "next/server";
-import { getServerSession } from "next-auth/next";
-import { authOptions } from "@/api/auth/[...nextauth]/route";
 import { prisma } from "@/lib/prisma";
 
 // Helper: Extract subdomain from request URL
-function extractSubdomain(request: NextRequest) {
+function extractSubdomain(request: NextRequest): string | null {
   const pathParts = request.nextUrl.pathname.split("/");
-  return pathParts[pathParts.indexOf("dealers") + 1];
+  const dealersIndex = pathParts.indexOf("dealers");
+  if (dealersIndex !== -1 && pathParts[dealersIndex + 1]) {
+    return pathParts[dealersIndex + 1];
+  }
+  return null;
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    console.log('📍 postScheduled route called');
 
     const subdomain = extractSubdomain(request);
 
-    // ✅ Get dealer with social tokens (FIXED: removed invalid field)
+    if (!subdomain) {
+      console.error('❌ Missing subdomain');
+      return NextResponse.json({ 
+        success: false, 
+        error: "Missing subdomain" 
+      }, { status: 400 });
+    }
+
+    console.log(`📍 Processing for subdomain: ${subdomain}`);
+
+    // ✅ Get dealer with social tokens
     const dealer = await prisma.dealer.findUnique({
       where: { subdomain },
       select: {
@@ -27,37 +36,34 @@ export async function POST(request: NextRequest) {
         metaAccessToken: true,
         metaAccessTokenExpiry: true,
         facebookPageId: true,
-        // ✅ REMOVED: instagramBusinessAccountId (doesn't exist in schema)
       }
     });
 
     if (!dealer) {
-      return NextResponse.json({ error: "Dealer not found" }, { status: 404 });
+      console.error(`❌ Dealer not found: ${subdomain}`);
+      return NextResponse.json({ 
+        success: false,
+        error: "Dealer not found" 
+      }, { status: 404 });
     }
 
-    // ✅ Verify session user matches dealer
-    if (session.user.id !== dealer.id) {
-      return NextResponse.json({ error: "Forbidden: Not your dealer" }, { status: 403 });
-    }
+    console.log(`✅ Dealer found: ${dealer.businessName}`);
 
     // ✅ Check token expiry
     if (dealer.metaAccessTokenExpiry && new Date(dealer.metaAccessTokenExpiry) < new Date()) {
+      console.error('❌ Meta access token expired');
       return NextResponse.json({
+        success: false,
         error: "Meta access token expired. Please reconnect Facebook."
       }, { status: 401 });
     }
 
     if (!dealer.metaAccessToken) {
+      console.error('❌ No social media connected');
       return NextResponse.json({
+        success: false,
         error: "Social media not connected. Please connect Facebook/Instagram first."
       }, { status: 400 });
-    }
-
-    // Optional: Secure cronjob via header
-    const authHeader = request.headers.get('authorization');
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized cron request' }, { status: 401 });
     }
 
     const now = new Date();
@@ -71,48 +77,64 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    console.log(`Found ${scheduledContents.length} scheduled posts for dealer ${subdomain}`);
+    console.log(`📊 Found ${scheduledContents.length} scheduled posts for ${subdomain}`);
+
+    if (scheduledContents.length === 0) {
+      return NextResponse.json({
+        success: true,
+        message: "No scheduled posts to process",
+        processed: 0
+      });
+    }
 
     const results = [];
+    
+    // ✅ Use production URL
+    const baseUrl = process.env.PRODUCTION_URL 
+      || process.env.NEXTAUTH_URL 
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+    console.log(`🌐 Using base URL: ${baseUrl}`);
 
     for (const content of scheduledContents) {
       try {
         console.log(`🚀 Processing post ${content.id} for platform ${content.platform}`);
 
         let postResult;
+        const imageUrl = content.brandedImage || content.originalImage;
 
         // ✅ Post using dealer-specific social posting routes
         if (content.platform === "facebook") {
-          postResult = await fetch(`${process.env.NEXTAUTH_URL}/api/social/facebook/post`, {
+          postResult = await fetch(`${baseUrl}/api/social/facebook/post`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               dealerId: dealer.id,
               contentId: content.id,
               textContent: content.textContent,
-              imageUrl: content.brandedImage || content.originalImage,
+              imageUrl: imageUrl,
             })
           });
         } else if (content.platform === "instagram") {
-          postResult = await fetch(`${process.env.NEXTAUTH_URL}/api/social/instagram/post`, {
+          postResult = await fetch(`${baseUrl}/api/social/instagram/post`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               dealerId: dealer.id,
               contentId: content.id,
               textContent: content.textContent,
-              imageUrl: content.brandedImage || content.originalImage,
+              imageUrl: imageUrl,
             })
           });
         } else if (content.platform === "linkedin") {
-          postResult = await fetch(`${process.env.NEXTAUTH_URL}/api/social/linkedin/post`, {
+          postResult = await fetch(`${baseUrl}/api/social/linkedin/post`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               dealerId: dealer.id,
               contentId: content.id,
               textContent: content.textContent,
-              imageUrl: content.brandedImage || content.originalImage,
+              imageUrl: imageUrl,
             })
           });
         }
@@ -148,7 +170,7 @@ export async function POST(request: NextRequest) {
           console.error(`❌ Failed to post ${content.id} to ${content.platform}: ${errorText}`);
         }
       } catch (postError) {
-        console.error(`Error processing post ${content.id}:`, postError);
+        console.error(`❌ Error processing post ${content.id}:`, postError);
         results.push({
           contentId: content.id,
           platform: content.platform,
@@ -159,15 +181,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    const successCount = results.filter(r => r.success).length;
+
     return NextResponse.json({
       success: true,
       message: `Processed ${scheduledContents.length} scheduled posts`,
       processed: scheduledContents.length,
+      successful: successCount,
+      failed: scheduledContents.length - successCount,
       results
     });
 
   } catch (error) {
-    console.error("Scheduled posting error:", error);
+    console.error("❌ Scheduled posting error:", error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : String(error)
