@@ -60,12 +60,14 @@ export const config = {
   matcher: [
     /*
      * Match all request paths except:
+     * - api/webhooks/* (webhook routes - they handle their own validation)
+     * - api/auth/* (NextAuth routes)
      * - _next/static (static files)
      * - _next/image (image optimization)
      * - favicon.ico
-     * - public folder
-     * - api routes (they handle their own logic)
+     * - public folder assets
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api/webhooks|api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-}
+};
+
