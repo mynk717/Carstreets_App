@@ -1,3 +1,4 @@
+// middleware.ts
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -7,17 +8,14 @@ export function middleware(request: NextRequest) {
   
   console.log('🔍 Middleware:', { hostname, pathname: url.pathname })
 
-  // Platform domain: motoyard.mktgdime.com or localhost
   const isPlatformDomain = hostname === 'motoyard.mktgdime.com' || 
                            hostname === 'localhost:3000' ||
                            hostname.startsWith('localhost') ||
                            hostname.startsWith('127.0.0.1') ||
-                           hostname.includes('cloudworkstations.dev') ||  // ✅ Firebase/IDX workspaces
-                           hostname.includes('vercel.app')  // ✅ Vercel preview deployments
-
+                           hostname.includes('cloudworkstations.dev') ||
+                           hostname.includes('vercel.app')
 
   if (isPlatformDomain) {
-    // Allow platform routes (homepage, pricing, auth, admin)
     if (url.pathname === '/' || 
         url.pathname.startsWith('/pricing') ||
         url.pathname.startsWith('/features') ||
@@ -30,34 +28,19 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Subdomain detection: *.motoyard.mktgdime.com
   if (hostname.endsWith('.motoyard.mktgdime.com') && hostname !== 'motoyard.mktgdime.com') {
     const subdomain = hostname.replace('.motoyard.mktgdime.com', '')
-    
-    console.log('🏢 Detected subdomain:', subdomain)
-    
-    // ✅ FIX: Don't rewrite if path already starts with /dealers/[subdomain]
-    if (url.pathname.startsWith(`/dealers/${subdomain}`)) {
-      console.log('✅ Path already correct, no rewrite needed')
-      return NextResponse.next()
-    }
-    
-    // Rewrite to dealer-specific route ONLY if not already there
     const newUrl = url.clone()
     newUrl.pathname = `/dealers/${subdomain}${url.pathname}`
-    
-    console.log('↪️  Rewriting to:', newUrl.pathname)
     return NextResponse.rewrite(newUrl)
   }
 
-  // Custom domain detection (future feature)
-  // TODO: Check database for custom domains
-  
   return NextResponse.next()
 }
 
 export const config = {
   matcher: [
+    // ✅ CRITICAL: Exclude webhooks and auth
     '/((?!api/webhooks|api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
-};
+}

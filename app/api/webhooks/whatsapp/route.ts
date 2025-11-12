@@ -1,8 +1,9 @@
+// app/api/webhooks/whatsapp/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { WhatsAppStorageService } from '@/lib/services/whatsapp-storage.service';
 
-// Webhook verification (Meta requirement)
+// Webhook verification (GET)
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const mode = searchParams.get('hub.mode');
@@ -19,67 +20,27 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ error: 'Verification failed' }, { status: 403 });
 }
 
-async function getDealerByPhoneNumberId(phoneNumberId: string, from: string) {
-  let dealer = await prisma.dealer.findFirst({
-    where: { whatsappPhoneNumberId: phoneNumberId },
-    select: { id: true, subdomain: true },
-  });
-
-  if (!dealer) {
-    console.warn(`⚠️ Dealer not found by whatsappPhoneNumberId: ${phoneNumberId}, trying lookup via contact phone...`);
-    const contact = await prisma.whatsAppContact.findFirst({
-      where: { phoneNumber: from },
-      select: { dealerId: true },
-    });
-
-    if (contact) {
-      dealer = await prisma.dealer.findUnique({
-        where: { id: contact.dealerId },
-        select: { id: true, subdomain: true },
-      });
-    }
-  }
-
-  return dealer;
-}
-
-// ============================================================
-// CHANGE #1: POST handler now returns 200 OK immediately
-// WHY: Meta requires immediate acknowledgment to prevent retries
-// ============================================================
+// Incoming webhook handler (POST)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('📩 Incoming webhook:', JSON.stringify(body, null, 2));
+    console.log('📩 [Webhook] Received:', JSON.stringify(body, null, 2));
 
-    // ✅ CHANGE #2: Return 200 OK immediately before processing
-    // WHY: This tells Meta "webhook received successfully, don't retry"
-    // BEFORE: We awaited all processing before responding
-    // AFTER: We respond first, then process asynchronously
+    // ✅ CRITICAL: Return 200 OK immediately
     const response = NextResponse.json({ status: 'received' }, { status: 200 });
 
-    // ✅ CHANGE #3: Process webhook asynchronously without awaiting
-    // WHY: Processing happens in background after 200 OK is sent
-    // The .catch() ensures errors don't crash the handler
+    // Process asynchronously
     processWebhookAsync(body).catch((error) => {
       console.error('❌ [Webhook] Async processing error:', error);
-      // We don't throw here because we already sent 200 OK
     });
 
     return response;
   } catch (error: any) {
-    console.error('❌ Webhook parse error:', error);
-    // ✅ CHANGE #4: Still return 200 even on error
-    // WHY: Prevents Meta from retrying on parsing errors
+    console.error('❌ [Webhook] Parse error:', error);
     return NextResponse.json({ status: 'error' }, { status: 200 });
   }
 }
 
-// ============================================================
-// CHANGE #5: New separate async processing function
-// WHY: Separates acknowledgment logic from processing logic
-// This runs AFTER the 200 OK response is sent to Meta
-// ============================================================
 async function processWebhookAsync(body: any) {
   try {
     const entry = body.entry?.[0];
@@ -91,7 +52,6 @@ async function processWebhookAsync(body: any) {
       return;
     }
 
-    // Process incoming messages
     if (value.messages) {
       console.log(`📨 [Webhook] Processing ${value.messages.length} message(s)`);
       for (const message of value.messages) {
@@ -99,7 +59,6 @@ async function processWebhookAsync(body: any) {
       }
     }
 
-    // Process status updates (delivered, read, etc.)
     if (value.statuses) {
       console.log(`📊 [Webhook] Processing ${value.statuses.length} status update(s)`);
       for (const status of value.statuses) {
@@ -107,40 +66,34 @@ async function processWebhookAsync(body: any) {
       }
     }
 
-    console.log('✅ [Webhook] Async processing completed successfully');
+    console.log('✅ [Webhook] Processing completed');
   } catch (error: any) {
-    console.error('❌ [Webhook] Async processing failed:', error);
-    // Log to external monitoring service here if available
-    // Example: Sentry.captureException(error);
+    console.error('❌ [Webhook] Processing failed:', error);
   }
 }
 
-// ============================================================
-// CHANGE #6: Fixed metadata field name
-// WHY: Meta's API uses phone_number_id (with underscores), not phonenumberid
-// BEFORE: metadata.phonenumberid (incorrect)
-// AFTER: metadata.phone_number_id (correct)
-// ============================================================
 async function handleIncomingMessage(message: any, metadata: any) {
   try {
-    // ✅ CHANGE #6: Corrected field name from phonenumberid to phone_number_id
-    const phoneNumberId = metadata.phone_number_id; // Was: metadata.phonenumberid
+    // ✅ FIXED: Correct field name
+    const phoneNumberId = metadata.phone_number_id;
     const from = message.from;
     const messageId = message.id;
     const timestamp = parseInt(message.timestamp) * 1000;
 
-    // ✅ CHANGE #7: Added more detailed logging for debugging
-    console.log(`📥 [Message] Processing message ${messageId} from ${from}`);
+    console.log(`📥 [Message] Processing ${messageId} from ${from} (phoneNumberId: ${phoneNumberId})`);
 
-    // Get dealer with fallback lookup
-    const dealer = await getDealerByPhoneNumberId(phoneNumberId, from);
+    // Find dealer
+    const dealer = await prisma.dealer.findFirst({
+      where: { whatsappPhoneNumberId: phoneNumberId },
+      select: { id: true, subdomain: true },
+    });
 
     if (!dealer) {
-      console.warn(`⚠️ No dealer found for phone number ID: ${phoneNumberId} and sender ${from}`);
+      console.error(`❌ [Message] No dealer found for phoneNumberId: ${phoneNumberId}`);
       return;
     }
 
-    console.log(`🏢 [Message] Dealer found: ${dealer.subdomain} (${dealer.id})`);
+    console.log(`✅ [Message] Dealer found: ${dealer.subdomain} (${dealer.id})`);
 
     // Find or create contact
     let contact = await prisma.whatsAppContact.findFirst({
@@ -159,10 +112,10 @@ async function handleIncomingMessage(message: any, metadata: any) {
           optedIn: true,
         },
       });
-      console.log(`📱 New contact created: ${from} for dealer ${dealer.subdomain}`);
+      console.log(`✅ [Message] New contact created: ${from}`);
     }
 
-    // Extract content based on message type
+    // Extract content
     let content = '';
     let messageType: 'text' | 'image' | 'document' | 'template' = 'text';
     let mediaUrl = '';
@@ -179,10 +132,9 @@ async function handleIncomingMessage(message: any, metadata: any) {
       mediaUrl = message.document.id;
     }
 
-    // ✅ CHANGE #8: Added logging before storage operations
     console.log(`💾 [Message] Saving to Redis: ${messageId}`);
 
-    // Save to Redis for fast retrieval
+    // Save to Redis
     await WhatsAppStorageService.saveMessage({
       id: messageId,
       dealerId: dealer.id,
@@ -197,10 +149,9 @@ async function handleIncomingMessage(message: any, metadata: any) {
       webhookData: message,
     });
 
-    // ✅ CHANGE #9: Added logging before database operations
-    console.log(`💾 [Message] Updating conversation summary in PostgreSQL`);
+    console.log(`💾 [Message] Updating conversation summary`);
 
-    // Update conversation summary in PostgreSQL
+    // Update conversation summary
     await prisma.whatsAppConversationSummary.upsert({
       where: {
         dealerId_contactId: {
@@ -224,7 +175,7 @@ async function handleIncomingMessage(message: any, metadata: any) {
       },
     });
 
-    // Create message record in PostgreSQL
+    // Create message record
     await prisma.whatsAppMessage.create({
       data: {
         dealerId: dealer.id,
@@ -234,20 +185,14 @@ async function handleIncomingMessage(message: any, metadata: any) {
         messageId,
         status: 'delivered',
         direction: 'inbound',
-        content: '', // Content is in Redis, not duplicated here
+        content: content, // ✅ Store content in Prisma too for backup
       },
     });
 
-    console.log(`✅ Incoming message processed successfully: ${messageId} from ${from}`);
+    console.log(`✅ [Message] Saved successfully: ${messageId}`);
   } catch (error: any) {
-    console.error('❌ Error handling incoming message:', error);
-    // ✅ CHANGE #10: More detailed error logging
-    console.error('❌ Error details:', {
-      message: error.message,
-      stack: error.stack,
-      messageId: message?.id,
-      from: message?.from,
-    });
+    console.error('❌ [Message] Error:', error);
+    console.error('❌ [Message] Stack:', error.stack);
   }
 }
 
@@ -256,7 +201,7 @@ async function handleStatusUpdate(status: any, metadata: any) {
     const messageId = status.id;
     const newStatus = status.status;
 
-    console.log(`📊 Status update: ${messageId} -> ${newStatus}`);
+    console.log(`📊 [Status] Updating ${messageId} -> ${newStatus}`);
 
     await prisma.whatsAppMessage.updateMany({
       where: { messageId },
@@ -267,8 +212,8 @@ async function handleStatusUpdate(status: any, metadata: any) {
       },
     });
 
-    console.log(`✅ Status updated successfully: ${messageId} -> ${newStatus}`);
+    console.log(`✅ [Status] Updated successfully`);
   } catch (error: any) {
-    console.error('❌ Error handling status update:', error);
+    console.error('❌ [Status] Error:', error);
   }
 }
