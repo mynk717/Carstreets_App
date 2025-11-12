@@ -1,7 +1,16 @@
 // app/api/webhooks/whatsapp/route.ts
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import { WhatsAppStorageService } from '@/lib/services/whatsapp-storage.service';
+
+// ✅ Use the existing new_PRISMA_DATABASE_URL from your Vercel env vars
+const whatsappPrisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.new_PRISMA_DATABASE_URL || process.env.DATABASE_URL,
+    },
+  },
+});
 
 // Webhook verification (GET)
 export async function GET(request: NextRequest) {
@@ -26,7 +35,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     console.log('📩 [Webhook] Received:', JSON.stringify(body, null, 2));
 
-    // ✅ CRITICAL: Return 200 OK immediately
+    // ✅ Return 200 OK immediately
     const response = NextResponse.json({ status: 'received' }, { status: 200 });
 
     // Process asynchronously
@@ -74,7 +83,6 @@ async function processWebhookAsync(body: any) {
 
 async function handleIncomingMessage(message: any, metadata: any) {
   try {
-    // ✅ FIXED: Correct field name
     const phoneNumberId = metadata.phone_number_id;
     const from = message.from;
     const messageId = message.id;
@@ -82,8 +90,8 @@ async function handleIncomingMessage(message: any, metadata: any) {
 
     console.log(`📥 [Message] Processing ${messageId} from ${from} (phoneNumberId: ${phoneNumberId})`);
 
-    // Find dealer
-    const dealer = await prisma.dealer.findFirst({
+    // ✅ Use whatsappPrisma instead of prisma
+    const dealer = await whatsappPrisma.dealer.findFirst({
       where: { whatsappPhoneNumberId: phoneNumberId },
       select: { id: true, subdomain: true },
     });
@@ -95,8 +103,7 @@ async function handleIncomingMessage(message: any, metadata: any) {
 
     console.log(`✅ [Message] Dealer found: ${dealer.subdomain} (${dealer.id})`);
 
-    // Find or create contact
-    let contact = await prisma.whatsAppContact.findFirst({
+    let contact = await whatsappPrisma.whatsAppContact.findFirst({
       where: {
         dealerId: dealer.id,
         phoneNumber: from,
@@ -104,7 +111,7 @@ async function handleIncomingMessage(message: any, metadata: any) {
     });
 
     if (!contact) {
-      contact = await prisma.whatsAppContact.create({
+      contact = await whatsappPrisma.whatsAppContact.create({
         data: {
           dealerId: dealer.id,
           phoneNumber: from,
@@ -115,7 +122,6 @@ async function handleIncomingMessage(message: any, metadata: any) {
       console.log(`✅ [Message] New contact created: ${from}`);
     }
 
-    // Extract content
     let content = '';
     let messageType: 'text' | 'image' | 'document' | 'template' = 'text';
     let mediaUrl = '';
@@ -134,7 +140,6 @@ async function handleIncomingMessage(message: any, metadata: any) {
 
     console.log(`💾 [Message] Saving to Redis: ${messageId}`);
 
-    // Save to Redis
     await WhatsAppStorageService.saveMessage({
       id: messageId,
       dealerId: dealer.id,
@@ -151,8 +156,7 @@ async function handleIncomingMessage(message: any, metadata: any) {
 
     console.log(`💾 [Message] Updating conversation summary`);
 
-    // Update conversation summary
-    await prisma.whatsAppConversationSummary.upsert({
+    await whatsappPrisma.whatsAppConversationSummary.upsert({
       where: {
         dealerId_contactId: {
           dealerId: dealer.id,
@@ -175,8 +179,7 @@ async function handleIncomingMessage(message: any, metadata: any) {
       },
     });
 
-    // Create message record
-    await prisma.whatsAppMessage.create({
+    await whatsappPrisma.whatsAppMessage.create({
       data: {
         dealerId: dealer.id,
         contactId: contact.id,
@@ -185,7 +188,7 @@ async function handleIncomingMessage(message: any, metadata: any) {
         messageId,
         status: 'delivered',
         direction: 'inbound',
-        content: content, // ✅ Store content in Prisma too for backup
+        content: content,
       },
     });
 
@@ -203,7 +206,7 @@ async function handleStatusUpdate(status: any, metadata: any) {
 
     console.log(`📊 [Status] Updating ${messageId} -> ${newStatus}`);
 
-    await prisma.whatsAppMessage.updateMany({
+    await whatsappPrisma.whatsAppMessage.updateMany({
       where: { messageId },
       data: {
         status: newStatus,
