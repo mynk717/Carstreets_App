@@ -58,16 +58,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except:
-     * - api/webhooks/* (webhook routes - they handle their own validation)
-     * - api/auth/* (NextAuth routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization)
-     * - favicon.ico
-     * - public folder assets
-     */
     '/((?!api/webhooks|api/auth|_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
-
