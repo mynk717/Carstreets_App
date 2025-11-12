@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/api/auth/[...nextauth]/route'  // ✅ FIXED: path
+import { WhatsAppStorageService } from '@/lib/services/whatsapp-storage.service'
+
 
 export async function POST(
   request: NextRequest,
@@ -162,6 +164,48 @@ export async function POST(
         if (response.ok) {
           sentCount++
           console.log(`✅ Message sent to ${contact.phoneNumber}`)
+          const messageId = result.messages?.[0]?.id;
+          if (messageId) {
+            try {
+              await WhatsAppStorageService.saveMessage({
+                id: messageId,
+                dealerId: dealer.id,
+                contactId: contact.id,
+                phoneNumber: contact.phoneNumber,
+                direction: 'outbound',
+                content: template.bodyText,
+                messageType: 'template',
+                status: 'sent',
+                timestamp: Date.now(),
+                templateName: template.name,
+              });
+
+              // Update conversation summary
+              await prisma.whatsAppConversationSummary.upsert({
+                where: {
+                  dealerId_contactId: {
+                    dealerId: dealer.id,
+                    contactId: contact.id,
+                  },
+                },
+                update: {
+                  lastMessageAt: new Date(),
+                  lastMessagePreview: template.bodyText.substring(0, 100),
+                  totalMessages: { increment: 1 },
+                },
+                create: {
+                  dealerId: dealer.id,
+                  contactId: contact.id,
+                  lastMessageAt: new Date(),
+                  lastMessagePreview: template.bodyText.substring(0, 100),
+                  totalMessages: 1,
+                  unreadCount: 0,
+                },
+              });
+            } catch (redisError) {
+              console.error('⚠️ Redis storage failed (non-critical):', redisError);
+            }
+          }
           results.push({
             contactId: contact.id,
             phone: contact.phoneNumber,

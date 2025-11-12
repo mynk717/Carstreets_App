@@ -128,24 +128,23 @@ model Dealer {
   passwordResetToken   String?   @db.VarChar(255)
   passwordResetExpiry  DateTime?
 
-    // Relations
-  cars                Car[]
-  contentCalendar     ContentCalendar[]
-  whatsappTemplates   WhatsAppTemplate[]
-  whatsappContacts    WhatsAppContact[]
-  whatsappMessages    WhatsAppMessage[]
-  productCatalogs     ProductCatalog[]
-  otpVerifications    OTPVerification[]
-  passwordResets      PasswordResetToken[]
-  loginAudits         LoginAudit[]
-
+  // Relations
+  cars                      Car[]
+  contentCalendar           ContentCalendar[]
+  whatsappTemplates         WhatsAppTemplate[]
+  whatsappContacts          WhatsAppContact[]
+  whatsappMessages          WhatsAppMessage[]
+  conversationSummaries     WhatsAppConversationSummary[]
+  productCatalogs           ProductCatalog[]
+  otpVerifications          OTPVerification[]
+  passwordResets            PasswordResetToken[]
+  loginAudits               LoginAudit[]
   
   @@index([subdomain])
   @@index([customDomain])
   @@index([email])
   @@index([phone])
 }
-
 
 model MarketIntelligence {
   id            String @id @default(cuid())
@@ -257,7 +256,9 @@ model FestivalContent {
   @@index([dealerId])
 }
 
-// ===== WhatsApp Models (Enhanced) =====
+// ============================================
+// WHATSAPP MODELS
+// ============================================
 
 model WhatsAppTemplate {
   id          String   @id @default(cuid())
@@ -305,41 +306,73 @@ model WhatsAppContact {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
-  messages    WhatsAppMessage[]
+  messages              WhatsAppMessage[]
+  conversationSummaries WhatsAppConversationSummary[]
   
   @@index([dealerId])
   @@unique([dealerId, phoneNumber])
 }
 
 model WhatsAppMessage {
-    id          String   @id @default(cuid())
-      dealerId    String
-        dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-          
-            contactId   String?
-              contact     WhatsAppContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-                
-                  templateId  String?
-                    template    WhatsAppTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-                      
-                        phoneNumber String
-                          messageType String
-                            content     String
-                              
-                                status      String   @default("queued")
-                                  messageId   String?
-                                    error       String?
-                                      
-                                        sentAt      DateTime?
-                                          deliveredAt DateTime?
-                                            readAt      DateTime?
-                                              
-                                                createdAt   DateTime @default(now())
-                                                  updatedAt   DateTime @updatedAt
-                                                    
-                                                      @@index([dealerId])
-                                                        @@index([contactId])
-                                                          @@index([status])
+  id                String   @id @default(cuid())
+  dealerId          String
+  dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  contactId         String?
+  contact           WhatsAppContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  
+  templateId        String?
+  template          WhatsAppTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+  
+  phoneNumber       String
+  messageId         String?  @unique
+  messageType       String   @default("text")
+  content           String   @default("") @db.Text
+  
+  // Direction (NEW for bidirectional)
+  direction         String   @default("outbound")
+  
+  // Status tracking
+  status            String   @default("pending")
+  error             String?
+  
+  // Timestamps
+  sentAt            DateTime @default(now())
+  deliveredAt       DateTime?
+  readAt            DateTime?
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@index([dealerId])
+  @@index([contactId])
+  @@index([status])
+  @@index([dealerId, contactId])
+  @@index([dealerId, createdAt(sort: Desc)])
+}
+
+model WhatsAppConversationSummary {
+  id                String   @id @default(cuid())
+  dealerId          String
+  dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  contactId         String
+  contact           WhatsAppContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  
+  // Summary data only (minimal storage)
+  lastMessageAt     DateTime @default(now())
+  lastMessagePreview String? @db.Text
+  unreadCount       Int      @default(0)
+  totalMessages     Int      @default(0)
+  archived          Boolean  @default(false)
+  
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  @@unique([dealerId, contactId])
+  @@index([dealerId, lastMessageAt(sort: Desc)])
+  @@index([dealerId, archived])
+  @@map("whatsapp_conversation_summaries")
 }
 
 model ProductCatalog {
@@ -348,19 +381,19 @@ model ProductCatalog {
   dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
   
   // Meta Catalog Info
-  metaCatalogId     String?  // Facebook Commerce Manager Catalog ID
+  metaCatalogId     String?
   catalogName       String
-  catalogType       String   @default("automotive") // automotive, products
+  catalogType       String   @default("automotive")
   
   // Sync Status
-  status            String   @default("pending") // pending, syncing, synced, failed
+  status            String   @default("pending")
   lastSyncedAt      DateTime?
   itemCount         Int      @default(0)
   syncError         String?
   
   // Feed URLs
-  xmlFeedUrl        String?  // For Google Vehicle Ads
-  csvFeedUrl        String?  // For Meta bulk upload
+  xmlFeedUrl        String?
+  csvFeedUrl        String?
   
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
@@ -374,23 +407,19 @@ model OTPVerification {
   dealerId      String?
   dealer        Dealer?   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
   
-  // Contact Info (for unregistered users)
   phone         String
   email         String?
   
-  // OTP Details
   otpCode       String
   otpHash       String
   expiresAt     DateTime
   verified      Boolean   @default(false)
   verifiedAt    DateTime?
   
-  // Delivery Status
   deliveryMethod String   @default("whatsapp")
   messageId     String?
   deliveryStatus String   @default("pending")
   
-  // Security
   attempts      Int       @default(0)
   maxAttempts   Int       @default(5)
   ipAddress     String?
@@ -427,14 +456,12 @@ model LoginAudit {
   dealerId  String
   dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
   
-  // Login Details
   success   Boolean
   method    String
   ipAddress String
   userAgent String?
   location  String?
   
-  // Failure Reason
   failureReason String?
   
   createdAt DateTime  @default(now())
