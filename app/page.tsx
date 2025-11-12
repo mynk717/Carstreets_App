@@ -5,9 +5,9 @@ import Footer from './components/layout/Footer'
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { 
-  ArrowRight, Car, Building2, Zap, Shield, BarChart3, Users, 
-  CheckCircle, Lock, Sparkles, TrendingUp 
+import {
+  ArrowRight, Car, Building2, Zap, Shield, BarChart3, Users,
+  CheckCircle, Lock, Sparkles, TrendingUp
 } from 'lucide-react'
 import { Button } from './components/ui/Button'
 
@@ -97,9 +97,9 @@ export default function PlatformHomepage() {
   return (
     <>
       <Header />
-      
+
       <div className="min-h-screen bg-gradient-to-b from-gray-50 to-white">
-        
+
         {/* ============ HERO SECTION ============ */}
         <section className="relative py-20 px-4 sm:px-6 lg:px-8 overflow-hidden">
           {/* Background decoration */}
@@ -117,12 +117,12 @@ export default function PlatformHomepage() {
               <br />
               <span className="text-5xl md:text-6xl">in Minutes</span>
             </h1>
-            
+
             <p className="text-xl md:text-2xl text-gray-600 mb-8 max-w-4xl mx-auto leading-relaxed">
-              Create a professional car dealership website with AI-powered content generation, 
+              Create a professional car dealership website with AI-powered content generation,
               automated social media posting, and everything you need to sell cars online.
             </p>
-            
+
             {/* ============ CTA SECTION ============ */}
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-12 max-w-md mx-auto sm:max-w-none">
               <div className="w-full sm:w-auto sm:flex-1 sm:max-w-md">
@@ -214,8 +214,8 @@ export default function PlatformHomepage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
               {features.map((feature, index) => (
-                <div 
-                  key={index} 
+                <div
+                  key={index}
                   className="group bg-white border border-gray-100 rounded-2xl p-8 hover:border-blue-200 hover:shadow-xl transition-all duration-300"
                 >
                   <div className="w-16 h-16 bg-gradient-to-br from-blue-500 to-blue-600 group-hover:from-blue-600 group-hover:to-purple-600 rounded-xl flex items-center justify-center mb-6 transition-all">
@@ -247,13 +247,12 @@ export default function PlatformHomepage() {
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {pricingPlans.map((plan, index) => (
-                <div 
-                  key={index} 
-                  className={`relative rounded-2xl overflow-hidden transition-all duration-300 ${
-                    plan.popular 
-                      ? 'md:scale-105 ring-2 ring-blue-500 shadow-2xl bg-white' 
+                <div
+                  key={index}
+                  className={`relative rounded-2xl overflow-hidden transition-all duration-300 ${plan.popular
+                      ? 'md:scale-105 ring-2 ring-blue-500 shadow-2xl bg-white'
                       : 'bg-white border border-gray-100 hover:border-gray-300 shadow-lg hover:shadow-xl'
-                  }`}
+                    }`}
                 >
                   {/* Popular Badge */}
                   {plan.popular && (
@@ -263,7 +262,7 @@ export default function PlatformHomepage() {
                       </div>
                     </div>
                   )}
-                  
+
                   <div className={`p-8 ${plan.popular ? 'pt-16' : ''}`}>
                     {/* Plan Header */}
                     <div className="text-center mb-8">
@@ -293,12 +292,11 @@ export default function PlatformHomepage() {
 
                     {/* CTA Button */}
                     <Link href="/get-started" className="block">
-                      <Button 
-                        className={`w-full py-3 rounded-xl font-semibold text-base transition-all duration-200 ${
-                          plan.popular 
-                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105' 
+                      <Button
+                        className={`w-full py-3 rounded-xl font-semibold text-base transition-all duration-200 ${plan.popular
+                            ? 'bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                             : 'bg-gray-100 hover:bg-gray-200 text-gray-900 transform hover:scale-105'
-                        }`}
+                          }`}
                       >
                         {plan.price === '₹0' ? 'Start Free' : 'Choose Plan'}
                       </Button>
@@ -336,7 +334,7 @@ export default function PlatformHomepage() {
             <p className="text-xl text-blue-100 mb-10 leading-relaxed">
               Join hundreds of dealers who are already growing their business with MotoYard. Start for free today.
             </p>
-            
+
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link href="/get-started">
                 <Button className="bg-white text-blue-600 font-semibold px-10 py-4 text-lg rounded-xl hover:bg-gray-100 shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 flex items-center gap-2">
@@ -344,7 +342,7 @@ export default function PlatformHomepage() {
                   <ArrowRight className="w-5 h-5" />
                 </Button>
               </Link>
-              <Link 
+              <Link
                 href="/features"
                 className="text-white font-semibold px-6 py-4 rounded-xl border-2 border-white hover:bg-white hover:text-blue-600 transition-all duration-200"
               >

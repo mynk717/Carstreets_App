@@ -12,20 +12,14 @@ export default function Header() {
   const pathname = usePathname()
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   
+  // ✅ ALWAYS call useSession at top level (unconditionally)
+  const { data: session, status } = useSession()
+  
   // Detect if we're on a dealer public route
   const isDealerPublicRoute = pathname?.startsWith('/dealers/') && !pathname?.includes('/dashboard')
   
-  // Safe session handling
-  let session = null
-  
-  if (!isDealerPublicRoute) {
-    try {
-      const sessionData = useSession()
-      session = sessionData.data
-    } catch (e) {
-      // Session not available
-    }
-  }
+  // ✅ Use session conditionally AFTER hook is called
+  const shouldShowSession = !isDealerPublicRoute
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: '/' })
@@ -69,20 +63,18 @@ export default function Header() {
 
           {/* Auth Actions - Desktop */}
           <div className="hidden md:flex items-center gap-3">
-            {!isDealerPublicRoute && session ? (
+            {shouldShowSession && session ? (
               <>
-                {session && (
-  <Link href={`/dealers/${session.user.subdomain || 'carstreets'}/dashboard`}>
-                    <Button variant="outline" size="sm">
-                      Dashboard
-                    </Button>
-                  </Link>
-                )}
+                <Link href={`/dealers/${session.user?.subdomain || 'carstreets'}/dashboard`}>
+                  <Button variant="outline" size="sm">
+                    Dashboard
+                  </Button>
+                </Link>
                 <Button onClick={handleSignOut} variant="outline" size="sm">
                   Sign Out
                 </Button>
               </>
-            ) : !isDealerPublicRoute ? (
+            ) : shouldShowSession ? (
               <>
                 <Link href="/auth/signin">
                   <Button variant="outline" size="sm">
@@ -141,15 +133,13 @@ export default function Header() {
 
               {/* Mobile Auth Actions */}
               <div className="pt-3 border-t border-gray-200 mt-3">
-                {!isDealerPublicRoute && session ? (
+                {shouldShowSession && session ? (
                   <>
-                    {session && (
-  <Link href={`/dealers/${session.user.subdomain || 'carstreets'}/dashboard`}>
-                        <Button variant="outline" size="sm" className="w-full mb-2">
-                          Dashboard
-                        </Button>
-                      </Link>
-                    )}
+                    <Link href={`/dealers/${session.user?.subdomain || 'carstreets'}/dashboard`}>
+                      <Button variant="outline" size="sm" className="w-full mb-2">
+                        Dashboard
+                      </Button>
+                    </Link>
                     <Button 
                       onClick={() => {
                         handleSignOut()
@@ -162,7 +152,7 @@ export default function Header() {
                       Sign Out
                     </Button>
                   </>
-                ) : !isDealerPublicRoute ? (
+                ) : shouldShowSession ? (
                   <>
                     <Link 
                       href="/auth/signin"
