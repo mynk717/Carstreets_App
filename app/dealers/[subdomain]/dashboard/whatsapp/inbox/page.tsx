@@ -2,8 +2,17 @@ import { Suspense } from 'react';
 import { redirect } from 'next/navigation';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/api/auth/[...nextauth]/route';
-import { prisma } from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import InboxClient from './InboxClient';
+
+// ✅ Create a separate Prisma client ONLY for this page
+const inboxPrisma = new PrismaClient({
+  datasources: {
+    db: {
+      url: process.env.new_PRISMA_DATABASE_URL || process.env.DATABASE_URL,
+    },
+  },
+});
 
 export default async function WhatsAppInboxPage({
   params,
@@ -17,7 +26,8 @@ export default async function WhatsAppInboxPage({
 
   const { subdomain } = await params;
 
-  const dealer = await prisma.dealer.findUnique({
+  // ✅ Use inboxPrisma instead of prisma
+  const dealer = await inboxPrisma.dealer.findUnique({
     where: { subdomain },
     select: {
       id: true,
