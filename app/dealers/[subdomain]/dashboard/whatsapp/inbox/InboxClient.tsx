@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import clsx from 'clsx';
+import { clsx } from 'clsx';
+import { ArrowLeft, Search } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -64,11 +65,8 @@ export default function InboxClient({
   const loadConversations = async () => {
     try {
       setLoading(true);
-      const response = await fetch(
-        `/api/dealers/${subdomain}/whatsapp/conversations`
-      );
+      const response = await fetch(`/api/dealers/${subdomain}/whatsapp/conversations`);
       const data = await response.json();
-      
       if (data.conversations) {
         setConversations(data.conversations);
       }
@@ -86,7 +84,6 @@ export default function InboxClient({
         `/api/dealers/${subdomain}/whatsapp/conversations/${contactId}`
       );
       const data = await response.json();
-      
       if (data.messages) {
         setMessages(data.messages);
         setSelectedContact(data.contact);
@@ -94,9 +91,7 @@ export default function InboxClient({
         // Update conversation unread count to 0
         setConversations((prev) =>
           prev.map((conv) =>
-            conv.contactId === contactId
-              ? { ...conv, unreadCount: 0 }
-              : conv
+            conv.contactId === contactId ? { ...conv, unreadCount: 0 } : conv
           )
         );
       }
@@ -107,11 +102,16 @@ export default function InboxClient({
     }
   };
 
+  const handleBackToList = () => {
+    setSelectedContact(null);
+    setMessages([]);
+  };
+
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
     const isToday = date.toDateString() === now.toDateString();
-    
+
     if (isToday) {
       return date.toLocaleTimeString('en-US', {
         hour: 'numeric',
@@ -119,87 +119,29 @@ export default function InboxClient({
         hour12: true,
       });
     }
-    
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-    });
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'sent':
-        return (
-          <svg className="w-4 h-4 text-gray-400" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M12.5 3.5L6 10l-2.5-2.5L2 9l4 4 8-8z" />
-          </svg>
-        );
-      case 'delivered':
-        return (
-          <div className="flex -space-x-1">
-            <svg className="w-4 h-4 text-gray-400" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M12.5 3.5L6 10l-2.5-2.5L2 9l4 4 8-8z" />
-            </svg>
-            <svg className="w-4 h-4 text-gray-400" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M12.5 3.5L6 10l-2.5-2.5L2 9l4 4 8-8z" />
-            </svg>
-          </div>
-        );
-      case 'read':
-        return (
-          <div className="flex -space-x-1">
-            <svg className="w-4 h-4 text-blue-500" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M12.5 3.5L6 10l-2.5-2.5L2 9l4 4 8-8z" />
-            </svg>
-            <svg className="w-4 h-4 text-blue-500" viewBox="0 0 16 16" fill="currentColor">
-              <path d="M12.5 3.5L6 10l-2.5-2.5L2 9l4 4 8-8z" />
-            </svg>
-          </div>
-        );
-      case 'failed':
-        return (
-          <svg className="w-4 h-4 text-red-500" viewBox="0 0 16 16" fill="currentColor">
-            <path d="M8 0a8 8 0 100 16A8 8 0 008 0zM7 4h2v5H7V4zm0 6h2v2H7v-2z" />
-          </svg>
-        );
-      default:
-        return null;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <div className="text-gray-500">Loading conversations...</div>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex-1 flex overflow-hidden">
-      {/* Conversation List - Left Sidebar */}
-      <div className="w-full md:w-96 bg-white border-r border-gray-200 flex flex-col overflow-hidden">
+    <div className="flex-1 flex overflow-hidden relative">
+      {/* Conversation List - Left Panel */}
+      <div
+        className={clsx(
+          'w-full md:w-96 bg-white border-r border-gray-200 flex flex-col',
+          'transition-transform duration-300 ease-in-out',
+          'md:translate-x-0', // Always visible on desktop
+          selectedContact ? '-translate-x-full md:translate-x-0' : 'translate-x-0' // Slide left on mobile when chat selected
+        )}
+      >
         {/* Search Bar */}
-        <div className="p-3 border-b border-gray-200">
+        <div className="p-3 border-b border-gray-200 flex-shrink-0">
           <div className="relative">
             <input
               type="text"
               placeholder="Search or start new chat"
               className="w-full px-4 py-2 pl-10 bg-gray-100 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#008069]"
             />
-            <svg
-              className="w-5 h-5 text-gray-500 absolute left-3 top-2.5"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-              />
-            </svg>
+            <Search className="w-5 h-5 text-gray-500 absolute left-3 top-2.5" />
           </div>
         </div>
 
@@ -208,9 +150,7 @@ export default function InboxClient({
           {conversations.length === 0 ? (
             <div className="p-8 text-center text-gray-500">
               <p>No conversations yet</p>
-              <p className="text-sm mt-2">
-                Send a message to start chatting
-              </p>
+              <p className="text-sm mt-2">Send a message to start chatting</p>
             </div>
           ) : (
             conversations.map((conv) => (
@@ -259,23 +199,40 @@ export default function InboxClient({
       </div>
 
       {/* Chat View - Right Panel */}
-      <div className="flex-1 flex flex-col bg-[#efeae2]">
+      <div
+        className={clsx(
+          'absolute md:relative inset-0 md:inset-auto',
+          'w-full md:flex-1 flex flex-col bg-[#efeae2]',
+          'transition-transform duration-300 ease-in-out',
+          'md:translate-x-0', // Always visible on desktop
+          selectedContact ? 'translate-x-0' : 'translate-x-full md:translate-x-0' // Slide in from right on mobile
+        )}
+      >
         {selectedContact ? (
           <>
             {/* Chat Header */}
-            <div className="bg-[#f0f2f5] px-4 py-3 flex items-center gap-3 border-b border-gray-200">
+            <div className="bg-[#f0f2f5] px-4 py-3 flex items-center gap-3 border-b border-gray-200 flex-shrink-0">
+              {/* Back Button - Only on Mobile */}
+              <button
+                onClick={handleBackToList}
+                className="md:hidden text-gray-700 hover:text-gray-900"
+              >
+                <ArrowLeft className="w-6 h-6" />
+              </button>
+
+              {/* Avatar */}
               <div className="w-10 h-10 rounded-full bg-gray-300 flex items-center justify-center">
                 <span className="text-base font-semibold text-white">
                   {(selectedContact.name || selectedContact.phoneNumber)[0].toUpperCase()}
                 </span>
               </div>
+
+              {/* Contact Info */}
               <div className="flex-1">
                 <h2 className="font-semibold text-gray-900">
                   {selectedContact.name || selectedContact.phoneNumber}
                 </h2>
-                <p className="text-xs text-gray-600">
-                  {selectedContact.phoneNumber}
-                </p>
+                <p className="text-xs text-gray-600">{selectedContact.phoneNumber}</p>
               </div>
             </div>
 
@@ -298,20 +255,16 @@ export default function InboxClient({
                     key={message.id}
                     className={clsx(
                       'flex',
-                      message.direction === 'outbound'
-                        ? 'justify-end'
-                        : 'justify-start'
+                      message.direction === 'outbound' ? 'justify-end' : 'justify-start'
                     )}
                   >
                     <div
                       className={clsx(
                         'max-w-md px-4 py-2 rounded-lg shadow',
-                        message.direction === 'outbound'
-                          ? 'bg-[#d9fdd3]'
-                          : 'bg-white'
+                        message.direction === 'outbound' ? 'bg-[#d9fdd3]' : 'bg-white'
                       )}
                     >
-                      {/* Template Name (if applicable) */}
+                      {/* Template Name if applicable */}
                       {message.templateName && (
                         <div className="text-xs text-gray-500 mb-1 italic">
                           Template: {message.templateName}
@@ -329,8 +282,10 @@ export default function InboxClient({
                           {formatTime(message.timestamp)}
                         </span>
                         {message.direction === 'outbound' && (
-                          <span className="ml-1">
-                            {getStatusIcon(message.status)}
+                          <span className="text-xs text-gray-500">
+                            {message.status === 'read' && '✓✓'}
+                            {message.status === 'delivered' && '✓✓'}
+                            {message.status === 'sent' && '✓'}
                           </span>
                         )}
                       </div>
@@ -341,55 +296,39 @@ export default function InboxClient({
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Message Input (Placeholder) */}
-            <div className="bg-[#f0f2f5] px-4 py-3 border-t border-gray-200">
+            {/* Message Input */}
+            <div className="bg-[#f0f2f5] px-4 py-3 border-t border-gray-200 flex-shrink-0">
               <div className="flex items-center gap-2">
                 <input
                   type="text"
-                  placeholder="Type a message (template-only for now)"
-                  disabled
-                  className="flex-1 px-4 py-2 bg-white rounded-full focus:outline-none cursor-not-allowed opacity-60"
+                  placeholder="Type a message"
+                  className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008069]"
                 />
-                <button
-                  disabled
-                  className="bg-[#008069] text-white p-2 rounded-full hover:bg-[#007a5e] transition disabled:opacity-60 disabled:cursor-not-allowed"
-                >
-                  <svg
-                    className="w-6 h-6"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
-                    />
-                  </svg>
+                <button className="bg-[#008069] text-white px-4 py-2 rounded-lg hover:bg-[#006d5b] font-medium">
+                  Send
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                💡 Free-form messaging coming soon. Use templates for now.
-              </p>
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
+          /* Empty State - Desktop Only */
+          <div className="hidden md:flex items-center justify-center h-full">
             <div className="text-center text-gray-500">
               <svg
                 className="w-24 h-24 mx-auto mb-4 text-gray-300"
-                fill="currentColor"
+                fill="none"
+                stroke="currentColor"
                 viewBox="0 0 24 24"
               >
-                <path d="M12 2C6.48 2 2 6.48 2 12c0 1.54.36 3 .97 4.29L2 22l5.71-.97C9 21.64 10.46 22 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2zm0 18c-1.38 0-2.67-.32-3.83-.88l-.27-.15-2.83.48.48-2.83-.15-.27C4.82 14.67 4.5 13.38 4.5 12c0-4.14 3.36-7.5 7.5-7.5s7.5 3.36 7.5 7.5-3.36 7.5-7.5 7.5z" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                />
               </svg>
-              <p className="text-lg font-semibold mb-2">
-                Select a conversation
-              </p>
-              <p className="text-sm">
-                Choose a contact to view messages
-              </p>
+              <p className="text-lg font-semibold mb-2">Select a conversation</p>
+              <p className="text-sm">Choose a contact to view messages</p>
             </div>
           </div>
         )}

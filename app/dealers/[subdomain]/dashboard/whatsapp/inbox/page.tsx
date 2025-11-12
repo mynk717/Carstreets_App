@@ -53,9 +53,9 @@ export default async function WhatsAppInboxPage({
   }
 
   return (
-    <div className="h-screen flex flex-col bg-gray-50">
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-gray-50">
       {/* Header */}
-      <div className="bg-[#008069] text-white px-4 py-3 flex items-center gap-3 shadow-md">
+      <div className="bg-[#008069] text-white px-4 py-3 flex items-center gap-3 shadow-md flex-shrink-0">
         <a
           href={`/dealers/${subdomain}/dashboard/whatsapp`}
           className="text-white hover:text-gray-200"
