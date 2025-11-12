@@ -13,6 +13,7 @@ import {
   Eye,
   RefreshCw,
 } from 'lucide-react'
+import Link from 'next/link' 
 
 type Contact = {
   id: string
@@ -275,6 +276,85 @@ export default function WhatsAppDashboardClient({
         />
       </div>
 
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Inbox Card */}
+        <Link
+          href={`/dealers/${subdomain}/dashboard/whatsapp/inbox`}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-green-500 transition-all"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="bg-green-100 dark:bg-green-900/30 p-3 rounded-lg">
+              <MessageSquare className="w-6 h-6 text-green-600 dark:text-green-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Inbox
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                View conversations
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              0
+            </div>
+            <span className="text-sm text-gray-500">unread</span>
+          </div>
+        </Link>
+
+        {/* Contacts Card */}
+        <Link
+          href={`/dealers/${subdomain}/dashboard/whatsapp/contacts`}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-blue-500 transition-all"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="bg-blue-100 dark:bg-blue-900/30 p-3 rounded-lg">
+              <Users className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Contacts
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Manage contacts
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {contacts.length}
+            </div>
+            <span className="text-sm text-gray-500">total</span>
+          </div>
+        </Link>
+
+        {/* Templates Card */}
+        <Link
+          href={`/dealers/${subdomain}/dashboard/whatsapp/templates`}
+          className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg hover:border-purple-500 transition-all"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="bg-purple-100 dark:bg-purple-900/30 p-3 rounded-lg">
+              <MessageSquare className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                Templates
+              </h3>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Message templates
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
+              {templates.length}
+            </div>
+            <span className="text-sm text-gray-500">approved</span>
+          </div>
+        </Link>
+      </div>
       {/* Templates Section */}
 <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6">
   <div className="flex items-center justify-between mb-4">
@@ -364,7 +444,7 @@ export default function WhatsAppDashboardClient({
               </>
             )}
           </div>
-
+            
           {/* Contact Selection */}
           <div>
             <div className="flex items-center justify-between mb-2">
