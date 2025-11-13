@@ -7,9 +7,8 @@ const redis = new Redis({
 
 export class DealerCacheService {
   private static CACHE_KEY = 'dealer:whatsapp:phoneid:';
-  private static CACHE_TTL = 86400 * 7; // 7 days
+  private static CACHE_TTL = 86400 * 7;
 
-  // Cache dealer data by WhatsApp Phone Number ID
   static async cacheDealerByPhoneId(
     phoneNumberId: string,
     dealerData: {
@@ -24,63 +23,69 @@ export class DealerCacheService {
       this.CACHE_TTL,
       JSON.stringify(dealerData)
     );
-    console.log(`✅ Cached dealer: ${dealerData.subdomain} (phoneId: ${phoneNumberId})`);
+    console.log('[DealerCache] Cached dealer:', dealerData.subdomain, 'phoneId:', phoneNumberId);
   }
 
-  // Get dealer from cache (no Prisma lookup needed!)
   static async getDealerByPhoneId(phoneNumberId: string) {
     try {
+      console.log('[DealerCache] Looking up phoneId:', phoneNumberId);
       const cached = await redis.get(`${this.CACHE_KEY}${phoneNumberId}`);
+      console.log('[DealerCache] Redis returned:', cached ? 'FOUND' : 'NULL');
+      
       if (cached) {
-        console.log(`✅ Found dealer in Redis for phoneId: ${phoneNumberId}`);
+        console.log('[DealerCache] Found dealer in Redis for phoneId:', phoneNumberId);
         return cached as any;
       }
-      console.log(`⚠️ No dealer cached for phoneId: ${phoneNumberId}`);
+      
+      console.log('[DealerCache] No dealer cached for phoneId:', phoneNumberId);
       return null;
     } catch (error) {
-      console.error('Redis get error:', error);
+      console.error('[DealerCache] Redis get error:', error);
       return null;
     }
   }
 
-  // Cache all dealers at once (run this on app startup or via cron)
   static async syncAllDealers(dealers: any[]) {
+    console.log('[DealerCache] Syncing', dealers.length, 'dealers to Redis');
     const pipeline = redis.pipeline();
     let count = 0;
     
     for (const dealer of dealers) {
       if (dealer.whatsappPhoneNumberId) {
+        const key = `${this.CACHE_KEY}${dealer.whatsappPhoneNumberId}`;
+        const data = JSON.stringify({
+          id: dealer.id,
+          subdomain: dealer.subdomain,
+          businessName: dealer.businessName,
+          email: dealer.email,
+        });
+        
+        console.log('[DealerCache] Will cache:', key, '=', data);
+        
         pipeline.setex(
-          `${this.CACHE_KEY}${dealer.whatsappPhoneNumberId}`,
+          key,
           this.CACHE_TTL,
-          JSON.stringify({
-            id: dealer.id,
-            subdomain: dealer.subdomain,
-            businessName: dealer.businessName,
-            email: dealer.email,
-          })
+          data
         );
         count++;
       }
     }
     
     await pipeline.exec();
-    console.log(`✅ Cached ${count} dealers to Redis`);
+    console.log('[DealerCache] Cached', count, 'dealers to Redis');
     return count;
   }
 
-  // Clear a specific dealer cache
   static async clearDealerCache(phoneNumberId: string) {
     await redis.del(`${this.CACHE_KEY}${phoneNumberId}`);
-    console.log(`🗑️ Cleared cache for phoneId: ${phoneNumberId}`);
+    console.log('[DealerCache] Cleared cache for phoneId:', phoneNumberId);
   }
 
-  // Clear all dealer caches
   static async clearAllCaches() {
     const keys = await redis.keys(`${this.CACHE_KEY}*`);
     if (keys.length > 0) {
       await redis.del(...keys);
-      console.log(`🗑️ Cleared ${keys.length} dealer caches`);
+      console.log('[DealerCache] Cleared', keys.length, 'dealer caches');
     }
     return keys.length;
   }
