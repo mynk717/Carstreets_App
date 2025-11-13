@@ -29,18 +29,30 @@ export class DealerCacheService {
   static async getDealerByPhoneId(phoneNumberId: string) {
     try {
       console.log('[DealerCache] Looking up phoneId:', phoneNumberId);
-      const cached = await redis.get(`${this.CACHE_KEY}${phoneNumberId}`);
-      console.log('[DealerCache] Redis returned:', cached ? 'FOUND' : 'NULL');
+      const key = `${this.CACHE_KEY}${phoneNumberId}`;
+      console.log('[DealerCache] Redis key:', key);
+      
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Redis timeout')), 5000)
+      );
+      
+      const redisPromise = redis.get(key);
+      
+      const cached = await Promise.race([redisPromise, timeoutPromise]);
+      
+      console.log('[DealerCache] Redis returned type:', typeof cached);
+      console.log('[DealerCache] Redis returned value:', JSON.stringify(cached));
       
       if (cached) {
-        console.log('[DealerCache] Found dealer in Redis for phoneId:', phoneNumberId);
+        console.log('[DealerCache] Found dealer in Redis');
         return cached as any;
       }
       
       console.log('[DealerCache] No dealer cached for phoneId:', phoneNumberId);
       return null;
-    } catch (error) {
-      console.error('[DealerCache] Redis get error:', error);
+    } catch (error: any) {
+      console.error('[DealerCache] Redis get error:', error.message);
+      console.error('[DealerCache] Error stack:', error.stack);
       return null;
     }
   }
