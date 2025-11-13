@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/api/auth/[...nextauth]/route';
 import { prisma } from '@/lib/prisma';
+import { WhatsAppStorageService } from '@/lib/services/whatsapp-storage.service';
 
 export async function GET(
   request: NextRequest,
@@ -24,30 +25,49 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get conversation summaries with contact details
-    const conversations = await prisma.whatsAppConversationSummary.findMany({
-      where: {
-        dealerId: dealer.id,
-        archived: false,
-      },
-      include: {
-        contact: {
-          select: {
-            id: true,
-            phoneNumber: true,
-            name: true,
+    // Get conversation IDs from Redis
+    const contactIds = await WhatsAppStorageService.getConversations(dealer.id);
+
+    console.log('[Conversations] Found contactIds:', contactIds);
+
+    // Build conversation summaries from Redis
+    const conversations = await Promise.all(
+      contactIds.map(async (contactId) => {
+        const messages = await WhatsAppStorageService.getConversation(
+          dealer.id,
+          contactId,
+          1 // Get last message only
+        );
+
+        const lastMessage = messages[0];
+        const phoneNumber = contactId.replace('contact_', '');
+
+        return {
+          id: contactId,
+          contactId,
+          contact: {
+            id: contactId,
+            phoneNumber,
+            name: phoneNumber, // Use phone as name for now
           },
-        },
-      },
-      orderBy: {
-        lastMessageAt: 'desc',
-      },
-      take: 50,
-    });
+          lastMessageAt: lastMessage ? new Date(lastMessage.timestamp) : new Date(),
+          lastMessagePreview: lastMessage?.content || 'No messages',
+          unreadCount: 0,
+          archived: false,
+        };
+      })
+    );
+
+    // Sort by most recent
+    conversations.sort((a, b) => 
+      b.lastMessageAt.getTime() - a.lastMessageAt.getTime()
+    );
+
+    console.log('[Conversations] Returning', conversations.length, 'conversations');
 
     return NextResponse.json({ conversations });
   } catch (error: any) {
-    console.error('❌ Get conversations error:', error);
+    console.error('[Conversations] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

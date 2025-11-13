@@ -25,48 +25,34 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Get contact details
-    const contact = await prisma.whatsAppContact.findUnique({
-        where: { id: contactId },
-        select: {
-          id: true,
-          dealerId: true,  // ← ADD THIS LINE
-          phoneNumber: true,
-          name: true,
-          optedIn: true,
-        },
-      });
-  
-    if (!contact || contact.dealerId !== dealer.id) {
-      return NextResponse.json({ error: 'Contact not found' }, { status: 404 });
-    }
-
     // Get messages from Redis
     const messages = await WhatsAppStorageService.getConversation(
       dealer.id,
       contactId,
-      50
+      100 // Get up to 100 messages
     );
+
+    if (!messages || messages.length === 0) {
+      return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+    }
+
+    // Extract contact info from messages
+    const phoneNumber = contactId.replace('contact_', '');
+    const contact = {
+      id: contactId,
+      phoneNumber,
+      name: phoneNumber,
+      optedIn: true,
+    };
 
     // Mark as read
     await WhatsAppStorageService.markAsRead(dealer.id, contactId);
-    
-    // Reset unread count in summary
-    await prisma.whatsAppConversationSummary.update({
-      where: {
-        dealerId_contactId: {
-          dealerId: dealer.id,
-          contactId,
-        },
-      },
-      data: {
-        unreadCount: 0,
-      },
-    });
+
+    console.log('[Conversation] Returning', messages.length, 'messages for', contactId);
 
     return NextResponse.json({ contact, messages });
   } catch (error: any) {
-    console.error('❌ Get conversation messages error:', error);
+    console.error('[Conversation] Error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
