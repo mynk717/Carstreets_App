@@ -20,19 +20,18 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('Webhook received:', JSON.stringify(body, null, 2));
-    const response = NextResponse.json({ status: 'received' }, { status: 200 });
-    
-    processWebhookAsync(body).catch((error) => {
-      console.error('Webhook async error:', error);
-    });
-    
-    return response;
+    console.log('[Webhook] Received:', JSON.stringify(body, null, 2));
+
+    // WAIT for processing instead of fire-and-forget
+    await processWebhookAsync(body);
+
+    return NextResponse.json({ status: 'received' }, { status: 200 });
   } catch (error: any) {
-    console.error('Webhook parse error:', error);
-    return NextResponse.json({ status: 'error' }, { status: 200 });
+    console.error('[Webhook] Error:', error);
+    return NextResponse.json({ status: 'error', message: error.message }, { status: 200 });
   }
 }
+
 
 async function processWebhookAsync(body: any) {
   try {

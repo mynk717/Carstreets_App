@@ -29,29 +29,18 @@ export class DealerCacheService {
   static async getDealerByPhoneId(phoneNumberId: string) {
     try {
       console.log('[DealerCache] Looking up phoneId:', phoneNumberId);
-      const key = `dealer:whatsapp:phoneid:${phoneNumberId}`;
+      const key = `${this.CACHE_KEY}${phoneNumberId}`;
       console.log('[DealerCache] Redis key:', key);
       
-      // Use direct REST API instead of SDK
-      const response = await fetch(
-        `${process.env.UPSTASH_REDIS_REST_URL}/get/${encodeURIComponent(key)}`,
-        {
-          headers: {
-            Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
-          },
-        }
-      );
-  
-      const data = await response.json();
-      console.log('[DealerCache] REST API response:', JSON.stringify(data));
-  
-      if (data.result) {
-        const dealer = JSON.parse(data.result);
-        console.log('[DealerCache] Found dealer:', dealer.subdomain);
-        return dealer;
+      const cached = await redis.get(key);
+      console.log('[DealerCache] Result:', cached ? 'FOUND' : 'NULL');
+      
+      if (cached) {
+        console.log('[DealerCache] Dealer:', JSON.stringify(cached));
+        return cached as any;
       }
-  
-      console.log('[DealerCache] No dealer found for phoneId:', phoneNumberId);
+      
+      console.log('[DealerCache] No dealer found');
       return null;
     } catch (error: any) {
       console.error('[DealerCache] Error:', error.message);
