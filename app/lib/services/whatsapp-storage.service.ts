@@ -91,10 +91,18 @@ export class WhatsAppStorageService {
       messageIds.map(async (id) => {
         const messageKey = `whatsapp:${dealerId}:msg:${id}`;
         const data = await redis.get(messageKey);
-        return data ? (JSON.parse(data as string) as WhatsAppMessage) : null;
+        
+        if (!data) return null;
+        
+        // Check if data is already an object or needs parsing
+        if (typeof data === 'string') {
+          return JSON.parse(data) as WhatsAppMessage;
+        }
+        
+        return data as WhatsAppMessage;
       })
-    );
-  
+    );    
+
     return messages.filter((m): m is WhatsAppMessage => m !== null);
   }
   
