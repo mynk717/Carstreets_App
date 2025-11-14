@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import {prisma} from '@/lib/prisma'
+import { prisma } from '@/lib/prisma'
 import { CarDetailClient } from '../../CarDetailClient' 
 
 interface PageProps {
@@ -8,32 +8,49 @@ interface PageProps {
 
 export default async function CarDetailPage({ params }: PageProps) {
   const resolvedParams = await params
-  const { subdomain, id } = resolvedParams
+  const { id } = resolvedParams
   
-  // Only validate that car ID exists
   if (!id) {
-    console.error('Missing car ID')
+    console.error('[CarDetail] Missing car ID')
     notFound()
   }
+
+  console.log('[CarDetail] Loading car:', id)
 
   try {
     const car = await prisma.car.findUnique({
       where: { id },
       include: {
-        dealer: true,
+        dealer: {
+          select: {
+            subdomain: true,
+            businessName: true,
+            phoneNumber: true,
+            email: true,
+          },
+        },
       },
     })
 
     if (!car) {
-      console.log('Car not found:', id)
+      console.error('[CarDetail] Car not found:', id)
       notFound()
     }
 
-    // Use the car's dealer subdomain (not the URL subdomain)
+    if (!car.dealer) {
+      console.error('[CarDetail] Car has no dealer:', id)
+      notFound()
+    }
+
+    console.log('[CarDetail] Successfully loaded car:', {
+      carId: car.id,
+      dealerSubdomain: car.dealer.subdomain,
+    })
+
     return <CarDetailClient car={car} dealerSubdomain={car.dealer.subdomain} />
     
   } catch (error) {
-    console.error('Database error in car detail page:', error)
+    console.error('[CarDetail] Database error:', error)
     notFound()
   }
 }
