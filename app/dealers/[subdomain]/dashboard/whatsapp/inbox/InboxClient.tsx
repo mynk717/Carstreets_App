@@ -34,6 +34,9 @@ interface Message {
   templateName?: string;
 }
 
+const [messageInput, setMessageInput] = useState('');
+const [sending, setSending] = useState(false);
+
 export default function InboxClient({
   subdomain,
   dealerId,
@@ -122,6 +125,35 @@ export default function InboxClient({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
+  const handleSendMessage = async () => {
+    if (!messageInput.trim() || !selectedContact || sending) return;
+  
+    setSending(true);
+    try {
+      const response = await fetch(`/api/dealers/${subdomain}/whatsapp/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: selectedContact.phoneNumber,
+          message: messageInput.trim(),
+        }),
+      });
+  
+      if (response.ok) {
+        setMessageInput('');
+        // Reload messages to show the sent message
+        await loadMessages(selectedContact.id);
+      } else {
+        alert('Failed to send message');
+      }
+    } catch (error) {
+      console.error('Send error:', error);
+      alert('Error sending message');
+    } finally {
+      setSending(false);
+    }
+  };
+  
   return (
     <div className="flex-1 flex overflow-hidden relative">
       {/* Conversation List - Left Panel */}
@@ -297,16 +329,32 @@ export default function InboxClient({
             </div>
 
             {/* Message Input */}
-            <div className="bg-[#f0f2f5] px-4 py-3 border-t border-gray-200 flex-shrink-0">
-              <div className="flex items-center gap-2">
-                <input
-                  type="text"
-                  placeholder="Type a message"
-                  className="flex-1 px-4 py-2 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#008069]"
-                />
-                <button className="bg-[#008069] text-white px-4 py-2 rounded-lg hover:bg-[#006d5b] font-medium">
-                  Send
-                </button>
+<div className="bg-f0f2f5 px-4 py-3 border-t border-gray-200">
+  <div className="flex items-center gap-2">
+    <input
+      type="text"
+      placeholder="Type a message..."
+      value={messageInput}
+      onChange={(e) => setMessageInput(e.target.value)}
+      onKeyPress={(e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault();
+          handleSendMessage();
+        }
+      }}
+      className="flex-1 px-4 py-2 bg-white rounded-full focus:outline-none focus:ring-2 focus:ring-[#008069] text-gray-900 placeholder:text-gray-500"
+    />
+
+<button
+  onClick={handleSendMessage}
+  disabled={!messageInput.trim() || sending}
+  className="bg-[#008069] text-white p-2 rounded-full hover:bg-[#007a5e] transition disabled:opacity-60 disabled:cursor-not-allowed"
+>
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+  </svg>
+</button>
+
               </div>
             </div>
           </>
