@@ -59,7 +59,7 @@ export class WhatsAppStorageService {
   
     // Get all message IDs (newest first)
     const allMessageIds = await redis.zrange(conversationKey, 0, -1, {
-      rev: true, // Reverse order (newest first)
+      // rev: true, // Reverse order (newest first)
     });
   
     if (!allMessageIds || allMessageIds.length === 0) {
@@ -86,22 +86,27 @@ export class WhatsAppStorageService {
       messageIds = allMessageIds.slice(0, limit);
     }
   
-    // Fetch full messages in parallel
-    const messages = await Promise.all(
-      messageIds.map(async (id) => {
-        const messageKey = `whatsapp:${dealerId}:msg:${id}`;
-        const data = await redis.get(messageKey);
-        
-        if (!data) return null;
-        
-        // Check if data is already an object or needs parsing
-        if (typeof data === 'string') {
-          return JSON.parse(data) as WhatsAppMessage;
-        }
-        
-        return data as WhatsAppMessage;
-      })
-    );    
+    const pipeline = redis.pipeline();
+messageIds.forEach(id => {
+  const messageKey = `whatsapp:${dealerId}:msg:${id}`;
+  pipeline.get(messageKey);
+});
+
+const results = await pipeline.exec();
+
+const messages = results
+  .map((result: any, index: number) => {
+    if (!result || result.error) return null;
+    
+    const data = result.data;
+    if (!data) return null;
+    
+    if (typeof data === 'string') {
+      return JSON.parse(data) as WhatsAppMessage;
+    }
+    
+    return data as WhatsAppMessage;
+  })
 
     return messages.filter((m): m is WhatsAppMessage => m !== null);
   }

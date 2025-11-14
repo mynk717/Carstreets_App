@@ -56,10 +56,24 @@ export default function InboxClient({
     loadConversations();
   }, []);
 
-  // Auto-scroll to bottom when messages change
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+  // Polling for new messages - ADDED THIS
+useEffect(() => {
+  if (!selectedContact) return;
+  
+  loadMessages(selectedContact.id);
+  
+  // Poll every 5 seconds for new messages
+  const interval = setInterval(() => {
+    loadMessages(selectedContact.id);
+  }, 5000);
+  
+  return () => clearInterval(interval);
+}, [selectedContact?.id]);
+
+// Auto-scroll to bottom when messages change
+useEffect(() => {
+  scrollToBottom();
+}, [messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -81,6 +95,7 @@ export default function InboxClient({
   };
 
   const loadMessages = async (contactId: string) => {
+    if (loadingMessages) return;
     try {
       setLoadingMessages(true);
       const response = await fetch(
