@@ -57,72 +57,67 @@ export class WhatsAppStorageService {
   ): Promise<WhatsAppMessage[]> {
     try {
       const conversationKey = `whatsapp:${dealerId}:conv:${contactId}`;
-    
-      // Get all message IDs in chronological order (oldest to newest)
       const allMessageIds = await redis.zrange(conversationKey, 0, -1);
     
-      if (!allMessageIds || allMessageIds.length === 0) {
+      if (!Array.isArray(allMessageIds) || allMessageIds.length === 0) {
         return [];
       }
+  
+      const messageIds = allMessageIds.slice(-limit);
     
-      // Get last N messages (most recent)
-      let messageIds = before
-        ? allMessageIds
-            .filter((id: any) => {
-              // If your message ID contains timestamp, extract it
-              // Otherwise, you'd need to fetch the message
-              return true; // Simplified - implement proper filtering if needed
-            })
-            .slice(-limit) // ✅ FIX: Last N messages
-        : allMessageIds.slice(-limit); // ✅ FIX: Last N messages
-    
-      if (messageIds.length === 0) {
-        return [];
-      }
-    
-      // Batch fetch using pipeline
-      const pipeline = redis.pipeline();
-      messageIds.forEach((id: any) => {
-        const messageKey = `whatsapp:${dealerId}:msg:${id}`;
-        pipeline.get(messageKey);
-      });
-
-      const results = await pipeline.exec();
-
-      if (!results) {
-        return [];
-      }
-
-      // ✅ FIX: Parse pipeline results - format is [error, data]
-      const messages = results
-        .map((result: any) => {
-          const [error, data] = result; // ← FIXED: Correct destructuring
-          
-          if (error) {
-            console.error('[Storage] Pipeline error:', error);
-            return null;
-          }
-          
-          if (!data) return null;
-          
-          try {
-            if (typeof data === 'string') {
-              return JSON.parse(data) as WhatsAppMessage;
+      // Try pipeline, fallback to individual fetches
+      try {
+        const pipeline = redis.pipeline();
+        
+        for (const id of messageIds) {
+          pipeline.get(`whatsapp:${dealerId}:msg:${id}`);
+        }
+  
+        const results = await pipeline.exec();
+        
+        // Check if results is actually an array
+        if (!Array.isArray(results)) {
+          throw new Error('Pipeline returned non-array');
+        }
+  
+        const messages = results
+          .map((result: any) => {
+            try {
+              // Handle different response formats
+              const data = Array.isArray(result) ? result[1] : result?.data || result;
+              
+              if (!data) return null;
+              
+              return typeof data === 'string' 
+                ? JSON.parse(data) 
+                : data;
+            } catch (e) {
+              return null;
             }
-            return data as WhatsAppMessage;
-          } catch (e) {
-            console.error('[Storage] Parse error:', e);
-            return null;
+          })
+          .filter((m): m is WhatsAppMessage => m !== null);
+  
+        return messages;
+      } catch (pipelineError) {
+        console.error('[Storage] Pipeline failed, using individual fetch:', pipelineError);
+        
+        // Fallback: fetch individually
+        const messages: WhatsAppMessage[] = [];
+        for (const id of messageIds) {
+          const data = await redis.get(`whatsapp:${dealerId}:msg:${id}`);
+          if (data) {
+            const parsed = typeof data === 'string' ? JSON.parse(data) : data;
+            messages.push(parsed as WhatsAppMessage);
           }
-        })
-        .filter((m): m is WhatsAppMessage => m !== null);
-
-      return messages;
+        }
+        return messages;
+      }
     } catch (error) {
       console.error('[Storage] getConversation error:', error);
       return [];
     }
   }
+  
 
   /**
    * Get all conversations for a dealer
