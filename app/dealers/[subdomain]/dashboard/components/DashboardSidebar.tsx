@@ -2,13 +2,32 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react'; // ✅ Added useEffect
 import { Menu, X, LayoutDashboard, Car, BarChart3, Settings, LogOut, Calendar, MessageSquare, ShoppingCart } from 'lucide-react';
 import { Dealer } from '@prisma/client';
 
 export function DashboardSidebar({ dealer }: { dealer: Dealer }) {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0); // ✅ Added
+
+  // ✅ Added: Fetch unread count
+  useEffect(() => {
+    const fetchUnreadCount = async () => {
+      try {
+        const response = await fetch(`/api/dealers/${dealer.subdomain}/whatsapp/unread-count`);
+        const data = await response.json();
+        setUnreadCount(data.count || 0);
+      } catch (error) {
+        console.error('Failed to fetch unread count:', error);
+      }
+    };
+
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000);
+
+    return () => clearInterval(interval);
+  }, [dealer.subdomain]);
 
   const navItems = [
     { href: `/dealers/${dealer.subdomain}/dashboard`, icon: LayoutDashboard, label: 'Overview' },
@@ -16,6 +35,7 @@ export function DashboardSidebar({ dealer }: { dealer: Dealer }) {
     { href: `/dealers/${dealer.subdomain}/dashboard/content`, icon: BarChart3, label: 'Content Studio' },
     { href: `/dealers/${dealer.subdomain}/dashboard/calendar`, icon: Calendar, label: 'Content Calendar' },
     { href: `/dealers/${dealer.subdomain}/dashboard/whatsapp`, icon: MessageSquare, label: 'WhatsApp' },
+    { href: `/dealers/${dealer.subdomain}/dashboard/whatsapp/inbox`, icon: MessageSquare, label: 'WhatsApp Inbox', badge: true }, // ✅ Added
     { href: `/dealers/${dealer.subdomain}/dashboard/settings`, icon: Settings, label: 'Settings' },
     { href: `/dealers/${dealer.subdomain}/dashboard/catalog`, icon: ShoppingCart, label: 'Product Catalog' },
   ];
@@ -77,13 +97,19 @@ export function DashboardSidebar({ dealer }: { dealer: Dealer }) {
               href={item.href}
               onClick={() => setMobileMenuOpen(false)}
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group ${
-                pathname === item.href
+                pathname === item.href || (item.badge && pathname.includes('/whatsapp/inbox'))
                   ? 'bg-blue-50 text-blue-600 dark:bg-blue-900/50 dark:text-blue-400'
                   : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
               }`}
             >
               <item.icon className="w-5 h-5 flex-shrink-0" />
               <span className="font-medium text-sm">{item.label}</span>
+              {/* ✅ Added: Unread badge */}
+              {item.badge && unreadCount > 0 && (
+                <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

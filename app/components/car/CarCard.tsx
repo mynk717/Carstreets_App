@@ -142,45 +142,46 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
         </div>
 
         {/* buttons */}
-        <div className="flex gap-2">
-          {car.carStreetsListed ? (
-            <>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  const url = `${window.location.origin}/cars/${car.id}`
-                  const msg = encodeURIComponent(
-                    `Check out this car on CarStreets:\n${car.title}\nPrice: ${formatPriceSafe(
-                      car.price
-                    )}\n${url}`
-                  )
-                  window.open(`https://wa.me/?text=${msg}`, '_blank')
-                }}
-              >
-                <Share2 className="w-4 mr-1" /> Share
-              </Button>
-              <Button
-                size="sm"
-                className="flex-1"
-                onClick={() =>
-                  alert(`Booking request sent for ${car.title}`)
-                }
-              >
-                Book Now
-              </Button>
-            </>
-          ) : (
-            <>
-              <Button variant="outline" size="sm" className="flex-1">
-                View Details
-              </Button>
-              <Button size="sm" className="flex-1">
-                Contact Seller
-              </Button>
-            </>
-          )}
-        </div>
+<div className="flex gap-2">
+  {car.carStreetsListed ? (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => {
+          const url = `${window.location.origin}/cars/${car.id}`
+          const msg = encodeURIComponent(
+            `Check out this car on CarStreets:\n${car.title}\nPrice: ${formatPriceSafe(
+              car.price
+            )}\n${url}`
+          )
+          window.open(`https://wa.me/?text=${msg}`, '_blank')
+        }}
+      >
+        <Share2 className="w-4 mr-1" /> Share
+      </Button>
+      {/* ✅ CHANGE: Wrap button in <a> tag */}
+      <a href={`/cars/${car.id}`} className="flex-1">
+        <Button size="sm" className="w-full">
+          Book Now
+        </Button>
+      </a>
+    </>
+  ) : (
+    <>
+      {/* ✅ CHANGE: Wrap button in <a> tag */}
+      <a href={`/cars/${car.id}`} className="flex-1">
+        <Button variant="outline" size="sm" className="w-full">
+          View Details
+        </Button>
+      </a>
+      <Button size="sm" className="flex-1">
+        Contact Seller
+      </Button>
+    </>
+  )}
+</div>
+
       </div>
     </div>
   )
