@@ -29,13 +29,18 @@ export function middleware(request: NextRequest) {
   }
 
   if (hostname.endsWith('.motoyard.mktgdime.com') && hostname !== 'motoyard.mktgdime.com') {
-    const subdomain = hostname.replace('.motoyard.mktgdime.com', '')
+  const subdomain = hostname.replace('.motoyard.mktgdime.com', '')
+  
+  // ✅ FIX: Don't rewrite if path already contains /dealers/{subdomain}
+  if (!url.pathname.startsWith(`/dealers/${subdomain}`)) {
     const newUrl = url.clone()
     newUrl.pathname = `/dealers/${subdomain}${url.pathname}`
     return NextResponse.rewrite(newUrl)
   }
-
+  
+  // Path already has /dealers/{subdomain}, let it through
   return NextResponse.next()
+}
 }
 
 export const config = {
