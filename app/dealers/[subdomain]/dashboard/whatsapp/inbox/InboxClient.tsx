@@ -34,8 +34,6 @@ interface Message {
   templateName?: string;
 }
 
-const [messageInput, setMessageInput] = useState('');
-const [sending, setSending] = useState(false);
 
 export default function InboxClient({
   subdomain,
@@ -50,6 +48,8 @@ export default function InboxClient({
   const [loading, setLoading] = useState(true);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [messageInput, setMessageInput] = useState('');
+  const [sending, setSending] = useState(false);
 
   // Load conversations on mount
   useEffect(() => {
