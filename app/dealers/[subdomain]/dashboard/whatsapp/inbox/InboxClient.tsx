@@ -62,13 +62,21 @@ useEffect(() => {
   
   loadMessages(selectedContact.id);
   
-  // Poll every 5 seconds for new messages
-  const interval = setInterval(() => {
-    loadMessages(selectedContact.id);
-  }, 5000);
+  const interval = setInterval(async () => {
+    // Check if there are new messages without full reload
+    const response = await fetch(
+      `/api/dealers/${subdomain}/whatsapp/conversations/${selectedContact.id}/count`
+    );
+    const data = await response.json();
+    
+    // Only reload if count changed
+    if (data.count !== messages.length) {
+      loadMessages(selectedContact.id);
+    }
+  }, 10000);
   
   return () => clearInterval(interval);
-}, [selectedContact?.id]);
+}, [selectedContact?.id, messages.length]);
 
 // Auto-scroll to bottom when messages change
 useEffect(() => {
