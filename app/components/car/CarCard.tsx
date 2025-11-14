@@ -149,7 +149,8 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
         variant="outline"
         size="sm"
         onClick={() => {
-          const url = `${window.location.origin}/cars/${car.id}`
+          // Use full path to avoid middleware confusion
+          const url = `${window.location.origin}/dealers/${window.location.hostname.split('.')[0]}/cars/${car.id}`
           const msg = encodeURIComponent(
             `Check out this car on CarStreets:\n${car.title}\nPrice: ${formatPriceSafe(
               car.price
@@ -160,8 +161,8 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
       >
         <Share2 className="w-4 mr-1" /> Share
       </Button>
-      {/* ✅ CHANGE: Wrap button in <a> tag */}
-      <a href={`/cars/${car.id}`} className="flex-1">
+      {/* ✅ FIX: Use subdomain from URL */}
+      <a href={`/dealers/${window.location.hostname.split('.')[0]}/cars/${car.id}`} className="flex-1">
         <Button size="sm" className="w-full">
           Book Now
         </Button>
@@ -169,8 +170,8 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
     </>
   ) : (
     <>
-      {/* ✅ CHANGE: Wrap button in <a> tag */}
-      <a href={`/cars/${car.id}`} className="flex-1">
+      {/* ✅ FIX: Use subdomain from URL */}
+      <a href={`/dealers/${window.location.hostname.split('.')[0]}/cars/${car.id}`} className="flex-1">
         <Button variant="outline" size="sm" className="w-full">
           View Details
         </Button>
@@ -181,7 +182,6 @@ export function CarCard({ car, onFavorite, isFavorited = false }: CarCardProps) 
     </>
   )}
 </div>
-
       </div>
     </div>
   )
