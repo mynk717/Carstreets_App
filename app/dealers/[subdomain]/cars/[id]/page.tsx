@@ -7,19 +7,11 @@ interface PageProps {
 }
 
 export default async function CarDetailPage({ params }: PageProps) {
-  const resolvedParams = await params
-  const { subdomain, id } = resolvedParams
+  const { subdomain, id } = await params
   
-  // ✅ DEBUG: Log what we receive
-  console.log('🔍 [CarDetail] Params received:', {
-    subdomain,
-    id,
-    subdomainType: typeof subdomain,
-    idType: typeof id,
-  })
+  console.log('🚀 [CarDetail] Params:', { subdomain, id })
   
-  if (!subdomain || !id) {
-    console.error('❌ [CarDetail] Missing parameters')
+  if (!id) {
     notFound()
   }
 
@@ -34,18 +26,23 @@ export default async function CarDetailPage({ params }: PageProps) {
       notFound()
     }
 
-    // ✅ DEBUG: Log dealer info
-    console.log('✅ [CarDetail] Car found:', {
-      carId: car.id,
-      carDealerSubdomain: car.dealer?.subdomain,
-      urlSubdomain: subdomain,
-      match: car.dealer?.subdomain === subdomain,
-    })
+    if (!car.dealer) {
+      console.error('❌ [CarDetail] Car has no dealer')
+      notFound()
+    }
 
-    // ❌ TEMPORARILY REMOVE THIS CHECK
-    // if (car.dealer?.subdomain !== subdomain) {
-    //   notFound()
-    // }
+    // ✅ Allow access if:
+    // 1. No subdomain provided (main domain access)
+    // 2. Subdomain matches car's dealer
+    if (subdomain && car.dealer.subdomain !== subdomain) {
+      console.error('❌ [CarDetail] Wrong dealer:', {
+        expected: car.dealer.subdomain,
+        got: subdomain,
+      })
+      notFound()
+    }
+
+    console.log('✅ [CarDetail] Loaded:', car.title)
 
     return <CarDetailClient car={car} dealerSubdomain={car.dealer.subdomain} />
     
@@ -54,4 +51,3 @@ export default async function CarDetailPage({ params }: PageProps) {
     notFound()
   }
 }
-  
