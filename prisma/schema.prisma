@@ -263,7 +263,9 @@ model FestivalContent {
 model WhatsAppTemplate {
   id          String   @id @default(cuid())
   dealerId    String
+  businessId String?
   dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  business Business? @relation("BusinessTemplates", fields: [businessId], references: [id], onDelete: Cascade)
   
   name        String
   language    String   @default("en_US")
@@ -290,7 +292,9 @@ model WhatsAppTemplate {
 model WhatsAppContact {
   id          String   @id @default(cuid())
   dealerId    String
+  businessId String?
   dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  business Business? @relation("BusinessContacts", fields: [businessId], references: [id], onDelete: Cascade)
   
   phoneNumber String
   name        String?
@@ -316,7 +320,9 @@ model WhatsAppContact {
 model WhatsAppMessage {
   id                String   @id @default(cuid())
   dealerId          String
+  businessId String?
   dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  business Business? @relation("BusinessMessages", fields: [businessId], references: [id], onDelete: Cascade)
   
   contactId         String?
   contact           WhatsAppContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
@@ -354,7 +360,9 @@ model WhatsAppMessage {
 model WhatsAppConversationSummary {
   id                String   @id @default(cuid())
   dealerId          String
+  businessId String?
   dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  business Business? @relation("BusinessConversations", fields: [businessId], references: [id], onDelete: Cascade)
   
   contactId         String
   contact           WhatsAppContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
@@ -378,7 +386,9 @@ model WhatsAppConversationSummary {
 model ProductCatalog {
   id                String   @id @default(cuid())
   dealerId          String
+  businessId String?
   dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  business Business? @relation("BusinessCatalogs", fields: [businessId], references: [id], onDelete: Cascade)
   
   // Meta Catalog Info
   metaCatalogId     String?
@@ -469,4 +479,55 @@ model LoginAudit {
   @@index([dealerId])
   @@index([createdAt])
   @@map("login_audits")
+}
+model Business {
+  id String @id @default(cuid())
+  
+  // Business Info
+  businessName String
+  subdomain String @unique
+  logo String?
+  location String?
+  description String?
+  
+  // WhatsApp Connection (same structure as Dealer)
+  whatsappBusinessNumber String?
+  whatsappBusinessAccountId String?
+  whatsappPhoneNumberId String?
+  whatsappBusinessVerified Boolean @default(false)
+  whatsappApiToken String?
+  
+  // Meta Integration (same as Dealer)
+  facebookPageId String?
+  facebookCatalogId String?
+  metaAccessToken String?
+  metaAccessTokenExpiry DateTime?
+  
+  // Subscription (for wa.mktgdime.com pricing)
+  plan String @default("free")
+  subscriptionStatus String @default("active")
+  subscriptionAmount Int?
+  
+  // Usage Tracking
+  whatsappMessagesUsed Int @default(0)
+  whatsappMessagesQuota Int @default(1000)
+  quotaResetAt DateTime @default(now())
+  
+  // Account Info
+  email String? @unique
+  phone String? @unique
+  passwordHash              String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  // Relations
+  whatsappTemplates WhatsAppTemplate[] @relation("BusinessTemplates")
+  whatsappContacts WhatsAppContact[] @relation("BusinessContacts")
+  whatsappMessages WhatsAppMessage[] @relation("BusinessMessages")
+  conversationSummaries WhatsAppConversationSummary[] @relation("BusinessConversations")
+  productCatalogs ProductCatalog[] @relation("BusinessCatalogs")
+  
+  @@index([subdomain])
+  @@index([email])
 }

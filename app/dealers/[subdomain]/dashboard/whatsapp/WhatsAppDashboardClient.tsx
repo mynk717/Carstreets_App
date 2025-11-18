@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   MessageSquare,
   Users,
@@ -84,7 +84,23 @@ export default function WhatsAppDashboardClient({
   const [uploading, setUploading] = useState(false)
   const [selectedTemplatePreview, setSelectedTemplatePreview] =
     useState<Template | null>(null)
+  const [templateVariables, setTemplateVariables] = useState<string[]>([]);
 
+
+  useEffect(() => {
+    if (selectedTemplate) {
+      const template = templates.find(t => t.id === selectedTemplate);
+      if (template) {
+        const matches = template.bodyText.match(/\{\{\d+\}\}/g);
+        if (matches) {
+          // Initialize empty array for each variable
+          setTemplateVariables(new Array(matches.length).fill(''));
+        } else {
+          setTemplateVariables([]);
+        }
+      }
+    }
+  }, [selectedTemplate, templates]);
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -128,6 +144,7 @@ export default function WhatsAppDashboardClient({
       return
     }
 
+    
     setSending(true)
     try {
       const res = await fetch(`/api/dealers/${subdomain}/whatsapp/send-bulk`, {
@@ -136,7 +153,7 @@ export default function WhatsAppDashboardClient({
         body: JSON.stringify({
           templateId: selectedTemplate,
           contactIds: selectedContacts,
-          customVariables: [],
+          customVariables: templateVariables.filter(v => v.trim()),
         }),
       })
 
@@ -445,6 +462,39 @@ export default function WhatsAppDashboardClient({
             )}
           </div>
             
+         {/* ✅ ADD THIS ENTIRE BLOCK */}
+{selectedTemplate && templateVariables.length > 0 && (
+  <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900 rounded-lg p-4">
+    <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
+      📝 Template Variables Required
+    </h3>
+    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+      This template requires {templateVariables.length} variable(s). Fill them below:
+    </p>
+    <div className="space-y-3">
+      {templateVariables.map((value, index) => (
+        <div key={index}>
+          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+            Variable {index + 1} (for {`{{${index + 1}}}`}):
+          </label>
+          <input
+            type="text"
+            value={value}
+            onChange={(e) => {
+              const newVars = [...templateVariables];
+              newVars[index] = e.target.value;
+              setTemplateVariables(newVars);
+            }}
+            placeholder={`Enter value for {{${index + 1}}}`}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+
           {/* Contact Selection */}
           <div>
             <div className="flex items-center justify-between mb-2">

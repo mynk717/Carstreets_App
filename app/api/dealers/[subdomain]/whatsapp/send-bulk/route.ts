@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/api/auth/[...nextauth]/route'  // ✅ FIXED: path
 import { WhatsAppStorageService } from '@/lib/services/whatsapp-storage.service'
+import { decrypt } from '@/lib/crypto';
+
 
 
 export async function POST(
@@ -25,8 +27,6 @@ export async function POST(
       select: {
         id: true,
         email: true,
-        metaAccessToken: true,
-        metaAccessTokenExpiry: true,
         whatsappBusinessAccountId: true,
         whatsappPhoneNumberId: true,
       },
@@ -37,22 +37,22 @@ export async function POST(
     }
 
     // ✅ Step 2: Check token expiry
-    if (
-      dealer.metaAccessTokenExpiry &&
-      new Date(dealer.metaAccessTokenExpiry) < new Date()
-    ) {
-      return NextResponse.json(
-        { error: 'Meta token expired - please reconnect Facebook' },
-        { status: 401 }
-      )
-    }
+    const accessToken = process.env.WHATSAPP_API_TOKEN || 
+                     process.env.MOTOYARD_WHATSAPP_PLATFORM_TOKEN || '';
 
-    if (!dealer.metaAccessToken || !dealer.whatsappPhoneNumberId) {
-      return NextResponse.json(
-        { error: 'WhatsApp not connected' },
-        { status: 400 }
-      )
-    }
+if (!accessToken) {
+  return NextResponse.json(
+    { error: 'WhatsApp not configured' },
+    { status: 500 }
+  );
+}
+
+if (!dealer.whatsappPhoneNumberId) {
+  return NextResponse.json(
+    { error: 'WhatsApp phone number not configured' },
+    { status: 400 }
+  )
+}
 
     // ✅ Step 3: Get & validate template (CRITICAL: dealerId scope)
     const template = await prisma.whatsAppTemplate.findUnique({
@@ -100,7 +100,6 @@ export async function POST(
     }
 
     // ✅ Step 5: Send via WhatsApp API
-    const token = dealer.metaAccessToken
     const results = []
     let sentCount = 0
     let failedCount = 0
@@ -116,7 +115,7 @@ export async function POST(
           {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${token}`,
+              'Authorization': `Bearer ${accessToken}`,
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({
@@ -134,7 +133,7 @@ export async function POST(
                       text: v,
                     })),
                   },
-                ] : [],
+                ] : undefined,
               },
             }),
           }
