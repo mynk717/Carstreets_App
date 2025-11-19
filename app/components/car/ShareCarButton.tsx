@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Share2, Check, ShoppingBag } from 'lucide-react'
+import { Share2, Check } from 'lucide-react'
 
 interface ShareCarButtonProps {
   car: {
@@ -19,8 +19,7 @@ interface ShareCarButtonProps {
   dealerSubdomain: string
   dealerId?: string
   dealerName?: string
-  useCatalog?: boolean  // ✅ NEW: Enable catalog sharing
-  variant?: 'icon' | 'button' | 'catalog'
+  variant?: 'icon' | 'button' | 'full'
   className?: string
 }
 
@@ -29,108 +28,69 @@ export function ShareCarButton({
   dealerSubdomain,
   dealerId: propDealerId,
   dealerName,
-  useCatalog = true,  // ✅ Default to catalog mode
-  variant = 'button',
+  variant = 'icon',
   className = ''
 }: ShareCarButtonProps) {
-  const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
-
+  
   const dealerId = propDealerId || car.dealerId || ''
-  // ✅ NEW: Share via WhatsApp Catalog
-  const handleCatalogShare = async () => {
-    setLoading(true)
-    try {
-      // Send catalog message via your WhatsApp API
-      const response = await fetch(`/api/dealers/${dealerSubdomain}/whatsapp/share-catalog`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          carId: car.id,
-          dealerId: dealerId,
-          method: 'catalog'  // Use catalog instead of text
-        })
-      })
 
-      const result = await response.json()
-      
-      if (result.success) {
-        // Copy shareable catalog link
-        await navigator.clipboard.writeText(result.catalogLink)
-        setCopied(true)
-        setTimeout(() => setCopied(false), 2000)
-      } else {
-        alert('Failed to generate catalog link')
-      }
-    } catch (error) {
-      console.error('Catalog share error:', error)
-      alert('Error sharing via catalog')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  // Original share (OG card fallback)
-  const handleRegularShare = async () => {
-    const carUrl = `${window.location.origin}/dealers/${dealerSubdomain}/cars/${car.id}`
+  const handleShare = async () => {
+    // ✅ Generate clean car detail URL with UTM tracking
+    const baseUrl = typeof window !== 'undefined' 
+      ? window.location.origin 
+      : 'https://motoyard.mktgdime.com'
+    
+    const carUrl = `${baseUrl}/dealers/${dealerSubdomain}/cars/${car.id}`
+    
+    // Add UTM parameters for tracking
+    const utmParams = new URLSearchParams({
+      utm_source: 'share',
+      utm_medium: 'social',
+      utm_campaign: 'car_share',
+      ref: `dealer_${dealerId}`
+    })
+    
+    const shareUrl = `${carUrl}?${utmParams}`
+    
     const priceInLakhs = (Number(car.price) / 100000).toFixed(2)
-    const shareTitle = `${car.year} ${car.brand} ${car.model} - ₹${priceInLakhs} Lakh`
-    const shareText = `${car.fuelType} • ${car.transmission}${car.kmDriven ? ` • ${car.kmDriven.toLocaleString()} km` : ''}`
+    const shareTitle = `${car.year} ${car.brand} ${car.model}`
+    const shareText = `Check out this ${shareTitle} for ₹${priceInLakhs} Lakh!\n${car.fuelType} • ${car.transmission}${car.kmDriven ? ` • ${car.kmDriven.toLocaleString()} km` : ''}`
 
+    // Try native share API first (works on mobile)
     if (navigator.share) {
       try {
         await navigator.share({
           title: shareTitle,
           text: shareText,
-          url: carUrl
+          url: shareUrl
         })
         return
       } catch (err) {
-        if ((err as Error).name === 'AbortError') return
+        // User cancelled or share not supported
+        if ((err as Error).name === 'AbortError') {
+          return
+        }
+        // Fall through to clipboard
       }
     }
 
-    await navigator.clipboard.writeText(`${shareTitle}\n\n${shareText}\n\n${carUrl}`)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    // Fallback: Copy to clipboard
+    const richText = `${shareTitle}\n\n${shareText}\n\n${shareUrl}`
+    
+    try {
+      await navigator.clipboard.writeText(richText)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Silent fail
+    }
   }
 
-  const handleShare = useCatalog ? handleCatalogShare : handleRegularShare
-
-  // Catalog variant (for dealer dashboard)
-  if (variant === 'catalog') {
-    return (
-      <button
-        onClick={handleShare}
-        disabled={loading}
-        className={`flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 ${className}`}
-      >
-        {loading ? (
-          <>
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            <span>Generating...</span>
-          </>
-        ) : copied ? (
-          <>
-            <Check className="w-4 h-4" />
-            <span>Link Copied!</span>
-          </>
-        ) : (
-          <>
-            <ShoppingBag className="w-4 h-4" />
-            <span>Share Catalog</span>
-          </>
-        )}
-      </button>
-    )
-  }
-
-  // Button variant
   if (variant === 'button') {
     return (
       <button
         onClick={handleShare}
-        disabled={loading}
         className={`flex items-center gap-2 px-3 py-2 text-sm font-medium text-gray-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors ${className}`}
       >
         {copied ? (
@@ -141,14 +101,35 @@ export function ShareCarButton({
         ) : (
           <>
             <Share2 className="w-4 h-4" />
-            <span>{useCatalog ? 'Share Catalog' : 'Share'}</span>
+            <span>Share</span>
           </>
         )}
       </button>
     )
   }
 
-  // Icon variant (for cards)
+  if (variant === 'full') {
+    return (
+      <button
+        onClick={handleShare}
+        className={`w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors ${className}`}
+      >
+        {copied ? (
+          <>
+            <Check className="w-5 h-5" />
+            <span>Link Copied!</span>
+          </>
+        ) : (
+          <>
+            <Share2 className="w-5 h-5" />
+            <span>Share This Car</span>
+          </>
+        )}
+      </button>
+    )
+  }
+
+  // Icon variant (default)
   return (
     <button
       onClick={(e) => {
@@ -162,7 +143,7 @@ export function ShareCarButton({
       {copied ? (
         <Check className="w-4 h-4 text-green-600" />
       ) : (
-        <ShoppingBag className="w-4 h-4 text-gray-700" />
+        <Share2 className="w-4 h-4 text-gray-700" />
       )}
     </button>
   )
