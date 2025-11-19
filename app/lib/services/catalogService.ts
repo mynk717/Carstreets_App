@@ -241,26 +241,23 @@ images = images.map(url => {
           metaAccessToken: true,
         },
       });
-
+  
       const accessToken = dealer?.metaAccessToken || process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
       
       if (!accessToken) {
-        throw new Error('Meta access token not configured. Please add FACEBOOK_PAGE_ACCESS_TOKEN to environment variables or dealer settings.');
+        throw new Error('Meta access token not configured');
       }
-
+  
       if (!dealer?.facebookCatalogId) {
         throw new Error('Facebook Catalog ID not configured');
       }
-
+  
       const { items } = await this.generateCatalogFromInventory(dealerId);
       
       console.log('🔍 Sample catalog item:', JSON.stringify(items[0], null, 2));
       console.log(`📊 Total items to sync: ${items.length}`);
-      console.log(`🖼️  First item images:`, {
-        primary: items[0].image_link,
-        additional: items[0].additional_image_link
-      });
-
+  
+      // Transform data to Meta's format
       const response = await fetch(
         `https://graph.facebook.com/v18.0/${dealer.facebookCatalogId}/batch`,
         {
@@ -270,21 +267,69 @@ images = images.map(url => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            requests: items.map((item) => ({
-              method: 'UPDATE',
-              retailer_id: item.id,
-              data: item,
-            })),
+            requests: items.map((item) => {
+              // Parse additional images to array
+              const additionalImages = item.additional_image_link 
+                ? item.additional_image_link
+                    .split(',')
+                    .map(url => {
+                      const match = url.trim().match(/\[?(https?:\/\/[^\]]+)\]?(?:\((https?:\/\/[^\)]+)\))?/);
+                      return match ? (match[2] || match[1]) : url.trim();
+                    })
+                    .filter(url => url.startsWith('http'))
+                : [];
+          
+              // Extract numeric price
+              const priceString = item.price.replace(' INR', '').trim();
+          
+              return {
+                method: 'UPDATE',
+                retailer_id: item.id,  // ✅ Outside of data object!
+                data: {
+                  // ❌ REMOVED: retailer_id (moved to parent)
+                  // ❌ REMOVED: google_product_category (not supported)
+                  
+                  // Required fields only
+                  name: item.title,
+                  description: item.description,
+                  availability: item.availability,
+                  condition: item.condition,
+                  price: priceString,
+                  currency: 'INR',
+                  url: item.link,
+                  image_url: item.image_link,
+                  additional_image_urls: additionalImages,
+                  brand: item.brand,
+                },
+              };
+            }),
           }),
+          
         }
       );
-
+  
       const result = await response.json();
-
+  
+      console.log('📱 Meta API Response:', JSON.stringify(result, null, 2));
+  
+      // Check for validation errors
+      if (result.validation_status) {
+        const hasErrors = result.validation_status.some((item: any) => item.errors && item.errors.length > 0);
+        if (hasErrors) {
+          const errorSummary = result.validation_status
+            .filter((item: any) => item.errors && item.errors.length > 0)
+            .map((item: any) => `${item.retailer_id}: ${item.errors.map((e: any) => e.message).join(', ')}`)
+            .join('\n');
+          
+          console.error('❌ Meta validation errors:', errorSummary);
+          throw new Error(`Meta validation failed:\n${errorSummary}`);
+        }
+      }
+  
       if (!response.ok) {
         throw new Error(result.error?.message || 'Meta API error');
       }
-
+  
       // Update catalog sync status
       await prisma.productCatalog.upsert({
         where: { dealerId_metaCatalogId: { dealerId, metaCatalogId: dealer.facebookCatalogId || '' } },
@@ -303,14 +348,15 @@ images = images.map(url => {
           syncError: null,
         },
       });
-
+  
       return {
         success: true,
         catalogId: dealer.facebookCatalogId || undefined,
         itemsProcessed: items.length,
       };
     } catch (error: any) {
-      // Log sync error
+      console.error('❌ Sync error:', error);
+      
       await prisma.productCatalog.updateMany({
         where: { dealerId },
         data: {
@@ -318,7 +364,7 @@ images = images.map(url => {
           syncError: error.message,
         },
       });
-
+  
       return {
         success: false,
         itemsProcessed: 0,
@@ -326,6 +372,8 @@ images = images.map(url => {
       };
     }
   }
+  
+  
 
   private escapeXml(str: string): string {
     return str
