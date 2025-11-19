@@ -49,26 +49,47 @@ export class CatalogService {
       },
     });
 
-    // ✅ CHANGE 1: Fixed base URL to use motoyard.mktgdime.com (Line 62-64)
     const baseUrl = dealer.customDomain
       ? `https://${dealer.customDomain}`
-      : `https://${dealer.subdomain}.motoyard.mktgdime.com`; // ← Changed from .carstreets.com
+      : `https://${dealer.subdomain}.motoyard.mktgdime.com`;
 
     const items: CatalogItem[] = cars.map((car) => {
-      // Parse images
-      let images: string[] = [];
-      if (Array.isArray(car.images)) {
-        images = car.images as string[];
-      } else if (typeof car.images === 'string') {
-        try {
-          const parsed = JSON.parse(car.images);
-          images = Array.isArray(parsed) ? parsed : [car.images];
-        } catch {
-          images = [car.images];
-        }
-      }
+     // Parse images - Handle Prisma JsonValue type
+let images: string[] = [];
+
+if (car.images) {
+  if (Array.isArray(car.images)) {
+    images = car.images as string[];
+  } else if (typeof car.images === 'object' && car.images !== null) {
+    const imageData = car.images as any;
+    if (Array.isArray(imageData)) {
+      images = imageData;
+    } else if (imageData.length !== undefined) {
+      images = Array.from(imageData);
+    } else {
+      images = Object.values(imageData).filter(v => typeof v === 'string') as string[];
+    }
+  } else if (typeof car.images === 'string') {
+    try {
+      const parsed = JSON.parse(car.images);
+      images = Array.isArray(parsed) ? parsed : [car.images];
+    } catch {
+      images = [car.images];
+    }
+  }
+}
+
+// ✅ ADD THIS: Clean up markdown-style links
+images = images.map(url => {
+  // Remove markdown formatting: [url](url) -> url
+  const match = url.match(/\[?(https?:\/\/[^\]]+)\]?\(?(https?:\/\/[^\)]+)?\)?/);
+  return match ? (match[2] || match[1]) : url;
+}).filter(url => url.startsWith('http')); // Only keep valid URLs
+
+      // Prepare images for catalog
       const primaryImage = images[0] || 'https://motoyard.mktgdime.com/placeholder-car.jpg';
-      const additionalImages = images.slice(1, 10); // Up to 9 more images (10 total max)
+      const additionalImages = images.slice(1, 10); // Up to 9 more images
+
       return {
         id: car.id,
         title: `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''}`,
@@ -77,7 +98,8 @@ export class CatalogService {
         condition: car.condition === 'new' ? 'new' : 'used',
         price: `${car.price} INR`,
         link: `${baseUrl}/cars/${car.id}`,
-        image_link: images[0] || '',
+        image_link: primaryImage,
+        additional_image_link: additionalImages.length > 0 ? additionalImages.join(',') : undefined,  // ✅ FIXED: Added this line
         brand: car.brand,
         product_type: 'Vehicles & Parts > Vehicles > Motor Vehicles > Cars',
         vehicle_type: 'car',
@@ -105,8 +127,8 @@ export class CatalogService {
     const { items } = await this.generateCatalogFromInventory(dealerId);
 
     const xmlItems = items
-  .map(
-    (item) => `
+      .map(
+        (item) => `
     <item>
       <g:id>${this.escapeXml(item.id)}</g:id>
       <g:title>${this.escapeXml(item.title)}</g:title>
@@ -138,7 +160,6 @@ export class CatalogService {
       )
       .join('\n');
 
-    // ✅ CHANGE 2: Fixed RSS title and link (Line 163-165)
     return `<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
   <channel>
@@ -221,7 +242,6 @@ export class CatalogService {
         },
       });
 
-      // ✅ CHANGE 3: Added env token fallback (Line 254-261)
       const accessToken = dealer?.metaAccessToken || process.env.FACEBOOK_PAGE_ACCESS_TOKEN;
       
       if (!accessToken) {
@@ -233,14 +253,20 @@ export class CatalogService {
       }
 
       const { items } = await this.generateCatalogFromInventory(dealerId);
+      
+      console.log('🔍 Sample catalog item:', JSON.stringify(items[0], null, 2));
+      console.log(`📊 Total items to sync: ${items.length}`);
+      console.log(`🖼️  First item images:`, {
+        primary: items[0].image_link,
+        additional: items[0].additional_image_link
+      });
 
-      // ✅ CHANGE 4: Use accessToken variable instead of dealer.metaAccessToken (Line 271)
       const response = await fetch(
         `https://graph.facebook.com/v18.0/${dealer.facebookCatalogId}/batch`,
         {
           method: 'POST',
           headers: {
-            Authorization: `Bearer ${accessToken}`, // ← Changed from dealer.metaAccessToken
+            Authorization: `Bearer ${accessToken}`,
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
