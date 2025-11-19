@@ -41,19 +41,38 @@ export function CarDetailClient({ car, dealerSubdomain, dealerId }: CarDetailCli
   const nextImage = () => setCurrentImageIndex(prev => (prev + 1) % images.length)
   const prevImage = () => setCurrentImageIndex(prev => (prev - 1 + images.length) % images.length)
 
-  const handleWhatsAppShare = () => {
-    // ✅ FIXED: Use dealer's phone number
-    const dealerPhone = car?.dealer?.phone || car?.dealer?.contactNumber || '917225991909'
-    const shareText = `Check out this ${car?.title} for ${car?.price} at ${currentUrl}`
+  const getDealerPhone = () => {
+    return car?.dealer?.whatsappBusinessNumber || 
+           car?.dealer?.phoneNumber || 
+           car?.dealer?.phone || 
+           car?.dealer?.contactNumber || 
+           ''
+  }
+    const handleWhatsAppShare = () => {
+    const dealerPhone = getDealerPhone()
+    
+    if (!dealerPhone) {
+      alert('Dealer contact number not available. Please contact via other methods.')
+      return
+    }
+    
+    const shareText = `Hi, I'm interested in this ${car?.title} listed for ₹${car?.price.toLocaleString('en-IN')}`
     const whatsappUrl = `https://wa.me/${dealerPhone}?text=${encodeURIComponent(shareText)}`
     window.open(whatsappUrl, '_blank')
   }
 
+
   const handleCallDealer = () => {
-    // ✅ FIXED: Use dealer's phone number
-    const dealerPhone = car?.dealer?.phone || car?.dealer?.contactNumber || '919009008756'
+    const dealerPhone = getDealerPhone()
+    
+    if (!dealerPhone) {
+      alert('Dealer contact number not available.')
+      return
+    }
+    
     window.location.href = `tel:${dealerPhone}`
   }
+
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -286,13 +305,15 @@ export function CarDetailClient({ car, dealerSubdomain, dealerId }: CarDetailCli
                     Contact on WhatsApp
                   </button>
 
-                  <a
-                    href={`tel:919009008756`}
+                  <button
+                    onClick={handleCallDealer}
                     className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 px-6 rounded-xl font-semibold text-lg flex items-center justify-center gap-3 transition-all duration-200 shadow-lg"
                   >
                     <Phone className="w-6 h-6" />
                     Call Now
-                  </a>
+                  </button>
+
+
 
                   <button 
                     onClick={handleShare}
