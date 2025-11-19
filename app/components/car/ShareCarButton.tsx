@@ -36,47 +36,46 @@ export function ShareCarButton({
   const dealerId = propDealerId || car.dealerId || ''
 
   const handleShare = async () => {
-    // ✅ Generate clean car detail URL with UTM tracking
+    // Generate clean car detail URL
     const baseUrl = typeof window !== 'undefined' 
       ? window.location.origin 
       : 'https://motoyard.mktgdime.com'
     
     const carUrl = `${baseUrl}/dealers/${dealerSubdomain}/cars/${car.id}`
     
-    // Add UTM parameters for tracking
+    // UTM tracking
     const utmParams = new URLSearchParams({
       utm_source: 'share',
-      utm_medium: 'social',
+      utm_medium: 'whatsapp',
       utm_campaign: 'car_share',
       ref: `dealer_${dealerId}`
     })
     
     const shareUrl = `${carUrl}?${utmParams}`
     
+    // ✅ CLEAN FORMAT - Just title and price (like Image 2)
     const priceInLakhs = (Number(car.price) / 100000).toFixed(2)
-    const shareTitle = `${car.year} ${car.brand} ${car.model}`
-    const shareText = `Check out this ${shareTitle} for ₹${priceInLakhs} Lakh!\n${car.fuelType} • ${car.transmission}${car.kmDriven ? ` • ${car.kmDriven.toLocaleString()} km` : ''}`
+    const shareTitle = `${car.year} ${car.brand} ${car.model} - ₹${priceInLakhs} Lakh`
+    
+    // ✅ MINIMAL TEXT - Let OG tags do the work
+    const shareText = `${car.fuelType} • ${car.transmission}${car.kmDriven ? ` • ${car.kmDriven.toLocaleString()} km` : ''}`
 
-    // Try native share API first (works on mobile)
+    // Try native share API (mobile)
     if (navigator.share) {
       try {
         await navigator.share({
           title: shareTitle,
-          text: shareText,
+          text: shareText,  // ✅ Short text only
           url: shareUrl
         })
         return
       } catch (err) {
-        // User cancelled or share not supported
-        if ((err as Error).name === 'AbortError') {
-          return
-        }
-        // Fall through to clipboard
+        if ((err as Error).name === 'AbortError') return
       }
     }
 
-    // Fallback: Copy to clipboard
-    const richText = `${shareTitle}\n\n${shareText}\n\n${shareUrl}`
+    // Fallback: Copy clean format to clipboard
+    const richText = `${shareTitle}\n${shareText}\n${shareUrl}`
     
     try {
       await navigator.clipboard.writeText(richText)
