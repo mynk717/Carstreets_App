@@ -139,7 +139,7 @@ export function ProfileEditSection({ dealer }: ProfileEditSectionProps) {
             className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-900 text-gray-500 dark:text-gray-500 cursor-not-allowed"
           />
         </div>
-
+        
         {/* Phone Number */}
         <div>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">

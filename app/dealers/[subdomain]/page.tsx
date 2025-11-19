@@ -22,10 +22,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       where: { subdomain },
       include: {
         cars: {
-          where: { carStreetsListed: true },
-          take: 1,
+          where: { 
+            carStreetsListed: true,
+          },
+          take: 4, // ✅ Get more cars for accurate count
           orderBy: { createdAt: 'desc' },
+          select: {
+            images: true,
+            brand: true,
+            model: true,
+          }
         },
+        // ✅ If you have a _count field in your Prisma include
+        _count: {
+          select: { cars: true }
+        }
       },
     })
 
@@ -35,29 +46,73 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
     const dealerName = dealer.businessName || dealer.name || 'CarStreets'
     const dealerLocation = dealer.location || 'India'
+    
+    // ✅ Enhanced: Show actual car count
+    const carCount = dealer._count?.cars || dealer.cars.length
+    
     const description = dealer.description 
-      || `Browse quality used cars at ${dealerName}. Located in ${dealerLocation}.`
+      || `Browse ${carCount}+ quality used cars at ${dealerName} in ${dealerLocation}. Verified vehicles with transparent pricing.`
 
+    // ✅ Safe type casting for first car's images
+    const firstCarImages = dealer.cars[0]?.images 
+      ? (Array.isArray(dealer.cars[0].images) 
+          ? (dealer.cars[0].images as string[])[0]
+          : null)
+      : null
+
+    // ✅ Full URL for production (no relative paths)
     const ogImage = dealer.logo 
-      || (dealer.cars[0]?.images?.[0] as string)
-      || '/default-dealer-og.jpg'
+      || firstCarImages
+      || 'https://motoyard.mktgdime.com/og-default-dealer.jpg'
+
+    // ✅ Canonical URL
+    const canonicalUrl = `https://motoyard.mktgdime.com/dealers/${subdomain}`
 
     return {
-      title: `${dealerName} - Used Cars`,
+      title: `${dealerName} - ${carCount}+ Used Cars in ${dealerLocation}`,
       description: description.substring(0, 160),
+      
       openGraph: {
         title: `${dealerName} - Quality Used Cars`,
-        description: description.substring(0, 160),
+        description: description.substring(0, 200),
+        url: canonicalUrl, // ✅ Added
         siteName: 'MotoYard',
-        images: [{ url: ogImage, width: 1200, height: 630, alt: dealerName }],
+        images: [
+          { 
+            url: ogImage, 
+            width: 1200, 
+            height: 630, 
+            alt: `${dealerName} - Used Cars in ${dealerLocation}` 
+          }
+        ],
         locale: 'en_IN',
         type: 'website',
+        // ✅ Added phone number for WhatsApp
+        ...(dealer.phoneNumber && {
+          phoneNumber: dealer.phoneNumber,
+        }),
       },
+      
       twitter: {
         card: 'summary_large_image',
-        title: `${dealerName} - Quality Used Cars`,
+        title: `${dealerName} - ${carCount}+ Cars`,
         description: description.substring(0, 160),
         images: [ogImage],
+      },
+
+      // ✅ Added canonical & robots
+      alternates: {
+        canonical: canonicalUrl,
+      },
+
+      robots: {
+        index: true,
+        follow: true,
+        googleBot: {
+          index: true,
+          follow: true,
+          'max-image-preview': 'large',
+        },
       },
     }
   } catch (error) {
@@ -68,6 +123,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     }
   }
 }
+
 
 export default async function DealerStorefront({ params, searchParams }: PageProps) {
   // ✅ Await both params and searchParams
