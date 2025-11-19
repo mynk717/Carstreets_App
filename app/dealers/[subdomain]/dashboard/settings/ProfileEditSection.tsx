@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { User, Building2, Mail, Phone, MapPin, Save, Loader2 } from 'lucide-react';
+import { CldUploadWidget } from 'next-cloudinary';
+import { Upload } from 'lucide-react';
+
 
 interface ProfileEditSectionProps {
   dealer: {
@@ -14,6 +17,7 @@ interface ProfileEditSectionProps {
     location: string | null;
     description: string | null;
     subdomain: string;
+    logo?: string | null 
   };
 }
 
@@ -27,23 +31,33 @@ export function ProfileEditSection({ dealer }: ProfileEditSectionProps) {
     businessName: dealer.businessName || '',
     phoneNumber: dealer.phoneNumber || '',
     location: dealer.location || '',
-    description: dealer.description || ''
+    description: dealer.description || '',
+    logo: dealer.logo || ''
   });
 
-  const handleSave = async () => {
+  const handleSave = async (overrides?: Partial<typeof formData>) => {  // ✅ Accept optional overrides for logo upload
     setLoading(true);
     setMessage(null);
-
+  
     try {
+      // ✅ Use overrides if provided (for auto-save on logo upload), otherwise use full formData
+      const dataToSave = overrides ? { ...formData, ...overrides } : formData;
+  
       const res = await fetch(`/api/dealers/${dealer.subdomain}/profile`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(dataToSave),
       });
-
+  
       if (res.ok) {
         setMessage({ type: 'success', text: 'Profile updated successfully!' });
-        router.refresh(); // Refresh server component data
+        
+        // ✅ If logo was updated via override, update formData state too
+        if (overrides && overrides.logo !== undefined) {
+          setFormData({ ...formData, ...overrides });
+        }
+        
+        router.refresh(); // ✅ Refresh server component data
         setTimeout(() => setMessage(null), 3000);
       } else {
         const error = await res.json();
@@ -55,6 +69,7 @@ export function ProfileEditSection({ dealer }: ProfileEditSectionProps) {
       setLoading(false);
     }
   };
+  
 
   const hasChanges = 
     formData.name !== (dealer.name || '') ||
@@ -186,11 +201,92 @@ export function ProfileEditSection({ dealer }: ProfileEditSectionProps) {
             This appears on your public storefront
           </p>
         </div>
-
+{/* ✅ ADD LOGO UPLOAD HERE */}
+<div>
+  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+    <Building2 className="w-4 h-4 inline mr-1.5" />
+    Business Logo
+  </label>
+  <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+    Upload your dealership logo for social media previews. Recommended: 512x512px, square format.
+  </p>
+  
+  <CldUploadWidget
+    uploadPreset="motoyard_dealers"
+    options={{
+      multiple: false,
+      maxFiles: 1,
+      resourceType: "image",
+      maxImageFileSize: 5000000,
+      cropping: true,
+      croppingAspectRatio: 1,
+      folder: "motoyard/dealer-logos",
+      clientAllowedFormats: ["jpg", "jpeg", "png", "webp"],
+    }}
+    onSuccess={(result: any) => {
+      if (result.event === "success" && result.info?.secure_url) {
+        const logoUrl = result.info.secure_url
+        console.log("✅ Logo uploaded:", logoUrl);
+        
+        setFormData({ ...formData, logo: logoUrl })
+        handleSave({ logo: logoUrl })
+      }
+    }}
+    onError={(error: any) => {
+      console.error("❌ Upload error:", error)
+      alert("Logo upload failed. Please try again.")
+    }}
+  >
+    {({ open }: any) => (
+      <div className="flex items-center gap-4">
+        {(formData.logo || dealer.logo) && (
+          <div className="relative group">
+            <img 
+              src={formData.logo || dealer.logo || ''} 
+              alt="Business Logo" 
+              className="w-24 h-24 rounded-lg object-cover border-2 border-gray-200 dark:border-gray-600 shadow-sm"
+            />
+            <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-30 transition-all rounded-lg flex items-center justify-center">
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault()
+                  if (confirm("Remove current logo?")) {
+                    setFormData({ ...formData, logo: '' })
+                    handleSave({ logo: '' })
+                  }
+                }}
+                className="opacity-0 group-hover:opacity-100 bg-red-600 text-white px-3 py-1.5 rounded text-sm font-medium"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        )}
+        
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            open()
+          }}
+          className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors shadow-sm flex items-center gap-2"
+        >
+          <Upload className="w-4 h-4" />
+          {(formData.logo || dealer.logo) ? 'Change Logo' : 'Upload Logo'}
+        </button>
+      </div>
+    )}
+  </CldUploadWidget>
+  
+  <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+    Your logo appears when sharing your storefront on WhatsApp, Facebook, and other platforms.
+  </p>
+</div>
         {/* Save Button */}
         <div className="flex items-center gap-3 pt-4">
           <button
-            onClick={handleSave}
+            onClick={() => handleSave()}
             disabled={loading || !hasChanges}
             className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium transition-colors"
           >

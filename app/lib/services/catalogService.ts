@@ -9,6 +9,7 @@ export interface CatalogItem {
   price: string;
   link: string;
   image_link: string;
+  additional_image_link?: string;
   brand: string;
   product_type: string;
   // Auto-specific fields
@@ -66,7 +67,8 @@ export class CatalogService {
           images = [car.images];
         }
       }
-
+      const primaryImage = images[0] || 'https://motoyard.mktgdime.com/placeholder-car.jpg';
+      const additionalImages = images.slice(1, 10); // Up to 9 more images (10 total max)
       return {
         id: car.id,
         title: `${car.year} ${car.brand} ${car.model}${car.variant ? ` ${car.variant}` : ''}`,
@@ -103,14 +105,20 @@ export class CatalogService {
     const { items } = await this.generateCatalogFromInventory(dealerId);
 
     const xmlItems = items
-      .map(
-        (item) => `
+  .map(
+    (item) => `
     <item>
       <g:id>${this.escapeXml(item.id)}</g:id>
       <g:title>${this.escapeXml(item.title)}</g:title>
       <g:description>${this.escapeXml(item.description)}</g:description>
       <g:link>${this.escapeXml(item.link)}</g:link>
       <g:image_link>${this.escapeXml(item.image_link)}</g:image_link>
+      ${item.additional_image_link ? 
+        item.additional_image_link.split(',').map(url => 
+          `<g:additional_image_link>${this.escapeXml(url.trim())}</g:additional_image_link>`
+        ).join('\n      ') 
+        : ''
+      }
       <g:availability>${item.availability}</g:availability>
       <g:price>${item.price}</g:price>
       <g:condition>${item.condition}</g:condition>
@@ -158,6 +166,7 @@ export class CatalogService {
       'price',
       'link',
       'image_link',
+      'additional_image_link',
       'brand',
       'vehicle_type',
       'year',
@@ -178,6 +187,7 @@ export class CatalogService {
         item.price,
         item.link,
         item.image_link,
+        item.additional_image_link || '',
         item.brand,
         item.vehicle_type,
         item.year,

@@ -5,7 +5,7 @@ import { prisma } from '@/lib/prisma';
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { subdomain: string } }
+  { params }: { params: Promise<{ subdomain: string }> }  // ✅ Fixed for Next.js 15
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -13,7 +13,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { subdomain } = params;
+    const { subdomain } = await params;  // ✅ Await params
     const body = await request.json();
 
     // Verify dealer ownership
@@ -26,17 +26,23 @@ export async function PATCH(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // ✅ Build update data conditionally
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    // Only update fields that are provided
+    if (body.name !== undefined) updateData.name = body.name;
+    if (body.businessName !== undefined) updateData.businessName = body.businessName;
+    if (body.phoneNumber !== undefined) updateData.phoneNumber = body.phoneNumber;
+    if (body.location !== undefined) updateData.location = body.location;
+    if (body.description !== undefined) updateData.description = body.description;
+    if (body.logo !== undefined) updateData.logo = body.logo;  // ✅ Add logo support
+
     // Update profile (exclude email - should never change)
     const updated = await prisma.dealer.update({
       where: { id: dealer.id },
-      data: {
-        name: body.name,
-        businessName: body.businessName,
-        phoneNumber: body.phoneNumber,
-        location: body.location,
-        description: body.description,
-        updatedAt: new Date()
-      }
+      data: updateData
     });
 
     return NextResponse.json({ success: true, dealer: updated });

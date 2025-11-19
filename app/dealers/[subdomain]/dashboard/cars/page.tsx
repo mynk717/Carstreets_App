@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { Plus, Edit, Eye, EyeOff } from 'lucide-react';
 import { CarActionsClient } from './CarActionsClient';
 import { CarImage } from './CarImage';
+import { ShareCarButton } from '@/components/car/ShareCarButton'
+
 
 
 async function getDealerCars(subdomain: string) {
@@ -215,6 +217,13 @@ export default async function DealerCarsPage({
                         <Edit className="w-4 h-4" />
                         Edit
                       </Link>
+                      <ShareCarButton
+    car={car}
+    dealerSubdomain={subdomain}
+    dealerId={car.dealerId}
+    dealerName={dealer.businessName || dealer.name}
+    variant="button"
+  />
                       <CarActionsClient car={car} subdomain={subdomain} />
                     </div>
                   </div>

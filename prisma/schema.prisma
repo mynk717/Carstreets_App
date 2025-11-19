@@ -56,6 +56,7 @@ model Car {
   contentEmbedding String?
   marketContext    Json?
 
+  shareEvents ShareEvent[]
   contentCalendar ContentCalendar[]
   dealer          Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 
@@ -139,6 +140,7 @@ model Dealer {
   otpVerifications          OTPVerification[]
   passwordResets            PasswordResetToken[]
   loginAudits               LoginAudit[]
+  shareEvents               ShareEvent[]
   
   @@index([subdomain])
   @@index([customDomain])
@@ -530,4 +532,24 @@ model Business {
   
   @@index([subdomain])
   @@index([email])
+}
+model ShareEvent {
+  id          String   @id @default(cuid())
+  eventType   String
+  carId       String
+  dealerId    String
+  shareMethod String?
+  timestamp   DateTime
+  metadata    Json?
+  userAgent   String?
+  ipAddress   String?
+  
+  car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+  dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+  
+  createdAt   DateTime @default(now())
+  
+  @@index([dealerId, timestamp])
+  @@index([carId])
+  @@map("share_events")
 }
