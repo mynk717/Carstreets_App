@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, otpCode, name, password, subdomain } = body;
+    const { email, otpCode, name, businessName, password, subdomain } = body;
 
     console.log('🔍 [Verify OTP] Request received:', { 
       email, 
@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
       dealer = await prisma.dealer.create({
         data: {
           name,
-          businessName: name,
+          businessName,
           email,
           passwordHash,
           emailVerified: new Date(),

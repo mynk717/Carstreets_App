@@ -32,7 +32,6 @@ export function ContentStudioClient() {
     );
   };
 
-  const estimatedCost = estimateCost(selectedPlatforms, carCount);
 
   const handleGenerateContent = async () => {
     if (selectedPlatforms.length === 0) {
@@ -159,9 +158,6 @@ export function ContentStudioClient() {
                 Estimated Cost:
               </span>
             </div>
-            <span className="text-2xl font-bold text-gray-900 dark:text-white">
-              ₹{estimatedCost.toFixed(2)}
-            </span>
           </div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
           {selectedPlatforms.length} platform(s) × {carCount} car(s) = {selectedPlatforms.length * carCount} content items
@@ -203,13 +199,6 @@ export function ContentStudioClient() {
               <div>
                 <p className="text-sm text-green-800 dark:text-green-200">Content Items</p>
                 <p className="text-2xl font-bold text-green-900 dark:text-green-100">{result.generated}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <DollarSign className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="text-sm text-green-800 dark:text-green-200">Total Cost</p>
-                <p className="text-2xl font-bold text-green-900 dark:text-green-100">₹{result.totalCost?.toFixed(2)}</p>
               </div>
             </div>
           </div>
