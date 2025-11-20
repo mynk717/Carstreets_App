@@ -1,0 +1,390 @@
+{
+    "brands": {
+      "Maruti Suzuki": {
+        "models": {
+          "Swift": {
+            "variants": ["LXi", "VXi", "ZXi", "ZXi+"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Alto": {
+            "variants": ["STD", "LXi", "VXi"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual"]
+          },
+          "Baleno": {
+            "variants": ["Sigma", "Delta", "Zeta", "Alpha"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "WagonR": {
+            "variants": ["LXi", "VXi", "ZXi"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Dzire": {
+            "variants": ["LXi", "VXi", "ZXi", "ZXi+"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Ertiga": {
+            "variants": ["LXi", "VXi", "ZXi", "ZXi+"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Vitara Brezza": {
+            "variants": ["LXi", "VXi", "ZXi", "ZXi+"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Celerio": {
+            "variants": ["LXi", "VXi", "ZXi"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "S-Presso": {
+            "variants": ["STD", "LXi", "VXi"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Eeco": {
+            "variants": ["5 STR STD", "5 STR AC", "7 STR STD"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual"]
+          }
+        }
+      },
+      "Hyundai": {
+        "models": {
+          "i10": {
+            "variants": ["Era", "Magna", "Sportz", "Asta"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "i20": {
+            "variants": ["Magna", "Sportz", "Asta"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "iMT", "DCT"]
+          },
+          "Creta": {
+            "variants": ["E", "EX", "S", "SX", "SX(O)"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "IVT", "AT"]
+          },
+          "Venue": {
+            "variants": ["E", "S", "SX", "SX(O)"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "iMT", "DCT"]
+          },
+          "Verna": {
+            "variants": ["E", "S", "SX", "SX(O)"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Aura": {
+            "variants": ["E", "S", "SX", "SX(O)"],
+            "fuel": ["Petrol", "CNG", "Diesel"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Alcazar": {
+            "variants": ["Prestige", "Platinum", "Signature"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Tucson": {
+            "variants": ["Platinum", "Signature"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["AT"]
+          }
+        }
+      },
+      "Tata": {
+        "models": {
+          "Nexon": {
+            "variants": ["XE", "XM", "XZ", "XZ+", "XZ+(O)"],
+            "fuel": ["Petrol", "Diesel", "Electric"],
+            "transmission": ["Manual", "AMT", "DCA"]
+          },
+          "Punch": {
+            "variants": ["Pure", "Adventure", "Accomplished", "Creative"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Harrier": {
+            "variants": ["XE", "XM", "XT", "XZ", "XZ+"],
+            "fuel": ["Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Safari": {
+            "variants": ["XE", "XM", "XT", "XZ", "XZ+"],
+            "fuel": ["Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Tiago": {
+            "variants": ["XE", "XT", "XZ", "XZ+"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Tigor": {
+            "variants": ["XE", "XM", "XT", "XZ", "XZ+"],
+            "fuel": ["Petrol", "CNG"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Altroz": {
+            "variants": ["XE", "XM", "XT", "XZ"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "DCT"]
+          }
+        }
+      },
+      "Mahindra": {
+        "models": {
+          "Scorpio": {
+            "variants": ["S3", "S5", "S7", "S9", "S11"],
+            "fuel": ["Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Scorpio N": {
+            "variants": ["Z2", "Z4", "Z6", "Z8", "Z8 L"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "XUV700": {
+            "variants": ["MX", "AX3", "AX5", "AX7", "AX7L"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Thar": {
+            "variants": ["AX", "LX"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Bolero": {
+            "variants": ["B4", "B6", "B6(O)"],
+            "fuel": ["Diesel"],
+            "transmission": ["Manual"]
+          },
+          "XUV300": {
+            "variants": ["W4", "W6", "W8", "W8(O)"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Marazzo": {
+            "variants": ["M2", "M4", "M6", "M8"],
+            "fuel": ["Diesel"],
+            "transmission": ["Manual"]
+          }
+        }
+      },
+      "Kia": {
+        "models": {
+          "Seltos": {
+            "variants": ["HTE", "HTK", "HTK+", "HTX", "HTX+", "GTX", "GTX+"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "iMT", "AT", "DCT"]
+          },
+          "Sonet": {
+            "variants": ["HTE", "HTK", "HTK+", "HTX", "HTX+", "GTX", "GTX+"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "iMT", "AT"]
+          },
+          "Carens": {
+            "variants": ["Premium", "Prestige", "Prestige Plus", "Luxury", "Luxury Plus"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "EV6": {
+            "variants": ["GT-Line"],
+            "fuel": ["Electric"],
+            "transmission": ["AT"]
+          }
+        }
+      },
+      "Toyota": {
+        "models": {
+          "Fortuner": {
+            "variants": ["4x2 MT", "4x2 AT", "4x4 MT", "4x4 AT"],
+            "fuel": ["Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Innova Crysta": {
+            "variants": ["GX", "VX", "ZX"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Glanza": {
+            "variants": ["E", "G", "V"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Urban Cruiser Hyryder": {
+            "variants": ["E", "S", "G", "V"],
+            "fuel": ["Petrol", "Hybrid"],
+            "transmission": ["Manual", "AT", "eCVT"]
+          },
+          "Camry": {
+            "variants": ["Hybrid"],
+            "fuel": ["Hybrid"],
+            "transmission": ["AT"]
+          }
+        }
+      },
+      "Honda": {
+        "models": {
+          "City": {
+            "variants": ["V", "VX", "ZX"],
+            "fuel": ["Petrol", "Diesel", "Hybrid"],
+            "transmission": ["Manual", "CVT"]
+          },
+          "Amaze": {
+            "variants": ["E", "S", "V", "VX"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "CVT"]
+          },
+          "Jazz": {
+            "variants": ["V", "VX"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "CVT"]
+          },
+          "WR-V": {
+            "variants": ["SV", "VX"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "CVT"]
+          },
+          "Elevate": {
+            "variants": ["SV", "V", "VX", "ZX"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "CVT"]
+          }
+        }
+      },
+      "Renault": {
+        "models": {
+          "Kwid": {
+            "variants": ["RXE", "RXL", "RXT", "Climber"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Triber": {
+            "variants": ["RXE", "RXL", "RXT", "RXZ"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AMT"]
+          },
+          "Kiger": {
+            "variants": ["RXE", "RXL", "RXT", "RXZ"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "CVT"]
+          }
+        }
+      },
+      "Nissan": {
+        "models": {
+          "Magnite": {
+            "variants": ["XE", "XL", "XV", "XV Premium"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "CVT"]
+          }
+        }
+      },
+      "MG": {
+        "models": {
+          "Hector": {
+            "variants": ["Style", "Super", "Smart", "Sharp", "Savvy"],
+            "fuel": ["Petrol", "Diesel", "Hybrid"],
+            "transmission": ["Manual", "DCT", "CVT"]
+          },
+          "Astor": {
+            "variants": ["Style", "Super", "Smart", "Sharp"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "CVT"]
+          },
+          "Gloster": {
+            "variants": ["Super", "Smart", "Savvy"],
+            "fuel": ["Diesel"],
+            "transmission": ["AT"]
+          },
+          "ZS EV": {
+            "variants": ["Excite", "Exclusive"],
+            "fuel": ["Electric"],
+            "transmission": ["AT"]
+          }
+        }
+      },
+      "Skoda": {
+        "models": {
+          "Kushaq": {
+            "variants": ["Active", "Ambition", "Style"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Slavia": {
+            "variants": ["Active", "Ambition", "Style"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Superb": {
+            "variants": ["Style", "L&K"],
+            "fuel": ["Petrol"],
+            "transmission": ["AT"]
+          }
+        }
+      },
+      "Volkswagen": {
+        "models": {
+          "Taigun": {
+            "variants": ["Comfortline", "Highline", "Topline"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Virtus": {
+            "variants": ["Comfortline", "Highline", "Topline"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Tiguan": {
+            "variants": ["Comfortline", "Highline"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["AT"]
+          }
+        }
+      },
+      "Jeep": {
+        "models": {
+          "Compass": {
+            "variants": ["Sport", "Longitude", "Limited", "Model S"],
+            "fuel": ["Petrol", "Diesel"],
+            "transmission": ["Manual", "AT"]
+          },
+          "Meridian": {
+            "variants": ["Longitude", "Limited", "Model S"],
+            "fuel": ["Diesel"],
+            "transmission": ["AT"]
+          }
+        }
+      },
+      "Force": {
+        "models": {
+          "Gurkha": {
+            "variants": ["3-Door", "5-Door"],
+            "fuel": ["Diesel"],
+            "transmission": ["Manual"]
+          }
+        }
+      },
+      "Citroen": {
+        "models": {
+          "C3": {
+            "variants": ["Live", "Feel", "Shine"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "AT"]
+          },
+          "C5 Aircross": {
+            "variants": ["Feel", "Shine"],
+            "fuel": ["Diesel"],
+            "transmission": ["AT"]
+          }
+        }
+      }
+    }
+  }
+  

@@ -2,11 +2,15 @@
 
 import { useState, ChangeEvent, FormEvent } from "react";
 import { CldUploadWidget } from "next-cloudinary";
+import { SearchableSelect } from "@/components/SearchableSelect"; // ✅ ADD THIS
+import carsData from "@/lib/indian-cars-database.json"
+
 
 // Types
 type CarFormValues = {
   brand?: string;
   model?: string;
+  variant?: string;
   year?: string | number;
   price?: string | number;
   kmDriven?: string | number;
@@ -132,6 +136,7 @@ export default function CarForm({
   const [form, setForm] = useState<CarFormValues>({
     brand: ic.brand ?? "",
     model: ic.model ?? "",
+    variant: ic.variant ?? "",
     year: normalizeNumber(ic.year),
     price: normalizeNumber(ic.price),
     kmDriven: normalizeNumber(ic.kmDriven),
@@ -207,13 +212,42 @@ export default function CarForm({
       setLoading(false);
     }
   }
-
+  const getAvailableModels = () => {
+    if (!form.brand) return []
+    const brand = carsData.brands[form.brand as keyof typeof carsData.brands]
+    return brand ? Object.keys(brand.models) : []
+  }
+  
+  const getAvailableVariants = () => {
+    if (!form.brand || !form.model) return []
+    const brand = carsData.brands[form.brand as keyof typeof carsData.brands]
+    if (!brand) return []
+    const model = brand.models[form.model as keyof typeof brand.models] as any
+    return model?.variants || []
+  }
+  
+  const getAvailableFuelTypes = () => {
+    if (!form.brand || !form.model) return ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]
+    const brand = carsData.brands[form.brand as keyof typeof carsData.brands]
+    if (!brand) return ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]
+    const model = brand.models[form.model as keyof typeof brand.models] as any
+    return model?.fuel || ["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]
+  }
+  
+  const getAvailableTransmissions = () => {
+    if (!form.brand || !form.model) return ["Manual", "Automatic"]
+    const brand = carsData.brands[form.brand as keyof typeof carsData.brands]
+    if (!brand) return ["Manual", "Automatic"]
+    const model = brand.models[form.model as keyof typeof brand.models] as any
+    return model?.transmission || ["Manual", "Automatic"]
+  }
+  
+  
   return (
     <div className="max-w-4xl w-full mx-auto">
       <h1 className="text-2xl sm:text-3xl font-bold mb-6 text-gray-900">
         {ic.id ? "Edit Car Details" : "Add a New Car"}
       </h1>
-
       <form
         onSubmit={handleSubmit}
         className="grid grid-cols-1 md:grid-cols-2 gap-5 bg-white dark:bg-gray-800 rounded-xl shadow-lg p-6 sm:p-8 border border-gray-200 dark:border-gray-700"
@@ -230,26 +264,55 @@ export default function CarForm({
         )}
 
         {/* Core fields */}
-        <FormField label="Brand" name="brand" value={form.brand ?? ""} onChange={handleChange} required />
-        <FormField label="Model" name="model" value={form.model ?? ""} onChange={handleChange} required />
+        <SearchableSelect
+  label="Brand"
+  options={Object.keys(carsData.brands)}
+  value={form.brand || ''}
+  onChange={(value) => {
+    setForm(f => ({ ...f, brand: value, model: '', variant: '' }))
+  }}
+  placeholder="Select or search brand..."
+/>
+
+<SearchableSelect
+  label="Model"
+  options={getAvailableModels()}
+  value={form.model || ''}
+  onChange={(value) => {
+    setForm(f => ({ ...f, model: value, variant: '' }))
+  }}
+  placeholder={form.brand ? "Select or search model..." : "Select brand first"}
+  disabled={!form.brand}
+/>
+
         <FormField label="Year" name="year" value={form.year ?? ""} onChange={handleChange} type="number" required />
         <FormField label="Price" name="price" value={form.price ?? ""} onChange={handleChange} type="number" required />
         <FormField label="KM Driven" name="kmDriven" value={form.kmDriven ?? ""} onChange={handleChange} type="number" required />
 
-        <FormSelect
-          label="Fuel Type"
-          name="fuelType"
-          value={form.fuelType ?? ""}
-          onChange={handleChange}
-          options={["Petrol", "Diesel", "CNG", "Electric", "Hybrid"]}
-        />
-        <FormSelect
-          label="Transmission"
-          name="transmission"
-          value={form.transmission ?? ""}
-          onChange={handleChange}
-          options={["Manual", "Automatic"]}
-        />
+        <SearchableSelect
+  label="Fuel Type"
+  options={getAvailableFuelTypes()}
+  value={form.fuelType || ''}
+  onChange={(value) => setForm(f => ({ ...f, fuelType: value }))}
+  placeholder="Select fuel type..."
+/>
+
+<SearchableSelect
+  label="Transmission"
+  options={getAvailableTransmissions()}
+  value={form.transmission || ''}
+  onChange={(value) => setForm(f => ({ ...f, transmission: value }))}
+  placeholder="Select transmission..."
+/>
+<SearchableSelect
+  label="Variant (Optional)"
+  options={getAvailableVariants()}
+  value={form.variant || ''}
+  onChange={(value) => setForm(f => ({ ...f, variant: value }))}
+  placeholder={form.model ? "Select variant..." : "Select model first"}
+  disabled={!form.model}
+/>
+
         <FormSelect
           label="No. of Owners"
           name="owners"
