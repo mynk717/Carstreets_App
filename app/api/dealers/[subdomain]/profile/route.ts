@@ -9,7 +9,7 @@ export async function PATCH(
 ) {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
+    if (!session?.user?.email) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -19,10 +19,10 @@ export async function PATCH(
     // Verify dealer ownership
     const dealer = await prisma.dealer.findUnique({
       where: { subdomain },
-      select: { id: true }
+      select: { id: true, email: true  }
     });
 
-    if (!dealer || dealer.id !== session.user.id) {
+    if (!dealer || session.user.email !== dealer.email) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

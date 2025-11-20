@@ -107,12 +107,13 @@ export function CarFilters({ brands, totalCars }: CarFiltersProps) {
         <div className="flex-1 relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
           <input
-            type="text"
-            placeholder="Search Maruti, Swift, etc..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-lg text-lg focus:ring-2 focus:ring-blue-500"
-          />
+  type="text"
+  placeholder="Search Maruti, Swift, etc..."
+  value={search}
+  onChange={(e) => setSearch(e.target.value)}
+  className="w-full pl-12 pr-4 py-4 border border-gray-300 rounded-lg text-lg text-gray-900 placeholder:text-gray-500 bg-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+/>
+
           {search && (
             <button
               onClick={() => setSearch('')}
@@ -159,13 +160,14 @@ export function CarFilters({ brands, totalCars }: CarFiltersProps) {
       {showFilters && (
         <>
           {/* Backdrop */}
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-40"
-            onClick={() => setShowFilters(false)}
-          />
+<div 
+  className="fixed inset-0 bg-gray-900/20 backdrop-blur-sm z-40"
+  onClick={() => setShowFilters(false)}
+/>
+
           
           {/* Modal */}
-          <div className="fixed inset-x-0 bottom-0 bg-white w-full rounded-t-2xl p-6 space-y-4 shadow-lg z-50 max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-x-0 bottom-0 bg-white w-full rounded-t-3xl p-6 space-y-4 shadow-2xl z-50 max-h-[90vh] overflow-y-auto animate-slide-up">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-2xl font-semibold">Filters</h3>
               <button 
