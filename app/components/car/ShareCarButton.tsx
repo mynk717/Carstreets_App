@@ -64,8 +64,7 @@ export function ShareCarButton({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: shareTitle,
-          text: shareText,  // ✅ Short text only
+           // ✅ Short text only
           url: shareUrl
         })
         return

@@ -286,30 +286,6 @@
           }
         }
       },
-      "MG": {
-        "models": {
-          "Hector": {
-            "variants": ["Style", "Super", "Smart", "Sharp", "Savvy"],
-            "fuel": ["Petrol", "Diesel", "Hybrid"],
-            "transmission": ["Manual", "DCT", "CVT"]
-          },
-          "Astor": {
-            "variants": ["Style", "Super", "Smart", "Sharp"],
-            "fuel": ["Petrol"],
-            "transmission": ["Manual", "CVT"]
-          },
-          "Gloster": {
-            "variants": ["Super", "Smart", "Savvy"],
-            "fuel": ["Diesel"],
-            "transmission": ["AT"]
-          },
-          "ZS EV": {
-            "variants": ["Excite", "Exclusive"],
-            "fuel": ["Electric"],
-            "transmission": ["AT"]
-          }
-        }
-      },
       "Skoda": {
         "models": {
           "Kushaq": {
@@ -384,7 +360,174 @@
             "transmission": ["AT"]
           }
         }
+      },
+      "BMW": {
+    "models": {
+      "3 Series": {
+        "variants": ["320d Sport", "320d Luxury Line", "320d M Sport", "330i Sport", "330i M Sport"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["Manual", "AT"]
+      },
+      "5 Series": {
+        "variants": ["520d Luxury Line", "530i M Sport", "530d M Sport"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["AT"]
+      },
+      "X1": {
+        "variants": ["sDrive20i SportX", "sDrive20d xLine", "sDrive20d M Sport"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["Manual", "AT"]
+      },
+      "X3": {
+        "variants": ["xDrive20d Luxury Line", "xDrive30i M Sport"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["AT"]
+      },
+      "X5": {
+        "variants": ["xDrive30d SportX", "xDrive40i M Sport", "xDrive30d xLine"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["AT"]
+      },
+      "Z4": {
+        "variants": ["sDrive20i", "M40i"],
+        "fuel": ["Petrol"],
+        "transmission": ["AT"]
+      },
+      "7 Series": {
+        "variants": ["730Ld DPE Signature", "740Li DPE Signature"],
+        "fuel": ["Diesel", "Petrol"],
+        "transmission": ["AT"]
+      },
+      "iX": {
+        "variants": ["xDrive40"],
+        "fuel": ["Electric"],
+        "transmission": ["AT"]
       }
+    }
+  },
+  "Mercedes-Benz": {
+    "models": {
+      "C-Class": {
+        "variants": ["C200 Avantgarde", "C220d Progressive", "C300d AMG Line"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["AT"]
+      },
+      "E-Class": {
+        "variants": ["E200 Expression", "E220d Exclusive", "E350d AMG Line"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["AT"]
+      },
+      "GLA": {
+        "variants": ["200d Progressive", "220d 4MATIC AMG"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["AT"]
+      },
+      "S-Class": {
+        "variants": ["S350d", "S450 4MATIC"],
+        "fuel": ["Diesel", "Petrol"],
+        "transmission": ["AT"]
+      },
+      "EQC": {
+        "variants": ["400 4MATIC"],
+        "fuel": ["Electric"],
+        "transmission": ["AT"]
+      }
+    }
+  },
+  "Audi": {
+    "models": {
+      "A4": {
+        "variants": ["Premium Plus", "Technology"],
+        "fuel": ["Petrol"],
+        "transmission": ["AT"]
+      },
+      "Q3": {
+        "variants": ["Premium Plus", "Technology"],
+        "fuel": ["Petrol"],
+        "transmission": ["AT"]
+      },
+      "e-tron": {
+        "variants": ["50 Quattro", "55 Quattro"],
+        "fuel": ["Electric"],
+        "transmission": ["AT"]
+      }
+    }
+  },
+  "Jaguar": {
+    "models": {
+      "F-Pace": {
+        "variants": ["Prestige", "Portfolio", "R-Sport"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["AT"]
+      },
+      "I-PACE": {
+        "variants": ["S", "SE", "HSE"],
+        "fuel": ["Electric"],
+        "transmission": ["AT"]
+      }
+    }
+  },
+  "Land Rover": {
+    "models": {
+      "Range Rover Evoque": {
+        "variants": ["S", "R-Dynamic SE", "R-Dynamic HSE"],
+        "fuel": ["Petrol", "Diesel"],
+        "transmission": ["AT"]
+      }
+    }
+  },
+  "Volvo": {
+    "models": {
+      "XC40": {
+        "variants": ["T4 R-Design", "Recharge EV"],
+        "fuel": ["Petrol", "Electric"],
+        "transmission": ["AT"]
+      },
+      "XC90": {
+        "variants": ["B6 Inscription", "Recharge Plug-in Hybrid"],
+        "fuel": ["Petrol", "Hybrid"],
+        "transmission": ["AT"]
+      }
+    }
+  },
+  "BYD": {
+    "models": {
+      "Atto 3": {
+        "variants": ["Electric"],
+        "fuel": ["Electric"],
+        "transmission": ["AT"]
+      },
+      "E6": {
+        "variants": ["Electric"],
+        "fuel": ["Electric"],
+        "transmission": ["AT"]
+      }
+    }
+  },
+  "MG": {
+    "models": {
+      "Hector": {
+            "variants": ["Style", "Super", "Smart", "Sharp", "Savvy"],
+            "fuel": ["Petrol", "Diesel", "Hybrid"],
+            "transmission": ["Manual", "DCT", "CVT"]
+          },
+          "Astor": {
+            "variants": ["Style", "Super", "Smart", "Sharp"],
+            "fuel": ["Petrol"],
+            "transmission": ["Manual", "CVT"]
+          },
+          "Gloster": {
+            "variants": ["Super", "Smart", "Savvy"],
+            "fuel": ["Diesel"],
+            "transmission": ["AT"]
+          },
+      "ZS EV": {
+        "variants": ["Excite", "Exclusive"],
+        "fuel": ["Electric"],
+        "transmission": ["AT"]
+      }
+    }
+  }
     }
   }
   
