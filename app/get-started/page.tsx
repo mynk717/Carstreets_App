@@ -222,7 +222,7 @@ export default function GetStartedPage() {
           email: formData.email,
           otpCode: otp,
           name: formData.ownerName,
-          businessname: formData.businessName,
+          businessName: formData.businessName,
           phone: formData.phone,
           location: formData.location,
           password: formData.password,
