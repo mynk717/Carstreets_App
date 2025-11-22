@@ -6,7 +6,7 @@ import bcrypt from 'bcryptjs';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { email, otpCode, name, businessName, password, subdomain } = body;
+    const { email, otpCode, name, businessName, password, subdomain, phone } = body;
 
     console.log('🔍 [Verify OTP] Request received:', { 
       email, 
@@ -92,6 +92,7 @@ export async function POST(req: NextRequest) {
           isVerified: true,
           authProviders: ['email'],
           subdomain: finalSubdomain,
+          phoneNumber: phone,
         },
       });
 
