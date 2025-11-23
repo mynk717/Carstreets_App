@@ -38,6 +38,25 @@ export function DealerCarEditForm({ car, dealerId, subdomain }: DealerCarEditFor
     availableForExchange: (car as any).availableForExchange ?? true,
   });
 
+  const handleSetCover = (idx: number) => {
+    const currentImages = formData.images
+      .split('\n')
+      .map(url => url.trim())
+      .filter(Boolean);
+      
+    if (idx < 0 || idx >= currentImages.length) return;
+    
+    // Remove selected image from its position
+    const [selected] = currentImages.splice(idx, 1);
+    // Move it to the front (index 0)
+    currentImages.unshift(selected);
+    
+    setFormData({
+      ...formData,
+      images: currentImages.join('\n')
+    });
+  };
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -308,29 +327,51 @@ export function DealerCarEditForm({ car, dealerId, subdomain }: DealerCarEditFor
                 </button>
               </div>
               <div className="grid grid-cols-3 md:grid-cols-5 gap-2">
-                {imageUrls.map((url, index) => (
-                  <div key={index} className="relative group">
-                    <img
-                      src={url}
-                      alt={`Preview ${index + 1}`}
-                      className="w-full h-24 object-cover rounded border border-gray-200 dark:border-gray-700"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = '/placeholder-car.jpg';
-                      }}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const filtered = imageUrls.filter((_, i) => i !== index);
-                        setFormData({ ...formData, images: filtered.join('\n') });
-                      }}
-                      className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
+  {imageUrls.map((url, index) => (
+    <div key={index} className="relative group">
+      {/* Cover badge on first image */}
+      {index === 0 && (
+        <span className="absolute left-1 top-1 z-10 bg-green-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-semibold shadow-md">
+          Cover
+        </span>
+      )}
+      
+      <img
+        src={url}
+        alt={`Preview ${index + 1}`}
+        className="w-full h-24 object-cover rounded border border-gray-200 dark:border-gray-700"
+        onError={(e) => {
+          (e.target as HTMLImageElement).src = '/placeholder-car.jpg';
+        }}
+      />
+      
+      {/* Remove button */}
+      <button
+        type="button"
+        onClick={() => {
+          const filtered = imageUrls.filter((_, i) => i !== index);
+          setFormData({ ...formData, images: filtered.join('\n') });
+        }}
+        className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity z-20"
+      >
+        ×
+      </button>
+      
+      {/* Set Cover button (only shown on non-cover images) */}
+      {index !== 0 && (
+        <button
+          type="button"
+          onClick={() => handleSetCover(index)}
+          className="absolute bottom-1 left-1 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-md transition opacity-0 group-hover:opacity-100 z-10"
+          title="Set as cover"
+        >
+          Set Cover
+        </button>
+      )}
+    </div>
+  ))}
+</div>
+
             </div>
           )}
         </div>
@@ -348,7 +389,7 @@ export function DealerCarEditForm({ car, dealerId, subdomain }: DealerCarEditFor
                   className="mr-2 w-4 h-4"
                 />
                 <Eye className="w-4 h-4 mr-1" />
-                List on CarStreets
+                List on Storefront
               </label>
               <label className="flex items-center text-gray-800 dark:text-gray-200 cursor-pointer">
                 <input
@@ -369,6 +410,19 @@ export function DealerCarEditForm({ car, dealerId, subdomain }: DealerCarEditFor
                 />
                 Finance Available
               </label>
+              {/* ⭐ NEW: Verified (Required for Meta Sync) */}
+      <label className="flex items-center text-gray-800 dark:text-gray-200 cursor-pointer" title="Required for Meta/Facebook catalog sync">
+        <input
+          type="checkbox"
+          checked={formData.isVerified}
+          onChange={(e) => setFormData({ ...formData, isVerified: e.target.checked })}
+          className="mr-2 w-4 h-4"
+        />
+        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        Verified (Meta Sync)
+      </label>
               <label className="flex items-center text-gray-800 dark:text-gray-200 cursor-pointer">
                 <input
                   type="checkbox"

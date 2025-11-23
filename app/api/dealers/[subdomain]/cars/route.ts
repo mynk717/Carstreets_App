@@ -39,6 +39,7 @@ export async function POST(
         sellerType: "dealer",
         postedDate: new Date().toISOString(),
         dataSource: "manual",
+        isVerified: true,
       },
     });
 
