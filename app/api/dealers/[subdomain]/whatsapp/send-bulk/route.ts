@@ -108,7 +108,7 @@ export async function POST(
           `📤 Sending WhatsApp to ${contact.phoneNumber} using template: ${template.name}`
         );
     
-        const found = contactVariables.find((c) => c.contactId === contact.id);
+        const found = contactVariables.find(c => c.contactId === contact.id);
         const personalVariables = found?.variables || [];
     
         const response = await fetch(
@@ -139,11 +139,42 @@ export async function POST(
             }),
           }
         );
-        // you can keep further per-contact logging/results logic here if needed
+    
+        const result = await response.json();
+        // Log the exact WhatsApp API response for diagnosis!
+        console.log("WhatsApp API response:", result);
+    
+        if (response.ok && result.messages && result.messages.length > 0) {
+          sentCount++;
+          results.push({
+            contactId: contact.id,
+            phone: contact.phoneNumber,
+            success: true,
+            messageId: result.messages[0].id,
+          });
+        } else {
+          failedCount++;
+          results.push({
+            contactId: contact.id,
+            phone: contact.phoneNumber,
+            success: false,
+            error: result.error?.message || 'Failed',
+          });
+          console.error(
+            `❌ Failed to send to ${contact.phoneNumber}: ${result.error?.message || 'Unknown error'}`
+          );
+        }
       } catch (error: any) {
-        // ...per-contact error logic
+        failedCount++;
+        results.push({
+          contactId: contact.id,
+          phone: contact.phoneNumber,
+          success: false,
+          error: error.message || 'Exception',
+        });
+        console.error(`❌ Exception sending to ${contact.phoneNumber}:`, error);
       }
-    } // <-- THIS is the missing closing brace for the FOR-LOOP
+    }
 
     console.log(
       `📱 WhatsApp bulk send complete - Dealer: ${subdomain}, 
