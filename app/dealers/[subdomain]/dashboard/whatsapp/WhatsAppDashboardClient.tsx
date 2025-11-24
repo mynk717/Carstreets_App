@@ -193,19 +193,38 @@ useEffect(() => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           templateId: selectedTemplate,
-          contactIds: selectedContacts,
-          parameters: templateParams.map((param, i) => {
-            if (param.type === "text")
-              return { type: "text", text: inputValues[i] };
-            if (param.type === "product")
-              return { type: "product", product_retailer_id: inputValues[i] };
-            if (param.type === "image")
-              return { type: "image", image_id: inputValues[i] }; // Needs image uploading/logic
-            // Add more as needed
-            return null;
-          }).filter(Boolean),
-          
+          contactVariables: selectedContacts.map((contactId) => {
+            const contact = contacts.find((c) => c.id === contactId);
+            const variables = templateParams.map((param, idx) => {
+              // If the param text matches a known contact field (like name), use the contact's value
+              if (
+                param.type === "text" &&
+                (
+                  (param.text && (
+                    param.text.toLowerCase().includes("name") ||
+                    param.text.toLowerCase().includes("customer")
+                  )) ||
+                  (param.example && param.example.toLowerCase().includes("name"))
+                )
+              ) {
+                return contact?.name || "";
+              }
+              // For other params, use the common input value (single input, used for all contacts)
+              if (param.type === "text") {
+                return inputValues[idx] || ""; // fallback if not "name"
+              }
+              if (param.type === "product") {
+                return inputValues[idx];
+              }
+              if (param.type === "image") {
+                return inputValues[idx];
+              }
+              return "";
+            });
+            return { contactId, variables };
+          }),
         }),
+        
       })
 
       if (!res.ok) {
