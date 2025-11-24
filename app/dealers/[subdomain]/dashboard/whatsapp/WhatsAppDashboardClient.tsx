@@ -29,6 +29,10 @@ type Template = {
   bodyText: string
   language: string
   category: string
+  components?: Array<{
+    type: string
+    parameters?: Array<{ type: string; text?: string }>
+  }>
 }
 
 type Message = {
@@ -85,22 +89,52 @@ export default function WhatsAppDashboardClient({
   const [selectedTemplatePreview, setSelectedTemplatePreview] =
     useState<Template | null>(null)
   const [templateVariables, setTemplateVariables] = useState<string[]>([]);
+  const [templateParams, setTemplateParams] = useState<any[]>([]);
+const [inputValues, setInputValues] = useState<{ [key: number]: any }>({});
+const [products, setProducts] = useState<any[]>([]); 
 
 
-  useEffect(() => {
-    if (selectedTemplate) {
-      const template = templates.find(t => t.id === selectedTemplate);
-      if (template) {
+useEffect(() => {
+  if (selectedTemplate) {
+    const template = templates.find(t => t.id === selectedTemplate);
+    if (template) {
+      // NEW: if template.components exists, use those for param definition
+      if (template.components && Array.isArray(template.components)) {
+        const params: any[] = [];
+        template.components.forEach(component => {
+          if (component.parameters) {
+            component.parameters.forEach(param => {
+              params.push({ ...param, componentType: component.type });
+            });
+          }
+        });
+        setTemplateParams(params);
+        setInputValues({}); // Reset any previous input
+      } else {
+        // Fallback legacy: text placeholders via bodyText
         const matches = template.bodyText.match(/\{\{\d+\}\}/g);
-        if (matches) {
-          // Initialize empty array for each variable
-          setTemplateVariables(new Array(matches.length).fill(''));
-        } else {
-          setTemplateVariables([]);
-        }
+        setTemplateParams(
+          matches?.map(() => ({ type: "text", text: "" })) || []
+        );
+        setInputValues({});
       }
     }
-  }, [selectedTemplate, templates]);
+  }
+}, [selectedTemplate, templates]);
+
+useEffect(() => {
+  if (!subdomain) return;
+  // Use your cars/products endpoint. Adjust API path if needed.
+  fetch(`/api/dealers/${subdomain}/cars`)
+    .then((res) => res.json())
+    .then((data) => {
+      // Expecting { products: [{ id, name }, ...] }
+      setProducts(Array.isArray(data.products) ? data.products : []);
+    })
+    .catch(() => setProducts([])); // Always set an array/failsafe
+}, [subdomain]);
+
+
   const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -138,6 +172,13 @@ export default function WhatsAppDashboardClient({
     }
   }
 
+  for (let i = 0; i < templateParams.length; i++) {
+    if (!inputValues[i]) {
+      alert(`Please provide value for parameter #${i + 1}`);
+      return;
+    }
+  }
+  
   const handleSendBulk = async () => {
     if (selectedContacts.length === 0 || !selectedTemplate) {
       alert('Please select contacts and a template')
@@ -153,7 +194,17 @@ export default function WhatsAppDashboardClient({
         body: JSON.stringify({
           templateId: selectedTemplate,
           contactIds: selectedContacts,
-          customVariables: templateVariables.filter(v => v.trim()),
+          parameters: templateParams.map((param, i) => {
+            if (param.type === "text")
+              return { type: "text", text: inputValues[i] };
+            if (param.type === "product")
+              return { type: "product", product_retailer_id: inputValues[i] };
+            if (param.type === "image")
+              return { type: "image", image_id: inputValues[i] }; // Needs image uploading/logic
+            // Add more as needed
+            return null;
+          }).filter(Boolean),
+          
         }),
       })
 
@@ -463,36 +514,77 @@ export default function WhatsAppDashboardClient({
           </div>
             
          {/* ✅ ADD THIS ENTIRE BLOCK */}
-{selectedTemplate && templateVariables.length > 0 && (
+         {selectedTemplate && templateParams.length > 0 && (
   <div className="mt-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-900 rounded-lg p-4">
     <h3 className="font-semibold text-gray-900 dark:text-white mb-3 text-sm">
-      📝 Template Variables Required
+      📝 Template Inputs Required
     </h3>
-    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
-      This template requires {templateVariables.length} variable(s). Fill them below:
-    </p>
     <div className="space-y-3">
-      {templateVariables.map((value, index) => (
-        <div key={index}>
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
-            Variable {index + 1} (for {`{{${index + 1}}}`}):
-          </label>
-          <input
-            type="text"
-            value={value}
-            onChange={(e) => {
-              const newVars = [...templateVariables];
-              newVars[index] = e.target.value;
-              setTemplateVariables(newVars);
-            }}
-            placeholder={`Enter value for {{${index + 1}}}`}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-      ))}
+      {templateParams.map((param, index) => {
+        if (param.type === "text") {
+          return (
+            <div key={index}>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                Text Variable {index + 1}
+              </label>
+              <input
+                type="text"
+                value={inputValues[index] || ""}
+                onChange={e =>
+                  setInputValues(v => ({ ...v, [index]: e.target.value }))
+                }
+                placeholder={param.text || `Enter value`}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          );
+        }
+        if (param.type === "product") {
+          // Assume you have a `products` array for product selection
+          return (
+            <div key={index}>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                Product Variable {index + 1}
+              </label>
+              <select
+                value={inputValues[index] || ""}
+                onChange={e =>
+                  setInputValues(v => ({ ...v, [index]: e.target.value }))
+                }
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Product...</option>
+                {products.map((p: any) => (
+                  <option value={p.id} key={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+          );
+        }
+        if (param.type === "image") {
+          return (
+            <div key={index}>
+              <label className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1">
+                Image Variable {index + 1}
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={e =>
+                  setInputValues(v => ({ ...v, [index]: e.target.files?.[0] }))
+                }
+                className="w-full px-3 py-2"
+              />
+            </div>
+          );
+        }
+        // Extend for other param types if needed
+        return null;
+      })}
     </div>
   </div>
 )}
+
 
 
           {/* Contact Selection */}

@@ -362,7 +362,8 @@ export function DealerCarEditForm({ car, dealerId, subdomain }: DealerCarEditFor
         <button
           type="button"
           onClick={() => handleSetCover(index)}
-          className="absolute bottom-1 left-1 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-md transition opacity-0 group-hover:opacity-100 z-10"
+          className="absolute bottom-1 left-1 bg-black/60 hover:bg-black/80 text-white text-[10px] px-2 py-0.5 rounded-md transition
+  opacity-100 md:opacity-0 md:group-hover:opacity-100 z-10"
           title="Set as cover"
         >
           Set Cover
