@@ -66,6 +66,7 @@ export async function POST(
         status: true,
         dealerId: true,
         parameterFormat: true,
+        buttons: true,
       },
     });
     
@@ -144,35 +145,43 @@ export async function POST(
         const templatePayload: any = {
           name: template.name,
           language: { code: template.language || 'en' },
+          components: []
         };
     
         if (templateParamCount > 0 && personalVariables.length > 0) {
           if (isNamedFormat) {
-            // ✅ NAMED format: include parameter_name
-            templatePayload.components = [
-              {
-                type: 'body',
-                parameters: personalVariables.map((v: string, index: number) => ({
-                  type: 'text',
-                  text: String(v).trim(),
-                  parameter_name: parameterNames[index],
-                })),
-              },
-            ];
+            templatePayload.components.push({
+              type: 'body',
+              parameters: personalVariables.map((v: string, index: number) => ({
+                type: 'text',
+                text: String(v).trim(),
+                parameter_name: parameterNames[index],
+              })),
+            });
           } else {
-            // POSITIONAL format: no parameter_name
-            templatePayload.components = [
-              {
-                type: 'body',
-                parameters: personalVariables.map((v: string) => ({
-                  type: 'text',
-                  text: String(v).trim(),
-                })),
-              },
-            ];
+            templatePayload.components.push({
+              type: 'body',
+              parameters: personalVariables.map((v: string) => ({
+                type: 'text',
+                text: String(v).trim(),
+              })),
+            });
           }
         }
-    
+        if (template.buttons) {
+          const buttonsData = typeof template.buttons === 'string' 
+            ? JSON.parse(template.buttons) 
+            : template.buttons;
+            
+          // If it's a catalog button
+          if (Array.isArray(buttonsData) && buttonsData.some((b: any) => b.type === 'CATALOG')) {
+            templatePayload.components.push({
+              type: 'button',
+              sub_type: 'catalog',
+              index: 0,
+            });
+          }
+        }
         const cleanPhone = contact.phoneNumber.replace(/[^0-9]/g, '');
     
         console.log(
