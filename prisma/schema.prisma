@@ -279,7 +279,7 @@ model WhatsAppTemplate {
                               bodyText    String
                                 footerText  String?
                                   buttons     Json?
-                                    
+                                    parameterFormat String? @default("POSITIONAL")
                                       metaTemplateId String?
                                         
                                           createdAt   DateTime @default(now())
