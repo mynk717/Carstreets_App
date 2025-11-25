@@ -1,261 +1,261 @@
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+      url      = env("DATABASE_URL")
 }
 
 model Car {
-  id               String   @id @default(cuid())
-  dealerId         String?
-  title            String
-  brand            String
-  model            String
-  variant          String?
-  price            BigInt
-  year             Int
-  fuelType         String
-  transmission     String
-  kmDriven         Int
-  location         String
-  images           Json     @default("[]")
-  description      String
-  sellerType       String
-  postedDate       String
-  owners           Int
-  isVerified       Boolean  @default(false)
-  isFeatured       Boolean  @default(false)
-  dataSource       String
-  olxProfile       String?
-  olxProfileId     String?
-  originalUrl      String?
-  attribution      String?
-  carStreetsListed Boolean  @default(false)
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  manuallyEdited   Boolean  @default(false)
-  editedFields     Json     @default("[]")
-  lastScrapedAt    DateTime @default(now())
-  isUserAdded      Boolean  @default(false)
-  scrapedData      Json?
-  availability     String    @default("in_stock")
-  countryOfOrigin  String    @default("IN")
-  condition        String    @default("used")
+    id               String   @id @default(cuid())
+      dealerId         String?
+        title            String
+          brand            String
+            model            String
+              variant          String?
+                price            BigInt
+                  year             Int
+                    fuelType         String
+                      transmission     String
+                        kmDriven         Int
+                          location         String
+                            images           Json     @default("[]")
+                              description      String
+                                sellerType       String
+                                  postedDate       String
+                                    owners           Int
+                                      isVerified       Boolean  @default(false)
+                                        isFeatured       Boolean  @default(false)
+                                          dataSource       String
+                                            olxProfile       String?
+                                              olxProfileId     String?
+                                                originalUrl      String?
+                                                  attribution      String?
+                                                    carStreetsListed Boolean  @default(false)
+                                                      createdAt        DateTime @default(now())
+                                                        updatedAt        DateTime @updatedAt
+                                                          manuallyEdited   Boolean  @default(false)
+                                                            editedFields     Json     @default("[]")
+                                                              lastScrapedAt    DateTime @default(now())
+                                                                isUserAdded      Boolean  @default(false)
+                                                                  scrapedData      Json?
+                                                                    availability     String    @default("in_stock")
+                                                                      countryOfOrigin  String    @default("IN")
+                                                                        condition        String    @default("used")
 
-  searchVector    String?
-  tags            String[] @default([])
-  viewCount       Int @default(0)
-  leadCount       Int @default(0)
-  
-  slug            String?
-  metaTitle       String?
-  metaDescription String?
+                                                                          searchVector    String?
+                                                                            tags            String[] @default([])
+                                                                              viewCount       Int @default(0)
+                                                                                leadCount       Int @default(0)
+                                                                                  
+                                                                                    slug            String?
+                                                                                      metaTitle       String?
+                                                                                        metaDescription String?
 
-  contentEmbedding String?
-  marketContext    Json?
+                                                                                          contentEmbedding String?
+                                                                                            marketContext    Json?
 
-  shareEvents ShareEvent[]
-  contentCalendar ContentCalendar[]
-  dealer          Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+                                                                                              shareEvents ShareEvent[]
+                                                                                                contentCalendar ContentCalendar[]
+                                                                                                  dealer          Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 
-  @@index([dealerId, isVerified, carStreetsListed])
-  @@index([brand, model, year])
-  @@index([price, location])
-  @@index([createdAt])
-  @@map("cars")
+                                                                                                    @@index([dealerId, isVerified, carStreetsListed])
+                                                                                                      @@index([brand, model, year])
+                                                                                                        @@index([price, location])
+                                                                                                          @@index([createdAt])
+                                                                                                            @@map("cars")
 }
 
 model Dealer {
-  id                  String   @id @default(cuid())
-  name                String
-  email               String?  @unique
-  phone               String?  @unique
-  passwordHash        String?
-  
-  subdomain           String   @unique
-  customDomain        String?  @unique
-  domainVerified      Boolean  @default(false)
-  
-  businessName        String?
-  logo                String?
-  phoneNumber         String?
-  location            String?
-  description         String?
-  
-  // Verification Status (AUTH-001)
-  emailVerified       DateTime?
-  phoneVerified       DateTime?
-  isVerified          Boolean  @default(false)
-  
-  // Account Security (AUTH-001)
-  authProviders       String[]  @default([])
-  twoFactorEnabled    Boolean   @default(false)
-  failedLoginAttempts Int       @default(0)
-  lockedUntil         DateTime?
-  lastLoginAt         DateTime?
-  
-  plan                String   @default("free")
-  subscriptionStatus  String   @default("active")
-  subscriptionAmount  Int?
+    id                  String   @id @default(cuid())
+      name                String
+        email               String?  @unique
+          phone               String?  @unique
+            passwordHash        String?
+              
+                subdomain           String   @unique
+                  customDomain        String?  @unique
+                    domainVerified      Boolean  @default(false)
+                      
+                        businessName        String?
+                          logo                String?
+                            phoneNumber         String?
+                              location            String?
+                                description         String?
+                                  
+                                    // Verification Status (AUTH-001)
+                                      emailVerified       DateTime?
+                                        phoneVerified       DateTime?
+                                          isVerified          Boolean  @default(false)
+                                            
+                                              // Account Security (AUTH-001)
+                                                authProviders       String[]  @default([])
+                                                  twoFactorEnabled    Boolean   @default(false)
+                                                    failedLoginAttempts Int       @default(0)
+                                                      lockedUntil         DateTime?
+                                                        lastLoginAt         DateTime?
+                                                          
+                                                            plan                String   @default("free")
+                                                              subscriptionStatus  String   @default("active")
+                                                                subscriptionAmount  Int?
 
-  carsCount          Int      @default(0)
-  aiContentUsed      Int      @default(0)
-  socialPostsUsed    Int      @default(0)
-  
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
-  
-  contentGenerationPreference String?   @default("on_demand")
-  
-  // WhatsApp Integration
-  whatsappBusinessNumber    String?
-  whatsappBusinessAccountId String?
-  whatsappPhoneNumberId      String?
-  whatsappBusinessVerified  Boolean  @default(false)
-  whatsappApiToken          String?
-  
-  // Meta (Facebook/Instagram) Integration
-  facebookPageId            String?
-  facebookCatalogId         String?
-  metaAccessToken           String?
-  metaAccessTokenExpiry     DateTime?
-  
-  // Weekly AI Content Tracking
-  aiContentUsedThisWeek     Int       @default(0)
-  aiContentWeekStartDate    DateTime  @default(now())
+                                                                  carsCount          Int      @default(0)
+                                                                    aiContentUsed      Int      @default(0)
+                                                                      socialPostsUsed    Int      @default(0)
+                                                                        
+                                                                          createdAt           DateTime @default(now())
+                                                                            updatedAt           DateTime @updatedAt
+                                                                              
+                                                                                contentGenerationPreference String?   @default("on_demand")
+                                                                                  
+                                                                                    // WhatsApp Integration
+                                                                                      whatsappBusinessNumber    String?
+                                                                                        whatsappBusinessAccountId String?
+                                                                                          whatsappPhoneNumberId      String?
+                                                                                            whatsappBusinessVerified  Boolean  @default(false)
+                                                                                              whatsappApiToken          String?
+                                                                                                
+                                                                                                  // Meta (Facebook/Instagram) Integration
+                                                                                                    facebookPageId            String?
+                                                                                                      facebookCatalogId         String?
+                                                                                                        metaAccessToken           String?
+                                                                                                          metaAccessTokenExpiry     DateTime?
+                                                                                                            
+                                                                                                              // Weekly AI Content Tracking
+                                                                                                                aiContentUsedThisWeek     Int       @default(0)
+                                                                                                                  aiContentWeekStartDate    DateTime  @default(now())
 
-  passwordResetToken   String?   @db.VarChar(255)
-  passwordResetExpiry  DateTime?
+                                                                                                                    passwordResetToken   String?   @db.VarChar(255)
+                                                                                                                      passwordResetExpiry  DateTime?
 
-  // Relations
-  cars                      Car[]
-  contentCalendar           ContentCalendar[]
-  whatsappTemplates         WhatsAppTemplate[]
-  whatsappContacts          WhatsAppContact[]
-  whatsappMessages          WhatsAppMessage[]
-  conversationSummaries     WhatsAppConversationSummary[]
-  productCatalogs           ProductCatalog[]
-  otpVerifications          OTPVerification[]
-  passwordResets            PasswordResetToken[]
-  loginAudits               LoginAudit[]
-  shareEvents               ShareEvent[]
-  
-  @@index([subdomain])
-  @@index([customDomain])
-  @@index([email])
-  @@index([phone])
+                                                                                                                        // Relations
+                                                                                                                          cars                      Car[]
+                                                                                                                            contentCalendar           ContentCalendar[]
+                                                                                                                              whatsappTemplates         WhatsAppTemplate[]
+                                                                                                                                whatsappContacts          WhatsAppContact[]
+                                                                                                                                  whatsappMessages          WhatsAppMessage[]
+                                                                                                                                    conversationSummaries     WhatsAppConversationSummary[]
+                                                                                                                                      productCatalogs           ProductCatalog[]
+                                                                                                                                        otpVerifications          OTPVerification[]
+                                                                                                                                          passwordResets            PasswordResetToken[]
+                                                                                                                                            loginAudits               LoginAudit[]
+                                                                                                                                              shareEvents               ShareEvent[]
+                                                                                                                                                
+                                                                                                                                                  @@index([subdomain])
+                                                                                                                                                    @@index([customDomain])
+                                                                                                                                                      @@index([email])
+                                                                                                                                                        @@index([phone])
 }
 
 model MarketIntelligence {
-  id            String @id @default(cuid())
-  source        String
-  title         String
-  content       String @db.Text
-  summary       String?
-  relevantFor   String[]
-  sentiment     String?
-  credibility   Float @default(0.8)
-  
-  contentEmbedding String?
-  
-  publishedAt   DateTime
-  scrapedAt     DateTime @default(now())
-  isActive      Boolean @default(true)
-  
-  @@index([source, isActive])
-  @@index([publishedAt])
-  @@map("market_intelligence")
+    id            String @id @default(cuid())
+      source        String
+        title         String
+          content       String @db.Text
+            summary       String?
+              relevantFor   String[]
+                sentiment     String?
+                  credibility   Float @default(0.8)
+                    
+                      contentEmbedding String?
+                        
+                          publishedAt   DateTime
+                            scrapedAt     DateTime @default(now())
+                              isActive      Boolean @default(true)
+                                
+                                  @@index([source, isActive])
+                                    @@index([publishedAt])
+                                      @@map("market_intelligence")
 }
 
 model ContentTemplate {
-  id           String @id @default(cuid())
-  category     String
-  template     String @db.Text
-  variables    Json
-  performance  Float @default(0.0)
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@map("content_templates")
+    id           String @id @default(cuid())
+      category     String
+        template     String @db.Text
+          variables    Json
+            performance  Float @default(0.0)
+              
+                createdAt DateTime @default(now())
+                  updatedAt DateTime @updatedAt
+                    
+                      @@map("content_templates")
 }
 
 model ContentCalendar {
-  id       String @id @default(cuid())
-  carId    String
-  dealerId String?
-  platform String
+    id       String @id @default(cuid())
+      carId    String
+        dealerId String?
+          platform String
 
-  textContent   String
-  hashtags      String[]
-  originalImage String?
-  brandedImage  String?
+            textContent   String
+              hashtags      String[]
+                originalImage String?
+                  brandedImage  String?
 
-  status        String    @default("draft")
-  scheduledDate DateTime?
-  approvedBy    String?
-  approvedAt    DateTime?
+                    status        String    @default("draft")
+                      scheduledDate DateTime?
+                        approvedBy    String?
+                          approvedAt    DateTime?
 
-  uniquenessScore Int      @default(92)
-  generationCost  Float    @default(0.039)
-  brandingApplied String[]
+                            uniquenessScore Int      @default(92)
+                              generationCost  Float    @default(0.039)
+                                brandingApplied String[]
 
-  autoGenerated  Boolean @default(true)
-  requiresReview Boolean @default(false)
+                                  autoGenerated  Boolean @default(true)
+                                    requiresReview Boolean @default(false)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  generatedImage  String?
-  finalImage      String?
-  imagePrompt     String?   @db.Text
-  rejectionReason String?
-  postedAt        DateTime?
+                                      createdAt DateTime @default(now())
+                                        updatedAt DateTime @updatedAt
+                                          
+                                            generatedImage  String?
+                                              finalImage      String?
+                                                imagePrompt     String?   @db.Text
+                                                  rejectionReason String?
+                                                    postedAt        DateTime?
 
-  car    Car     @relation(fields: [carId], references: [id], onDelete: Cascade)
-  dealer Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+                                                      car    Car     @relation(fields: [carId], references: [id], onDelete: Cascade)
+                                                        dealer Dealer? @relation(fields: [dealerId], references: [id], onDelete: Cascade)
 
-  @@index([dealerId])
-  @@index([carId])
-  @@index([status])
-  @@index([scheduledDate])
+                                                          @@index([dealerId])
+                                                            @@index([carId])
+                                                              @@index([status])
+                                                                @@index([scheduledDate])
 }
 
 model SocialMediaToken {
-  id            String   @id @default(cuid())
-  dealerId      String?
-  platform      String
-  accessToken   String
-  refreshToken  String?
-  expiresAt     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  @@index([dealerId])
+    id            String   @id @default(cuid())
+      dealerId      String?
+        platform      String
+          accessToken   String
+            refreshToken  String?
+              expiresAt     DateTime?
+                createdAt     DateTime @default(now())
+                  updatedAt     DateTime @updatedAt
+                    @@index([dealerId])
 }
 
 model SocialPost {
-  id               String    @id @default(cuid())
-  dealerId         String?
-  platform         String
-  status           String
-  scheduledAt      DateTime?
-  postedAt         DateTime?
-  failureReason    String?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  @@index([dealerId])
+    id               String    @id @default(cuid())
+      dealerId         String?
+        platform         String
+          status           String
+            scheduledAt      DateTime?
+              postedAt         DateTime?
+                failureReason    String?
+                  createdAt        DateTime  @default(now())
+                    updatedAt        DateTime  @updatedAt
+                      @@index([dealerId])
 }
 
 model FestivalContent {
-  id         String   @id @default(cuid())
-  dealerId   String?
-  festival   String
-  content    String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
-  @@index([dealerId])
+    id         String   @id @default(cuid())
+      dealerId   String?
+        festival   String
+          content    String
+            createdAt  DateTime @default(now())
+              updatedAt  DateTime @updatedAt
+                @@index([dealerId])
 }
 
 // ============================================
@@ -263,293 +263,293 @@ model FestivalContent {
 // ============================================
 
 model WhatsAppTemplate {
-  id          String   @id @default(cuid())
-  dealerId    String
-  businessId String?
-  dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  business Business? @relation("BusinessTemplates", fields: [businessId], references: [id], onDelete: Cascade)
-  
-  name        String
-  language    String   @default("en_US")
-  category    String
-  status      String   @default("PENDING")
-  
-  headerType  String?
-  headerText  String?
-  bodyText    String
-  footerText  String?
-  buttons     Json?
-  
-  metaTemplateId String?
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  messages    WhatsAppMessage[]
-  
-  @@index([dealerId])
-  @@unique([dealerId, name])
+    id          String   @id @default(cuid())
+      dealerId    String
+        businessId String?
+          dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+            business Business? @relation("BusinessTemplates", fields: [businessId], references: [id], onDelete: Cascade)
+              
+                name        String
+                  language    String   @default("en_US")
+                    category    String
+                      status      String   @default("PENDING")
+                        
+                          headerType  String?
+                            headerText  String?
+                              bodyText    String
+                                footerText  String?
+                                  buttons     Json?
+                                    
+                                      metaTemplateId String?
+                                        
+                                          createdAt   DateTime @default(now())
+                                            updatedAt   DateTime @updatedAt
+                                              
+                                                messages    WhatsAppMessage[]
+                                                  
+                                                    @@index([dealerId])
+                                                      @@unique([dealerId, name])
 }
 
 model WhatsAppContact {
-  id          String   @id @default(cuid())
-  dealerId    String
-  businessId String?
-  dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  business Business? @relation("BusinessContacts", fields: [businessId], references: [id], onDelete: Cascade)
-  
-  phoneNumber String
-  name        String?
-  tags        String[] @default([])
-  
-  optedIn     Boolean  @default(true)
-  optedInAt   DateTime @default(now())
-  optedOutAt  DateTime?
-  
-  lastMessageAt DateTime?
-  source        String   @default("manual")
-  
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  messages              WhatsAppMessage[]
-  conversationSummaries WhatsAppConversationSummary[]
-  
-  @@index([dealerId])
-  @@unique([dealerId, phoneNumber])
+    id          String   @id @default(cuid())
+      dealerId    String
+        businessId String?
+          dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+            business Business? @relation("BusinessContacts", fields: [businessId], references: [id], onDelete: Cascade)
+              
+                phoneNumber String
+                  name        String?
+                    tags        String[] @default([])
+                      
+                        optedIn     Boolean  @default(true)
+                          optedInAt   DateTime @default(now())
+                            optedOutAt  DateTime?
+                              
+                                lastMessageAt DateTime?
+                                  source        String   @default("manual")
+                                    
+                                      createdAt   DateTime @default(now())
+                                        updatedAt   DateTime @updatedAt
+                                          
+                                            messages              WhatsAppMessage[]
+                                              conversationSummaries WhatsAppConversationSummary[]
+                                                
+                                                  @@index([dealerId])
+                                                    @@unique([dealerId, phoneNumber])
 }
 
 model WhatsAppMessage {
-  id                String   @id @default(cuid())
-  dealerId          String
-  businessId String?
-  dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  business Business? @relation("BusinessMessages", fields: [businessId], references: [id], onDelete: Cascade)
-  
-  contactId         String?
-  contact           WhatsAppContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  
-  templateId        String?
-  template          WhatsAppTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
-  
-  phoneNumber       String
-  messageId         String?  @unique
-  messageType       String   @default("text")
-  content           String   @default("") @db.Text
-  
-  // Direction (NEW for bidirectional)
-  direction         String   @default("outbound")
-  
-  // Status tracking
-  status            String   @default("pending")
-  error             String?
-  
-  // Timestamps
-  sentAt            DateTime @default(now())
-  deliveredAt       DateTime?
-  readAt            DateTime?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  @@index([dealerId])
-  @@index([contactId])
-  @@index([status])
-  @@index([dealerId, contactId])
-  @@index([dealerId, createdAt(sort: Desc)])
+    id                String   @id @default(cuid())
+      dealerId          String
+        businessId String?
+          dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+            business Business? @relation("BusinessMessages", fields: [businessId], references: [id], onDelete: Cascade)
+              
+                contactId         String?
+                  contact           WhatsAppContact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+                    
+                      templateId        String?
+                        template          WhatsAppTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+                          
+                            phoneNumber       String
+                              messageId         String?  @unique
+                                messageType       String   @default("text")
+                                  content           String   @default("") @db.Text
+                                    
+                                      // Direction (NEW for bidirectional)
+                                        direction         String   @default("outbound")
+                                          
+                                            // Status tracking
+                                              status            String   @default("pending")
+                                                error             String?
+                                                  
+                                                    // Timestamps
+                                                      sentAt            DateTime @default(now())
+                                                        deliveredAt       DateTime?
+                                                          readAt            DateTime?
+                                                            
+                                                              createdAt         DateTime @default(now())
+                                                                updatedAt         DateTime @updatedAt
+                                                                  
+                                                                    @@index([dealerId])
+                                                                      @@index([contactId])
+                                                                        @@index([status])
+                                                                          @@index([dealerId, contactId])
+                                                                            @@index([dealerId, createdAt(sort: Desc)])
 }
 
 model WhatsAppConversationSummary {
-  id                String   @id @default(cuid())
-  dealerId          String
-  businessId String?
-  dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  business Business? @relation("BusinessConversations", fields: [businessId], references: [id], onDelete: Cascade)
-  
-  contactId         String
-  contact           WhatsAppContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  
-  // Summary data only (minimal storage)
-  lastMessageAt     DateTime @default(now())
-  lastMessagePreview String? @db.Text
-  unreadCount       Int      @default(0)
-  totalMessages     Int      @default(0)
-  archived          Boolean  @default(false)
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  @@unique([dealerId, contactId])
-  @@index([dealerId, lastMessageAt(sort: Desc)])
-  @@index([dealerId, archived])
-  @@map("whatsapp_conversation_summaries")
+    id                String   @id @default(cuid())
+      dealerId          String
+        businessId String?
+          dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+            business Business? @relation("BusinessConversations", fields: [businessId], references: [id], onDelete: Cascade)
+              
+                contactId         String
+                  contact           WhatsAppContact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+                    
+                      // Summary data only (minimal storage)
+                        lastMessageAt     DateTime @default(now())
+                          lastMessagePreview String? @db.Text
+                            unreadCount       Int      @default(0)
+                              totalMessages     Int      @default(0)
+                                archived          Boolean  @default(false)
+                                  
+                                    createdAt         DateTime @default(now())
+                                      updatedAt         DateTime @updatedAt
+                                        
+                                          @@unique([dealerId, contactId])
+                                            @@index([dealerId, lastMessageAt(sort: Desc)])
+                                              @@index([dealerId, archived])
+                                                @@map("whatsapp_conversation_summaries")
 }
 
 model ProductCatalog {
-  id                String   @id @default(cuid())
-  dealerId          String
-  businessId String?
-  dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  business Business? @relation("BusinessCatalogs", fields: [businessId], references: [id], onDelete: Cascade)
-  
-  // Meta Catalog Info
-  metaCatalogId     String?
-  catalogName       String
-  catalogType       String   @default("automotive")
-  
-  // Sync Status
-  status            String   @default("pending")
-  lastSyncedAt      DateTime?
-  itemCount         Int      @default(0)
-  syncError         String?
-  
-  // Feed URLs
-  xmlFeedUrl        String?
-  csvFeedUrl        String?
-  
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-  
-  @@index([dealerId])
-  @@unique([dealerId, metaCatalogId])
+    id                String   @id @default(cuid())
+      dealerId          String
+        businessId String?
+          dealer            Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+            business Business? @relation("BusinessCatalogs", fields: [businessId], references: [id], onDelete: Cascade)
+              
+                // Meta Catalog Info
+                  metaCatalogId     String?
+                    catalogName       String
+                      catalogType       String   @default("automotive")
+                        
+                          // Sync Status
+                            status            String   @default("pending")
+                              lastSyncedAt      DateTime?
+                                itemCount         Int      @default(0)
+                                  syncError         String?
+                                    
+                                      // Feed URLs
+                                        xmlFeedUrl        String?
+                                          csvFeedUrl        String?
+                                            
+                                              createdAt         DateTime @default(now())
+                                                updatedAt         DateTime @updatedAt
+                                                  
+                                                    @@index([dealerId])
+                                                      @@unique([dealerId, metaCatalogId])
 }
 
 model OTPVerification {
-  id            String    @id @default(cuid())
-  dealerId      String?
-  dealer        Dealer?   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  
-  phone         String
-  email         String?
-  
-  otpCode       String
-  otpHash       String
-  expiresAt     DateTime
-  verified      Boolean   @default(false)
-  verifiedAt    DateTime?
-  
-  deliveryMethod String   @default("whatsapp")
-  messageId     String?
-  deliveryStatus String   @default("pending")
-  
-  attempts      Int       @default(0)
-  maxAttempts   Int       @default(5)
-  ipAddress     String?
-  userAgent     String?
-  
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  @@index([phone])
-  @@index([otpHash])
-  @@index([expiresAt])
-  @@map("otp_verifications")
+    id            String    @id @default(cuid())
+      dealerId      String?
+        dealer        Dealer?   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+          
+            phone         String
+              email         String?
+                
+                  otpCode       String
+                    otpHash       String
+                      expiresAt     DateTime
+                        verified      Boolean   @default(false)
+                          verifiedAt    DateTime?
+                            
+                              deliveryMethod String   @default("whatsapp")
+                                messageId     String?
+                                  deliveryStatus String   @default("pending")
+                                    
+                                      attempts      Int       @default(0)
+                                        maxAttempts   Int       @default(5)
+                                          ipAddress     String?
+                                            userAgent     String?
+                                              
+                                                createdAt     DateTime  @default(now())
+                                                  updatedAt     DateTime  @updatedAt
+                                                    
+                                                      @@index([phone])
+                                                        @@index([otpHash])
+                                                          @@index([expiresAt])
+                                                            @@map("otp_verifications")
 }
 
 model PasswordResetToken {
-  id        String    @id @default(cuid())
-  dealerId  String
-  dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  
-  token     String    @unique
-  expiresAt DateTime
-  used      Boolean   @default(false)
-  usedAt    DateTime?
-  
-  createdAt DateTime  @default(now())
-  
-  @@index([token])
-  @@index([expiresAt])
-  @@map("password_reset_tokens")
+    id        String    @id @default(cuid())
+      dealerId  String
+        dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+          
+            token     String    @unique
+              expiresAt DateTime
+                used      Boolean   @default(false)
+                  usedAt    DateTime?
+                    
+                      createdAt DateTime  @default(now())
+                        
+                          @@index([token])
+                            @@index([expiresAt])
+                              @@map("password_reset_tokens")
 }
 
 model LoginAudit {
-  id        String    @id @default(cuid())
-  dealerId  String
-  dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  
-  success   Boolean
-  method    String
-  ipAddress String
-  userAgent String?
-  location  String?
-  
-  failureReason String?
-  
-  createdAt DateTime  @default(now())
-  
-  @@index([dealerId])
-  @@index([createdAt])
-  @@map("login_audits")
+    id        String    @id @default(cuid())
+      dealerId  String
+        dealer    Dealer    @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+          
+            success   Boolean
+              method    String
+                ipAddress String
+                  userAgent String?
+                    location  String?
+                      
+                        failureReason String?
+                          
+                            createdAt DateTime  @default(now())
+                              
+                                @@index([dealerId])
+                                  @@index([createdAt])
+                                    @@map("login_audits")
 }
 model Business {
-  id String @id @default(cuid())
-  
-  // Business Info
-  businessName String
-  subdomain String @unique
-  logo String?
-  location String?
-  description String?
-  
-  // WhatsApp Connection (same structure as Dealer)
-  whatsappBusinessNumber String?
-  whatsappBusinessAccountId String?
-  whatsappPhoneNumberId String?
-  whatsappBusinessVerified Boolean @default(false)
-  whatsappApiToken String?
-  
-  // Meta Integration (same as Dealer)
-  facebookPageId String?
-  facebookCatalogId String?
-  metaAccessToken String?
-  metaAccessTokenExpiry DateTime?
-  
-  // Subscription (for wa.mktgdime.com pricing)
-  plan String @default("free")
-  subscriptionStatus String @default("active")
-  subscriptionAmount Int?
-  
-  // Usage Tracking
-  whatsappMessagesUsed Int @default(0)
-  whatsappMessagesQuota Int @default(1000)
-  quotaResetAt DateTime @default(now())
-  
-  // Account Info
-  email String? @unique
-  phone String? @unique
-  passwordHash              String?
-  
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  // Relations
-  whatsappTemplates WhatsAppTemplate[] @relation("BusinessTemplates")
-  whatsappContacts WhatsAppContact[] @relation("BusinessContacts")
-  whatsappMessages WhatsAppMessage[] @relation("BusinessMessages")
-  conversationSummaries WhatsAppConversationSummary[] @relation("BusinessConversations")
-  productCatalogs ProductCatalog[] @relation("BusinessCatalogs")
-  
-  @@index([subdomain])
-  @@index([email])
+    id String @id @default(cuid())
+      
+        // Business Info
+          businessName String
+            subdomain String @unique
+              logo String?
+                location String?
+                  description String?
+                    
+                      // WhatsApp Connection (same structure as Dealer)
+                        whatsappBusinessNumber String?
+                          whatsappBusinessAccountId String?
+                            whatsappPhoneNumberId String?
+                              whatsappBusinessVerified Boolean @default(false)
+                                whatsappApiToken String?
+                                  
+                                    // Meta Integration (same as Dealer)
+                                      facebookPageId String?
+                                        facebookCatalogId String?
+                                          metaAccessToken String?
+                                            metaAccessTokenExpiry DateTime?
+                                              
+                                                // Subscription (for wa.mktgdime.com pricing)
+                                                  plan String @default("free")
+                                                    subscriptionStatus String @default("active")
+                                                      subscriptionAmount Int?
+                                                        
+                                                          // Usage Tracking
+                                                            whatsappMessagesUsed Int @default(0)
+                                                              whatsappMessagesQuota Int @default(1000)
+                                                                quotaResetAt DateTime @default(now())
+                                                                  
+                                                                    // Account Info
+                                                                      email String? @unique
+                                                                        phone String? @unique
+                                                                          passwordHash              String?
+                                                                            
+                                                                              createdAt DateTime @default(now())
+                                                                                updatedAt DateTime @updatedAt
+                                                                                  
+                                                                                    // Relations
+                                                                                      whatsappTemplates WhatsAppTemplate[] @relation("BusinessTemplates")
+                                                                                        whatsappContacts WhatsAppContact[] @relation("BusinessContacts")
+                                                                                          whatsappMessages WhatsAppMessage[] @relation("BusinessMessages")
+                                                                                            conversationSummaries WhatsAppConversationSummary[] @relation("BusinessConversations")
+                                                                                              productCatalogs ProductCatalog[] @relation("BusinessCatalogs")
+                                                                                                
+                                                                                                  @@index([subdomain])
+                                                                                                    @@index([email])
 }
 model ShareEvent {
-  id          String   @id @default(cuid())
-  eventType   String
-  carId       String
-  dealerId    String
-  shareMethod String?
-  timestamp   DateTime
-  metadata    Json?
-  userAgent   String?
-  ipAddress   String?
-  
-  car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
-  dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
-  
-  createdAt   DateTime @default(now())
-  
-  @@index([dealerId, timestamp])
-  @@index([carId])
-  @@map("share_events")
+    id          String   @id @default(cuid())
+      eventType   String
+        carId       String
+          dealerId    String
+            shareMethod String?
+              timestamp   DateTime
+                metadata    Json?
+                  userAgent   String?
+                    ipAddress   String?
+                      
+                        car         Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+                          dealer      Dealer   @relation(fields: [dealerId], references: [id], onDelete: Cascade)
+                            
+                              createdAt   DateTime @default(now())
+                                
+                                  @@index([dealerId, timestamp])
+                                    @@index([carId])
+                                      @@map("share_events")
 }
