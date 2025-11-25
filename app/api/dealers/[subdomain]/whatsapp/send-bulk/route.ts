@@ -1,18 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/api/auth/[...nextauth]/route'  // ✅ FIXED: path
-import { WhatsAppStorageService } from '@/lib/services/whatsapp-storage.service'
-import { decrypt } from '@/lib/crypto';
-
+import { authOptions } from '@/api/auth/[...nextauth]/route'
 
 function countTemplateParameters(bodyText: string): number {
   if (!bodyText) return 0;
-  // Match both {{1}} and {{variable_name}} formats
   const matches = bodyText.match(/\{\{[^}]+\}\}/g);
   return matches ? matches.length : 0;
 }
-
 
 function extractParameterNames(bodyText: string): string[] {
   if (!bodyText) return [];
@@ -70,7 +65,7 @@ export async function POST(
         bodyText: true,
         status: true,
         dealerId: true,
-        parameterFormat: true, // ✅ ADD THIS FIELD
+        parameterFormat: true,
       },
     });
     
@@ -90,10 +85,16 @@ export async function POST(
     
     const templateParamCount = countTemplateParameters(template.bodyText);
     const parameterNames = extractParameterNames(template.bodyText);
-    const isNamedFormat = template.parameterFormat === 'NAMED';
+    
+    // ✅ Auto-detect format if DB value is wrong or missing
+    // If parameter names contain non-numeric characters, it's NAMED format
+    const detectedFormat = parameterNames.some(name => !/^\d+$/.test(name)) ? 'NAMED' : 'POSITIONAL';
+    const isNamedFormat = template.parameterFormat === 'NAMED' || detectedFormat === 'NAMED';
     
     console.log(`📋 Template "${template.name}" expects ${templateParamCount} parameters`);
-    console.log(`📋 Parameter format: ${template.parameterFormat}`);
+    console.log(`📋 Parameter format (DB): ${template.parameterFormat || 'null'}`);
+    console.log(`📋 Parameter format (detected): ${detectedFormat}`);
+    console.log(`📋 Parameter format (using): ${isNamedFormat ? 'NAMED' : 'POSITIONAL'}`);
     console.log(`📋 Parameter names: ${JSON.stringify(parameterNames)}`);
 
     // Step 4: Get contacts
@@ -142,23 +143,24 @@ export async function POST(
     
         const templatePayload: any = {
           name: template.name,
-          language: { code: template.language || 'en' }, // ✅ FIXED: use 'en' not 'en_US'
+          language: { code: template.language || 'en' },
         };
     
         if (templateParamCount > 0 && personalVariables.length > 0) {
-          // ✅ Handle NAMED vs POSITIONAL parameters
           if (isNamedFormat) {
+            // ✅ NAMED format: include parameter_name
             templatePayload.components = [
               {
                 type: 'body',
                 parameters: personalVariables.map((v: string, index: number) => ({
                   type: 'text',
                   text: String(v).trim(),
-                  parameter_name: parameterNames[index], // ✅ ADD parameter_name for NAMED
+                  parameter_name: parameterNames[index],
                 })),
               },
             ];
           } else {
+            // POSITIONAL format: no parameter_name
             templatePayload.components = [
               {
                 type: 'body',
