@@ -184,7 +184,25 @@ useEffect(() => {
       alert('Please select contacts and a template')
       return
     }
-
+  
+    // ✅ Validate that all required inputs are filled
+    for (let i = 0; i < templateParams.length; i++) {
+      // Skip validation for the first param if it's for customer name (will use contact.name)
+      const param = templateParams[i];
+      const isNameParam = 
+        i === 0 && 
+        param.type === "text" && 
+        (
+          (param.text && param.text.toLowerCase().includes("name")) ||
+          (param.text && param.text.toLowerCase().includes("customer")) ||
+          !inputValues[i] // If no input provided for first param, assume it's name
+        );
+      
+      if (!isNameParam && !inputValues[i]) {
+        alert(`Please provide value for parameter #${i + 1}`);
+        return;
+      }
+    }
     
     setSending(true)
     try {
@@ -195,58 +213,60 @@ useEffect(() => {
           templateId: selectedTemplate,
           contactVariables: selectedContacts.map((contactId) => {
             const contact = contacts.find((c) => c.id === contactId);
+            
+            // ✅ SIMPLIFIED: Build variables array
             const variables = templateParams.map((param, idx) => {
-              // If the param text matches a known contact field (like name), use the contact's value
-              if (
-                param.type === "text" &&
-                (
-                  (param.text && (
-                    param.text.toLowerCase().includes("name") ||
-                    param.text.toLowerCase().includes("customer")
-                  )) ||
-                  (param.example && param.example.toLowerCase().includes("name"))
-                )
-              ) {
-                return contact?.name || "";
-              }
-              // For other params, use the common input value (single input, used for all contacts)
+              // For text parameters:
               if (param.type === "text") {
-                return inputValues[idx] || ""; // fallback if not "name"
+                // First text parameter: use contact name if no input provided
+                if (idx === 0 && !inputValues[idx]) {
+                  return contact?.name || "Customer";
+                }
+                // Otherwise use the input value
+                return inputValues[idx] || "";
               }
+              
+              // For product parameters:
               if (param.type === "product") {
-                return inputValues[idx];
+                return inputValues[idx] || "";
               }
+              
+              // For image parameters:
               if (param.type === "image") {
-                return inputValues[idx];
+                return inputValues[idx] || "";
               }
+              
               return "";
             });
+            
+            console.log(`📤 Building payload for ${contact?.name}:`, variables);
+            
             return { contactId, variables };
           }),
         }),
-        
       })
-
+  
       if (!res.ok) {
         const error = await res.json()
         throw new Error(error.error || 'Send failed')
       }
-
+  
       const result = await res.json()
-
+  
       alert(
         `✅ Sent to ${result.sent} contacts\n❌ Failed: ${result.failed}`
       )
-
+  
       setSelectedContacts([])
       setSelectedTemplate('')
-
+      setInputValues({}) // ✅ Clear inputs after send
+  
       // Refresh messages
       const msgRes = await fetch(`/api/dealers/${subdomain}/whatsapp/messages`)
       if (msgRes.ok) {
         const msgData = await msgRes.json()
         setMessages(msgData.messages || [])
-
+  
         // Update stats
         const newStats: MessageStats = {
           sent: msgData.messages.filter((m: any) => m.status === 'sent').length,
@@ -265,6 +285,7 @@ useEffect(() => {
       setSending(false)
     }
   }
+  
 
   const toggleContact = (id: string) => {
     setSelectedContacts((prev) =>
