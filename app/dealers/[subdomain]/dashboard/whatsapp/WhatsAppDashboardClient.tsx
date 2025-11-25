@@ -98,29 +98,35 @@ useEffect(() => {
   if (selectedTemplate) {
     const template = templates.find(t => t.id === selectedTemplate);
     if (template) {
-      // NEW: if template.components exists, use those for param definition
-      if (template.components && Array.isArray(template.components)) {
-        const params: any[] = [];
-        template.components.forEach(component => {
-          if (component.parameters) {
-            component.parameters.forEach(param => {
-              params.push({ ...param, componentType: component.type });
-            });
-          }
-        });
-        setTemplateParams(params);
-        setInputValues({}); // Reset any previous input
-      } else {
-        // Fallback legacy: text placeholders via bodyText
-        const matches = template.bodyText.match(/\{\{\d+\}\}/g);
+      // ✅ Detect all {{variable}} patterns from bodyText
+      const matches = template.bodyText.match(/\{\{[^}]+\}\}/g);
+      
+      if (matches && matches.length > 0) {
+        // Extract variable names for reference
+        const paramNames = matches.map(m => m.replace(/\{\{|\}\}/g, '').trim());
+        
         setTemplateParams(
-          matches?.map(() => ({ type: "text", text: "" })) || []
+          matches.map((match, idx) => ({ 
+            type: "text", 
+            text: paramNames[idx],
+            placeholder: `Enter ${paramNames[idx]}`
+          }))
         );
+        setInputValues({}); // Reset any previous input
+        
+        console.log(`📋 Detected ${matches.length} parameters:`, paramNames);
+      } else {
+        // No parameters in template
+        setTemplateParams([]);
         setInputValues({});
       }
     }
+  } else {
+    setTemplateParams([]);
+    setInputValues({});
   }
 }, [selectedTemplate, templates]);
+
 
 useEffect(() => {
   if (!subdomain) return;
@@ -169,13 +175,6 @@ useEffect(() => {
       alert('❌ Import failed: ' + e.message)
     } finally {
       setUploading(false)
-    }
-  }
-
-  for (let i = 0; i < templateParams.length; i++) {
-    if (!inputValues[i]) {
-      alert(`Please provide value for parameter #${i + 1}`);
-      return;
     }
   }
   
