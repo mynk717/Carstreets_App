@@ -148,26 +148,54 @@ export async function POST(
           components: []
         };
     
-        if (templateParamCount > 0 && personalVariables.length > 0) {
-          if (isNamedFormat) {
-            templatePayload.components.push({
-              type: 'body',
-              parameters: personalVariables.map((v: string, index: number) => ({
-                type: 'text',
-                text: String(v).trim(),
-                parameter_name: parameterNames[index],
-              })),
-            });
-          } else {
-            templatePayload.components.push({
-              type: 'body',
-              parameters: personalVariables.map((v: string) => ({
-                type: 'text',
-                text: String(v).trim(),
-              })),
-            });
-          }
-        }
+        // Add body component with parameters
+if (templateParamCount > 0 && personalVariables.length > 0) {
+  if (isNamedFormat) {
+    templatePayload.components.push({
+      type: 'body',
+      parameters: personalVariables.map((v: string, index: number) => ({
+        type: 'text',
+        text: String(v).trim(),
+        parameter_name: parameterNames[index],
+      })),
+    });
+  } else {
+    templatePayload.components.push({
+      type: 'body',
+      parameters: personalVariables.map((v: string) => ({
+        type: 'text',
+        text: String(v).trim(),
+      })),
+    });
+  }
+}
+
+// ✅ DEBUG: Check what's in template.buttons
+console.log('🔍 Template buttons from DB:', JSON.stringify(template.buttons));
+
+// ✅ Add button component for catalog templates
+if (template.name.includes('catalogue') || template.name.includes('catalog')) {
+  console.log('✅ Adding catalog button component');
+  templatePayload.components.push({
+    type: 'button',
+    sub_type: 'catalog',
+    index: 0,
+  });
+} else if (template.buttons) {
+  // For other templates with buttons
+  const buttonsData = typeof template.buttons === 'string' 
+    ? JSON.parse(template.buttons) 
+    : template.buttons;
+    
+  if (Array.isArray(buttonsData) && buttonsData.some((b: any) => b.type === 'CATALOG')) {
+    templatePayload.components.push({
+      type: 'button',
+      sub_type: 'catalog',
+      index: 0,
+    });
+  }
+}
+
         if (template.buttons) {
           const buttonsData = typeof template.buttons === 'string' 
             ? JSON.parse(template.buttons) 
