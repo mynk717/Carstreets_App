@@ -56,6 +56,16 @@
       },
       "Hyundai": {
         "models": {
+          "Grand i10 Nios": {
+  "variants": ["Era", "Magna", "Sportz", "Asta"],
+  "fuel": ["Petrol", "CNG"],
+  "transmission": ["Manual", "AMT"]
+},
+"Grand i10": {
+  "variants": ["Era", "Magna", "Sportz", "Asta"],
+  "fuel": ["Petrol"],
+  "transmission": ["Manual", "AMT"]
+},
           "i10": {
             "variants": ["Era", "Magna", "Sportz", "Asta"],
             "fuel": ["Petrol"],
@@ -231,6 +241,11 @@
       },
       "Honda": {
         "models": {
+          "Civic": {
+  "variants": ["V", "VX", "ZX"],
+  "fuel": ["Petrol"],
+  "transmission": ["Manual", "CVT"]
+},
           "City": {
             "variants": ["V", "VX", "ZX"],
             "fuel": ["Petrol", "Diesel", "Hybrid"],
@@ -506,6 +521,16 @@
   },
   "MG": {
     "models": {
+      "Hector Plus": {
+  "variants": ["Style", "Smart Pro", "Sharp Pro", "Savvy Pro", "BlackStorm", "100-Year Limited Edition"],
+  "fuel": ["Petrol", "Diesel"],
+  "transmission": ["Manual", "CVT", "AT"]
+},
+"Meridian": {
+  "variants": ["Longitude", "Longitude Plus", "Limited (O)", "Overland", "Trail Edition"],
+  "fuel": ["Diesel"],
+  "transmission": ["Manual", "AT"]
+},
       "Hector": {
             "variants": ["Style", "Super", "Smart", "Sharp", "Savvy"],
             "fuel": ["Petrol", "Diesel", "Hybrid"],
