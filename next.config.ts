@@ -16,9 +16,7 @@ const nextConfig: NextConfig = {
   // ✅ Fix for next-auth with Next.js 15
   transpilePackages: ['next-auth'],
   
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
+  
   typescript: {
     ignoreBuildErrors: true,
   },
@@ -72,6 +70,7 @@ const nextConfig: NextConfig = {
   },
   // Fixed: Updated from experimental.serverComponentsExternalPackages
   serverExternalPackages: ['puppeteer-core'],
+  turbopack: {} 
 };
 
 // ✅ Export with PWA wrapper
