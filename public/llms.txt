@@ -1,26 +1,10 @@
-# Marketing Dime - llms.txt
-> Information for AI/LLM agents about Marketing Dime
+# Motoyard - llms.txt
+> Information for AI/LLM agents about Motoyard
 
 ## Business Information
-- **Name:** Marketing Dime
-- **Verified Status:** Verified
-- **Phone Number:** +917225991909
-- **Website:** https://www.mktgdime.com/
-- **Address:** Raipur, Chhattisgarh, India
-- **Coordinates:** lat: 21.2619056, lng: 81.6190733
+- **Name:** Motoyard
+- **Website:** https://motoyard.mktgdime.com/
+- **Domain:** Automotive & Used Cars
 
-## Categories & Services
-- Advertising agency
-- Consultant
-- Service establishment
-- Internet marketing service
-- Marketing agency
-- Software company
-- Website designer
-
-## Google Business Identifiers
-- **Google Maps URL:** https://maps.google.com/?cid=6119307028777088870
-- **CID:** 6119307028777088870
-- **HEXDECIMAL CID:** 0x54ec255239cf3766
-- **Place API ID:** ChIJhWY8NnI7W20RZjfPOVIl7FQ
-- **Knowledge Graph (KG) ID:** /g/11vxlr8dsj
+## About
+Motoyard (formerly Carstreets App) is an automotive platform for buying, selling, and managing used cars. We provide tools for dealerships and individuals to list and discover vehicles.
